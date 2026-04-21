@@ -1,0 +1,108 @@
+import { Property } from '../types';
+
+export const mockListings: Property[] = [
+  {
+    id: '1',
+    title: 'Villa moderne avec vue sur le lac',
+    description: 'Bénéficiez d\'une vue imprenable sur le lac Kivu dans cette superbe villa moderne de 3 chambres. Entièrement équipée avec un mobilier haut de gamme et un jardin privé.',
+    price: 850,
+    currency: 'USD',
+    bedrooms: 3,
+    bathrooms: 2,
+    size: 150,
+    surface: 150,
+    location: {
+      address: 'Avenue de la Paix',
+      district: 'Gisenyi Rural',
+      city: 'Gisenyi',
+      coordinates: {
+        latitude: -1.7011,
+        longitude: 29.2569,
+      },
+    },
+    amenities: ['Wifi', 'Parking', 'Sécurité', 'Jardin', 'Vue sur le lac'],
+    images: [
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
+    ],
+    rating: 4.8,
+    reviews: 12,
+    owner: {
+      id: 'owner1',
+      name: 'John Doe',
+      avatar: 'https://i.pravatar.cc/150?u=owner1',
+    },
+    available: true,
+    createdAt: new Date('2024-03-15'),
+    updatedAt: new Date('2024-03-15'),
+    type: 'villa',
+  },
+  {
+    id: '2',
+    title: 'Appartement central pour étudiants',
+    description: 'Appartement spacieux et abordable au cœur de la ville. Proche des universités et des commerces. Idéal pour un long séjour.',
+    price: 350,
+    currency: 'USD',
+    bedrooms: 2,
+    bathrooms: 1,
+    size: 75,
+    surface: 75,
+    location: {
+      address: 'Route Nationale 4',
+      district: 'Gisenyi Centre',
+      city: 'Gisenyi',
+      coordinates: {
+        latitude: -1.6998,
+        longitude: 29.2567,
+      },
+    },
+    amenities: ['Wifi', 'Eau chaude', 'Bureau'],
+    images: [
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
+    ],
+    rating: 4.2,
+    reviews: 8,
+    owner: {
+      id: 'owner2',
+      name: 'Jane Smith',
+    },
+    available: true,
+    createdAt: new Date('2024-04-01'),
+    updatedAt: new Date('2024-04-01'),
+    type: 'appartement',
+  },
+  {
+    id: '3',
+    title: 'Maison familiale meublée',
+    description: 'Grande maison familiale située dans un quartier calme. Entièrement meublée et sécurisée. Parfaite pour une famille cherchant la tranquillité.',
+    price: 600,
+    currency: 'USD',
+    bedrooms: 4,
+    bathrooms: 2,
+    size: 200,
+    surface: 200,
+    location: {
+      address: 'Quartier Rugerero',
+      district: 'Rugerero',
+      city: 'Gisenyi',
+      coordinates: {
+        latitude: -1.7050,
+        longitude: 29.2600,
+      },
+    },
+    amenities: ['Wifi', 'Parking', 'Sécurité', 'Cuisine équipée'],
+    images: [
+      'https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
+    ],
+    rating: 4.5,
+    reviews: 5,
+    owner: {
+      id: 'owner3',
+      name: 'Emery Gasana',
+    },
+    available: true,
+    createdAt: new Date('2024-02-10'),
+    updatedAt: new Date('2024-02-10'),
+    type: 'house',
+  }
+];
