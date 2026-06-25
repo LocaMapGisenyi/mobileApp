@@ -356,7 +356,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.black,
+    color: colors.ink,
   },
   clearAll: {
     fontSize: typography.fontSize.sm,
@@ -411,7 +411,7 @@ const s = StyleSheet.create({
   priceInput: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.black,
+    color: colors.ink,
     fontWeight: '500',
   },
   priceDash: {
@@ -437,8 +437,8 @@ const s = StyleSheet.create({
     backgroundColor: colors.white,
   },
   chipActive: {
-    borderColor: colors.black,
-    backgroundColor: colors.black,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   chipText: {
     fontSize: typography.fontSize.sm,
@@ -473,8 +473,8 @@ const s = StyleSheet.create({
     backgroundColor: colors.white,
   },
   bedroomBtnActive: {
-    borderColor: colors.black,
-    backgroundColor: colors.black,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   bedroomText: {
     fontSize: typography.fontSize.base,
@@ -503,8 +503,8 @@ const s = StyleSheet.create({
     backgroundColor: colors.white,
   },
   sortBtnActive: {
-    borderColor: colors.black,
-    backgroundColor: colors.black,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   sortText: {
     fontSize: typography.fontSize.sm,
@@ -550,7 +550,7 @@ const s = StyleSheet.create({
     flex: 2,
     height: 52,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.black,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

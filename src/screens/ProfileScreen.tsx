@@ -504,11 +504,11 @@ const ProfileScreen = () => {
 
       {/* Floating Become a Host Button */}
       <TouchableOpacity
-        style={[styles.becomeHostButton, { backgroundColor: '#FF5A5F' }]}
+        style={[styles.becomeHostButton, { backgroundColor: colors.primary }]}
         onPress={navigateToBecomeHost}
         activeOpacity={0.9}
       >
-        <MaterialIcons name="add-home" size={20} color="#FFFFFF" style={styles.becomeHostIcon} />
+        <MaterialIcons name="add-home" size={20} color={colors.white} style={styles.becomeHostIcon} />
         <Text style={styles.becomeHostText}>{t('host.become')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   becomeHostText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '600',
     fontSize: 14,
   },

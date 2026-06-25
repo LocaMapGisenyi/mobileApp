@@ -1,66 +1,84 @@
 /**
- * Thème global pour l'application LocaMap
- * Inspiré du design Airbnb
+ * LocaMap — Direction A : Lac Kivu · Sarcelle
+ * Couleur signature : sarcelle profonde du lac à l'aube
  */
 
 import { Platform } from 'react-native';
 
-// Palette de couleurs Airbnb
+// ─── Palette ─────────────────────────────────────────────────────────────────
+
 export const colors = {
-  // Couleurs principales
-  primary: '#FF385C', // Rose Airbnb
-  black: '#222222',
+  // Primaire : sarcelle profonde — lac Kivu au petit matin
+  primary: '#0D6E6E',
+  primaryLight: '#E8F4F4',   // surface de chip, fond d'input focus
+  primaryMid: '#1A9494',     // état hover / icône active légère
+  primaryDark: '#084F4F',    // état pressed, profondeur
+
+  // Fond & surface
+  background: '#FAFAFA',     // blanc neutre pur, pas warm
+  surface: '#FFFFFF',
+  surfaceSunken: '#F3F8F8',  // fond légèrement teinté sarcelle pour sections
+
+  // Texte — teinté vers le primaire, pas le gris générique
+  ink: '#0F1F1F',            // titre, label principal
+  inkMid: '#2E4A4A',         // corps de texte
+  inkSubtle: '#5A7878',      // métadonnées, labels secondaires
+  inkDisabled: '#9BB5B5',    // désactivé
+
+  // Bordures
+  border: '#D0E8E8',         // bordure légère teintée sarcelle
+  borderMid: '#9BB5B5',      // bordure visible
+
+  // Alias de compatibilité (utilisés par les anciens écrans)
+  black: '#0F1F1F',
   white: '#FFFFFF',
-  
-  // Nuances de gris
   gray: {
-    50: '#F7F7F7',  // Fond très clair, presque blanc
-    100: '#F0F0F0', // Fond d'input, cartes
-    200: '#DDDDDD', // Bordures légères
-    300: '#B0B0B0', // Texte désactivé
-    400: '#909090', // Texte secondaire
-    500: '#717171', // Texte standard
-    600: '#484848', // Texte important
-    700: '#333333', // Texte principal
-    800: '#222222', // Texte très foncé
+    50: '#F3F8F8',
+    100: '#E8F4F4',
+    200: '#D0E8E8',
+    300: '#9BB5B5',
+    400: '#6E9898',
+    500: '#5A7878',
+    600: '#3D5E5E',
+    700: '#2E4A4A',
+    800: '#1A3333',
   },
-  
-  // Shortcut aliases for screens that use colors.background / colors.text
-  background: '#FFFFFF',
-  text: '#222222',
-  // Social color shortcuts
+
+  // États sémantiques
+  success: '#1A8A6E',
+  warning: '#C47C00',
+  error: '#C1440E',          // latérite — contraste fort avec le vert-sarcelle
+  info: '#0D6E6E',
+
+  // Sociaux
   apple: '#000000',
   facebook: '#1877F2',
   google: '#4285F4',
-  // Outline color
-  outline: '#DDDDDD',
-
-  // États
-  success: '#00A699',
-  warning: '#FFB400',
-  error: '#FF5A5F',
-  info: '#007A87',
-  // Marque LocaMap
-  secondary: '#4F46E5',
-  // Réseaux sociaux
   social: {
     google: '#4285F4',
     facebook: '#1877F2',
     apple: '#000000',
   },
+
+  // Compatibilité
+  background_compat: '#FAFAFA',
+  text: '#0F1F1F',
+  outline: '#D0E8E8',
+  secondary: '#1A9494',
 };
 
-// Typographie
+// ─── Typographie ──────────────────────────────────────────────────────────────
+
 export const typography = {
   fontFamily: {
     ...Platform.select({
-      ios: { 
+      ios: {
         regular: 'System',
         medium: 'System',
         semiBold: 'System',
         bold: 'System',
       },
-      android: { 
+      android: {
         regular: 'sans-serif',
         medium: 'sans-serif-medium',
         semiBold: 'sans-serif-medium',
@@ -99,7 +117,8 @@ export const typography = {
   },
 };
 
-// Espacement
+// ─── Espacement ───────────────────────────────────────────────────────────────
+
 export const spacing = {
   '0': 0,
   '1': 4,
@@ -114,24 +133,26 @@ export const spacing = {
   '16': 64,
 };
 
-// Rayons de bordure
+// ─── Rayons ───────────────────────────────────────────────────────────────────
+
 export const borderRadius = {
-  'none': 0,
-  'sm': 4,
-  'md': 8,
-  'lg': 12,
-  'xl': 16,
+  none: 0,
+  sm: 4,
+  md: 6,       // inputs, boutons — plus serré qu'Airbnb
+  lg: 12,      // cards
+  xl: 16,
   '2xl': 24,
-  'full': 9999,
-  // Spécifiques Airbnb
-  'button': 8,
-  'card': 12,
-  'input': 8,
-  'searchBar': 32,
-  'tag': 16,
+  full: 9999,
+  button: 6,
+  card: 12,
+  input: 6,
+  searchBar: 28,
+  tag: 6,
 };
 
-// Ombres
+// ─── Ombres ───────────────────────────────────────────────────────────────────
+// Teintées sarcelle pour cohérence
+
 export const shadows = {
   none: {
     shadowColor: 'transparent',
@@ -141,65 +162,68 @@ export const shadows = {
     elevation: 0,
   },
   xs: {
-    shadowColor: '#000',
+    shadowColor: '#0D6E6E',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
     elevation: 1,
   },
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.10,
-    shadowRadius: 2,
+    shadowColor: '#0D6E6E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    shadowColor: '#0D6E6E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
     elevation: 3,
   },
   lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowColor: '#0D6E6E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     elevation: 4,
   },
   xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowColor: '#0D6E6E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 6,
   },
 };
 
-// Styles communs pour les composants
+// ─── Styles communs ───────────────────────────────────────────────────────────
+
 export const commonStyles = {
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   screenContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   inputStyle: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.input,
     padding: spacing[4],
     fontSize: typography.fontSize.base,
-    color: colors.gray[700],
+    color: colors.ink,
   },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.button,
     padding: spacing[4],
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   primaryButtonText: {
     color: colors.white,
@@ -207,55 +231,55 @@ export const commonStyles = {
     fontSize: typography.fontSize.base,
   },
   outlineButton: {
-    borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderWidth: 1.5,
+    borderColor: colors.border,
     borderRadius: borderRadius.button,
     padding: spacing[4],
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   outlineButtonText: {
-    color: colors.gray[700],
+    color: colors.inkMid,
     fontWeight: typography.fontWeight.medium,
     fontSize: typography.fontSize.base,
   },
   cardStyle: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.card,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing[4],
   },
   heading1: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[800],
+    color: colors.ink,
     marginBottom: spacing[4],
   },
   heading2: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[800],
+    color: colors.ink,
     marginBottom: spacing[3],
   },
   heading3: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semiBold,
-    color: colors.gray[800],
+    color: colors.ink,
     marginBottom: spacing[2],
   },
   paragraph: {
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: colors.inkMid,
     lineHeight: typography.lineHeight.relaxed,
   },
   smallText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: colors.inkSubtle,
   },
 };
 
-// Re-export colors from colors.ts as darkColors for dark-theme usage
 export { default as darkColors } from './colors';
 
 export default {
@@ -265,4 +289,4 @@ export default {
   borderRadius,
   shadows,
   commonStyles,
-}; 
+};

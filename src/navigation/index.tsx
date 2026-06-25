@@ -117,7 +117,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 <MaterialIcons
                   name={cfg.icon as any}
                   size={26}
-                  color={isFocused ? colors.primary : colors.gray[400]}
+                  color={isFocused ? colors.primary : colors.inkDisabled}
                 />
                 {badge && (
                   <View style={tabStyles.badge}>
@@ -149,19 +149,21 @@ const tabStyles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 28,
     paddingHorizontal: 8,
     paddingVertical: 10,
     width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.10,
-        shadowRadius: 24,
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
       },
-      android: { elevation: 12 },
+      android: { elevation: 10 },
     }),
   },
   tab: {
@@ -195,7 +197,7 @@ const tabStyles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: colors.gray[400],
+    color: colors.inkDisabled,
     fontWeight: '500',
     letterSpacing: 0.1,
   },

@@ -69,27 +69,38 @@ const fontConfig = {
   },
 };
 
-// Thème personnalisé pour React Native Paper basé sur Airbnb
+// Thème React Native Paper — Direction A : Lac Kivu · Sarcelle
 const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: colors.primary,      // Rose Airbnb
-    accent: colors.success,       // Vert Airbnb
-    background: colors.white,
-    surface: colors.white,
-    text: colors.gray[700],       // Texte principal
-    placeholder: colors.gray[400],
-    backdrop: 'rgba(0, 0, 0, 0.3)',
+    primary: colors.primary,           // sarcelle #0D6E6E
+    accent: colors.primaryMid,
+    background: colors.background,
+    surface: colors.surface,
+    text: colors.ink,
+    placeholder: colors.inkSubtle,
+    backdrop: 'rgba(13, 110, 110, 0.18)',
     notification: colors.error,
     error: colors.error,
-    disabled: colors.gray[300],
-    onSurface: colors.gray[800],  // Texte sur fond clair
-    card: colors.white,
-    border: colors.gray[200],
+    disabled: colors.inkDisabled,
+    onSurface: colors.ink,
+    onSurfaceVariant: colors.inkSubtle,
+    onBackground: colors.ink,
+    card: colors.surface,
+    border: colors.border,
+    surfaceVariant: colors.surfaceSunken,
+    elevation: {
+      level0: 'transparent',
+      level1: colors.surface,
+      level2: colors.surface,
+      level3: colors.surfaceSunken,
+      level4: colors.surfaceSunken,
+      level5: colors.surfaceSunken,
+    },
   },
   fonts: configureFonts({ config: fontConfig as any }),
-  roundness: 8,
+  roundness: 6,
   dark: false,
 };
 
@@ -154,12 +165,12 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
 });

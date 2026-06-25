@@ -204,7 +204,7 @@ const HostDashboardScreen = () => {
                 <MaterialIcons
                   name={tab.icon as any}
                   size={26}
-                  color={active ? colors.primary : colors.gray[400]}
+                  color={active ? colors.primary : colors.inkDisabled}
                 />
                 <Text style={[styles.navLabel, active && styles.navLabelActive]}>
                   {tab.label}
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 30,
     overflow: 'hidden',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceSunken,
     width: '85%',
   },
   filterButton: {
@@ -253,16 +253,16 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   activeFilterButton: {
-    backgroundColor: '#222222', // Noir comme sur la capture d'écran
+    backgroundColor: colors.primary,
     margin: 4,
   },
   filterButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#717171',
+    color: colors.inkSubtle,
   },
   activeFilterButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   emptyStateContainer: {
     alignItems: 'center',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#222222',
+    color: colors.ink,
     textAlign: 'center',
     maxWidth: '80%',
   },
@@ -362,19 +362,21 @@ const styles = StyleSheet.create({
   },
   bottomNavigation: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 28,
     paddingHorizontal: 8,
     paddingVertical: 10,
     width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.10,
-        shadowRadius: 24,
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
       },
-      android: { elevation: 12 },
+      android: { elevation: 10 },
     }),
   },
   navItem: {
@@ -386,7 +388,7 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 10,
-    color: colors.gray[400],
+    color: colors.inkDisabled,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
@@ -408,7 +410,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#222222',
+    color: colors.ink,
     marginLeft: 5,
   },
   calendarInfoContainer: {
@@ -416,32 +418,32 @@ const styles = StyleSheet.create({
   },
   calendarInfoText: {
     fontSize: 18,
-    color: '#222222',
+    color: colors.inkMid,
     textAlign: 'left',
     marginBottom: 30,
     lineHeight: 26,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.border,
     width: '100%',
     marginBottom: 30,
   },
   refreshButton: {
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderColor: '#222222',
-    borderWidth: 1,
-    borderRadius: 8,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
   },
   refreshButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#222222',
+    color: colors.primary,
   },
 });
 

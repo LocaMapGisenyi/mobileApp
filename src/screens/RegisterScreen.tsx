@@ -17,6 +17,7 @@ import { useUserStore } from '../store/user';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { colors } from '../theme';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -162,7 +163,7 @@ const RegisterScreen = () => {
             {t('auth.joinUsText')}
           </Text>
           <View style={styles.registrationIcon}>
-            <Ionicons name="home-outline" size={64} color="#006064" />
+            <Ionicons name="home-outline" size={64} color={colors.primary} />
           </View>
         </Animated.View>
 
@@ -259,7 +260,7 @@ const RegisterScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -267,32 +268,34 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#212121',
+    color: colors.ink,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#757575',
+    color: colors.inkSubtle,
     marginBottom: 32,
   },
   formContainer: {
     marginBottom: 24,
   },
   registerButton: {
-    borderRadius: 8,
+    borderRadius: 6,
     marginTop: 24,
     marginBottom: 24,
-    backgroundColor: '#006064',
+    backgroundColor: colors.primary,
   },
   buttonContent: {
     height: 52,
@@ -302,15 +305,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loginText: {
-    color: '#757575',
+    color: colors.inkSubtle,
     marginRight: 4,
   },
   loginLink: {
-    color: '#006064',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   snackbar: {
-    backgroundColor: '#323232',
+    backgroundColor: colors.ink,
   },
   registrationIcon: {
     alignItems: 'center',
