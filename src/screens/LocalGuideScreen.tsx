@@ -234,10 +234,9 @@ const LocalGuideScreen = () => {
           placeholder={t('guides.searchPlaceholder')}
           onChangeText={handleSearch}
           value={searchQuery}
-          style={[styles.searchBar, { backgroundColor: colors.surfaceVariant }]}
-          inputStyle={[styles.searchInput, {color: colors.onSurfaceVariant}]}
-          iconColor={colors.onSurfaceVariant}
-          clearIconColor={colors.onSurfaceVariant}
+          style={styles.searchBar}
+          inputStyle={{ fontSize: typography.fontSize.sm, color: '#333333' }}
+          iconColor={colors.onSurfaceVariant || '#717171'}
         />
       </View>
       

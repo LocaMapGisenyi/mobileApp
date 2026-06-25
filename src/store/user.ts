@@ -11,6 +11,7 @@ interface UserState {
     id: string | null;
     fullName: string | null;
     email: string | null;
+    phoneNumber: string | null;
     photoURL: string | null;
     authProvider: AuthProvider;
     isLoggedIn: boolean;
@@ -44,6 +45,7 @@ export const useUserStore = create<UserState>()(
         id: null,
         fullName: null,
         email: null,
+        phoneNumber: null,
         photoURL: null,
         authProvider: null,
         isLoggedIn: false,

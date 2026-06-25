@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   priceText: {
-    color: colors.gray[900],
+    color: colors.gray[800],
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
   },

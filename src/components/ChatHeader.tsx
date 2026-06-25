@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semiBold,
+    fontWeight: typography.fontWeight.semiBold as '600',
     color: colors.gray[800],
   },
   propertyTitle: {

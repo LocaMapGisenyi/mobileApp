@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { Property, SearchFilters as AppSearchFilters } from '../types';
-import { usePreferences } from './preferences';
-import { propertyService } from '../services/api';
+import { Property } from '../types';
+import { mockListings } from '../data/mockListings';
 
 // Types pour les filtres de recherche avancée
 export interface SearchFilters {
@@ -89,53 +88,37 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
   
   applyFilters: async () => {
-    const { filters } = get();
-    
-    set({ isLoading: true, error: null });
-    
-    try {
-      // Convertir les filtres au format attendu par l'API
-      const apiFilters: AppSearchFilters = {
-        minPrice: filters.minPrice,
-        maxPrice: filters.maxPrice,
-        bedrooms: filters.bedrooms,
-        amenities: filters.amenities,
-        type: filters.propertyType,
-      };
-      
-      // Appel à l'API avec les filtres
-      const properties = await propertyService.search(filters.query, apiFilters);
-      
-      // Tri côté client (si l'API ne gère pas le tri)
-      let sortedProperties = [...properties];
-      if (filters.sortBy) {
-        switch (filters.sortBy) {
-          case 'price_asc':
-            sortedProperties.sort((a, b) => a.price - b.price);
-            break;
-          case 'price_desc':
-            sortedProperties.sort((a, b) => b.price - a.price);
-            break;
-          case 'date_newest':
-            sortedProperties.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            break;
-          case 'date_oldest':
-            sortedProperties.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            break;
-        }
-      }
-      
-      set({ 
-        filteredListings: sortedProperties,
-        listings: properties,
-        isLoading: false 
-      });
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la recherche',
-        isLoading: false 
-      });
+    const { filters, listings } = get();
+    const base = listings.length > 0 ? listings : mockListings;
+
+    let result = [...base];
+
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        (p.location?.city ?? '').toLowerCase().includes(q) ||
+        (p.location?.district ?? '').toLowerCase().includes(q)
+      );
     }
+    if (filters.minPrice !== undefined) result = result.filter(p => p.price >= filters.minPrice!);
+    if (filters.maxPrice !== undefined) result = result.filter(p => p.price <= filters.maxPrice!);
+    if (filters.bedrooms !== undefined) result = result.filter(p => (p.bedrooms ?? 0) >= filters.bedrooms!);
+    if (filters.propertyType?.length) result = result.filter(p => filters.propertyType!.includes(p.type));
+    if (filters.amenities?.length) result = result.filter(p =>
+      filters.amenities!.every(a => p.amenities?.includes(a))
+    );
+
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case 'price_asc': result.sort((a, b) => a.price - b.price); break;
+        case 'price_desc': result.sort((a, b) => b.price - a.price); break;
+        case 'date_newest': result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
+        case 'date_oldest': result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()); break;
+      }
+    }
+
+    set({ filteredListings: result, isLoading: false });
   },
   
   toggleViewMode: () => {
@@ -168,40 +151,20 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
   
   fetchListingById: async (id: string) => {
-    set({ isLoading: true, error: null });
-    
-    try {
-      const property = await propertyService.getById(id);
-      set({ 
-        selectedListing: property,
-        isLoading: false 
-      });
-      return property;
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Une erreur est survenue lors du chargement de la propriété',
-        isLoading: false 
-      });
-      return null;
-    }
+    const inState = get().listings.find(l => l.id === id);
+    if (inState) { set({ selectedListing: inState }); return inState; }
+    const fromMock = mockListings.find(l => l.id === id) ?? null;
+    set({ selectedListing: fromMock, isLoading: false });
+    return fromMock;
   },
-  
+
   fetchListings: async () => {
     set({ isLoading: true, error: null });
-    
-    try {
-      const properties = await propertyService.getAll();
-      set({ 
-        listings: properties,
-        filteredListings: properties,
-        isLoading: false 
-      });
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Une erreur est survenue lors du chargement des propriétés',
-        isLoading: false 
-      });
-    }
+    set({
+      listings: mockListings,
+      filteredListings: mockListings,
+      isLoading: false,
+    });
   },
   
   clearError: () => {

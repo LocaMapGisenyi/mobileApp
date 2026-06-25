@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { AuthStackParamList } from '../navigation/AuthNavigator';
+import type { AuthStackParamList } from '../navigation/AuthNavigator';
 
 // Type pour les propriétés de navigation
 export type RootStackParamList = {
@@ -42,6 +42,15 @@ export type RootStackParamList = {
   // Host screens
   HostDashboard: undefined;
   CreateListing: undefined;
+
+  // Question screens
+  QuestionDetail: { questionId: string };
+  RecommendedQuestions: undefined;
+
+  // Other missing routes
+  AlertPreferences: undefined;
+  EditProfile: undefined;
+  Favorites: undefined;
 };
 
 // Type pour les propriétés immobilières
@@ -59,6 +68,9 @@ export interface Property {
     district?: string;
     city: string;
     address?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
     coordinates?: {
       latitude: number;
       longitude: number;
@@ -75,10 +87,21 @@ export interface Property {
     phone?: string;
     email?: string;
   };
+  contactInfo?: {
+    name: string;
+    phone: string;
+    email: string;
+  };
+  contactPhone?: string;
+  contactEmail?: string;
   available: boolean;
   createdAt: Date;
   updatedAt: Date;
   type: string;
+  propertyType?: string;
+  verified?: boolean;
+  dateAdded?: string;
+  reviewCount?: number;
 }
 
 // Type pour le filtre de recherche
@@ -89,7 +112,12 @@ export interface SearchFilters {
   bathrooms?: number;
   amenities?: string[];
   type?: string[];
+  propertyType?: string[];
   district?: string[];
+  minSize?: number;
+  maxSize?: number;
+  nearbyPointOfInterest?: string;
+  sortBy?: string;
 }
 
 // Type pour l'état d'authentification
@@ -108,9 +136,11 @@ export interface User {
   phoneNumber?: string;
   avatar?: string;
   savedProperties?: string[];
+  favorites?: string[];
   preferredCurrency?: string;
   preferredLanguage?: string;
   notifications?: boolean;
+  name?: string;
 }
 
 export enum PropertyType {
@@ -185,4 +215,32 @@ export interface Guide {
   content: string;
   isNew?: boolean;
   createdAt: Date;
-} 
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  createdAt: Date;
+  user: { id: string; name: string; avatar?: string };
+  sent: boolean;
+  received: boolean;
+  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  otherUser: { id: string; name: string; avatar?: string; isOwner?: boolean };
+  messages: Message[];
+  unreadCount: number;
+  lastMessageAt: Date;
+}
+
+export interface GuideQuestion {
+  id: string;
+  title: string;
+  content: string;
+  categoryId?: string;
+}
+

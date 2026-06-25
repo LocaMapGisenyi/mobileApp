@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: colors.gray[800],
   },
   iconButton: {
     width: 40,

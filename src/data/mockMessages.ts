@@ -1,4 +1,5 @@
 import { Conversation, Message } from '../types';
+export type { Conversation, Message };
 
 export const currentUser = {
   id: 'user123',

@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   StatusBar,
   ScrollView,
+  Platform,
 } from 'react-native';
+import { colors } from '../theme';
 import {
   Text,
   useTheme,
@@ -16,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import HostListingsScreen from './HostListingsScreen';
 import HostMessagesScreen from './HostMessagesScreen';
 import HostProfileScreen from './HostProfileScreen';
@@ -169,104 +171,49 @@ const HostDashboardScreen = () => {
     }
   };
 
-  // Configurer les icônes exactes comme sur la capture d'écran
-  const getTabIcon = (tabName: string, isActive: boolean) => {
-    const color = isActive ? '#FF5A5F' : '#717171';
-    
-    switch(tabName) {
-      case 'today':
-        return <MaterialIcons name="bookmark-border" size={24} color={activeTab === 'today' ? '#FF5A5F' : '#717171'} />;
-      case 'calendar':
-        return <MaterialIcons name="calendar-today" size={24} color={activeTab === 'calendar' ? '#FF5A5F' : '#717171'} />;
-      case 'listings':
-        return <MaterialIcons name="featured-play-list" size={24} color={activeTab === 'listings' ? '#FF5A5F' : '#717171'} />;
-      case 'messages':
-        return <MaterialIcons name="chat-bubble-outline" size={24} color={activeTab === 'messages' ? '#FF5A5F' : '#717171'} />;
-      case 'menu':
-        return <MaterialIcons name="menu" size={24} color={activeTab === 'menu' ? '#FF5A5F' : '#717171'} />;
-      default:
-        return <MaterialIcons name="help-outline" size={24} color={activeTab === tabName ? '#FF5A5F' : '#717171'} />;
-    }
-  };
+  const HOST_TABS = [
+    { id: 'today',    icon: 'bookmark-border',    label: "Aujourd'hui" },
+    { id: 'calendar', icon: 'calendar-today',      label: 'Calendrier' },
+    { id: 'listings', icon: 'featured-play-list',  label: 'Annonces' },
+    { id: 'messages', icon: 'chat-bubble-outline', label: 'Messages' },
+    { id: 'menu',     icon: 'person-outline',      label: 'Profil' },
+  ] as const;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
       {/* Render content based on active tab */}
       {renderContent()}
 
-      {/* Bottom Navigation Bar - Styled exactly like the screenshot */}
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => handleTabChange('today')}
-          activeOpacity={0.7}
-        >
-          {getTabIcon('today', activeTab === 'today')}
-          <Text style={[
-            styles.navLabel,
-            activeTab === 'today' && styles.navLabelActive
-          ]}>
-            Aujourd'hui
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => handleTabChange('calendar')}
-          activeOpacity={0.7}
-        >
-          {getTabIcon('calendar', activeTab === 'calendar')}
-          <Text style={[
-            styles.navLabel,
-            activeTab === 'calendar' && styles.navLabelActive
-          ]}>
-            Calendrier
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => handleTabChange('listings')}
-          activeOpacity={0.7}
-        >
-          {getTabIcon('listings', activeTab === 'listings')}
-          <Text style={[
-            styles.navLabel,
-            activeTab === 'listings' && styles.navLabelActive
-          ]}>
-            Annonces
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => handleTabChange('messages')}
-          activeOpacity={0.7}
-        >
-          {getTabIcon('messages', activeTab === 'messages')}
-          <Text style={[
-            styles.navLabel,
-            activeTab === 'messages' && styles.navLabelActive
-          ]}>
-            Messages
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => handleTabChange('menu')}
-          activeOpacity={0.7}
-        >
-          {getTabIcon('menu', activeTab === 'menu')}
-          <Text style={[
-            styles.navLabel,
-            activeTab === 'menu' && styles.navLabelActive
-          ]}>
-            Menu
-          </Text>
-        </TouchableOpacity>
+      {/* Bottom Navigation Bar — pill identique à la navbar principale */}
+      <View style={styles.navWrapper} pointerEvents="box-none">
+        <View style={styles.bottomNavigation}>
+          {HOST_TABS.map(tab => {
+            const active = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.navItem}
+                onPress={() => handleTabChange(tab.id)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab.label}
+              >
+                <MaterialIcons
+                  name={tab.icon as any}
+                  size={26}
+                  color={active ? colors.primary : colors.gray[400]}
+                />
+                <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+                  {tab.label}
+                </Text>
+                {active && <View style={styles.navDot} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -275,7 +222,7 @@ const HostDashboardScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   container: {
     flex: 1,
@@ -406,36 +353,53 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: '80%',
   },
-  // Styles de la barre de navigation
-  bottomNavigation: {
+  navWrapper: {
     position: 'absolute',
-    bottom: 0, // Remise en bas de l'écran comme sur la capture
-    left: 0,
-    right: 0,
-    height: 60,
+    bottom: 16,
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+  },
+  bottomNavigation: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    zIndex: 2,
-    paddingBottom: 5, // Pour aligner avec la capture d'écran
-    // Les coins arrondis et ombres ont été supprimés
+    backgroundColor: colors.white,
+    borderRadius: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.10,
+        shadowRadius: 24,
+      },
+      android: { elevation: 12 },
+    }),
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 5,
+    paddingVertical: 4,
+    gap: 2,
   },
   navLabel: {
     fontSize: 10,
-    marginTop: 4,
-    color: '#717171',
-    fontWeight: '400',
+    color: colors.gray[400],
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   navLabelActive: {
-    color: '#FF5A5F',
-    fontWeight: '500',
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  navDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 1,
   },
   headerContainer: {
     padding: 20,

@@ -18,7 +18,7 @@ export const SUPPORTED_LANGUAGES = ['fr', 'en', 'rw', 'sw'];
 // Détection de la langue du système et correspondance avec une langue supportée
 const getDeviceLanguage = (): string => {
   // Obtient la locale du dispositif (par exemple 'fr-FR', 'en-US', etc.)
-  const deviceLocale = Localization.locale;
+  const deviceLocale = ((Localization as any).locale || (Localization.getLocales?.()[0]?.languageCode) || 'fr') as string;
   
   // Extrait le code de langue principal (fr, en, etc.)
   const languageCode = deviceLocale.split('-')[0];
@@ -31,7 +31,7 @@ const getDeviceLanguage = (): string => {
 i18n
   .use(initReactI18next)
   .init({
-    compatibilityJSON: 'v3',
+    compatibilityJSON: 'v4' as const,
     resources: {
       fr: { translation: fr },
       en: { translation: en },
@@ -105,7 +105,7 @@ export const changeLanguage = async (language: string): Promise<void> => {
  * @param options Options de traduction (variables, etc.)
  */
 export const translate = (key: string, options?: any): string => {
-  return i18n.t(key, options);
+  return i18n.t(key, options) as string;
 };
 
 export default i18n; 

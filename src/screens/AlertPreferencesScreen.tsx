@@ -236,10 +236,10 @@ const AlertPreferencesScreen: React.FC = () => {
                 ]}
                 onPress={() => togglePropertyType(item.type)}
               >
-                <MaterialCommunityIcons 
-                  name={item.icon} 
-                  size={28} 
-                  color={selectedTypes.includes(item.type) ? colors.white : colors.gray[600]} 
+                <MaterialCommunityIcons
+                  name={item.icon as any}
+                  size={28}
+                  color={selectedTypes.includes(item.type) ? colors.white : colors.gray[600]}
                 />
                 <Text 
                   style={[
@@ -352,7 +352,7 @@ const AlertPreferencesScreen: React.FC = () => {
                 onPress={() => toggleAmenity(item.amenity)}
               >
                 <MaterialCommunityIcons
-                  name={item.icon}
+                  name={item.icon as any}
                   size={24}
                   color={selectedAmenities.includes(item.amenity) ? colors.white : colors.gray[600]}
                   style={styles.amenityIcon}

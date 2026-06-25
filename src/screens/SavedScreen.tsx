@@ -177,7 +177,7 @@ const SavedScreen = () => {
       
       <Button
         mode="contained"
-        onPress={() => navigation.navigate('Explorer')}
+        onPress={() => navigation.navigate('Search')}
         style={[styles.exploreButton, { backgroundColor: colors.primary }]}
         labelStyle={{ color: colors.onPrimary }}
         icon="compass"
@@ -237,7 +237,7 @@ const SavedScreen = () => {
               </Text>
               <Button
                 mode="outlined"
-                onPress={() => navigation.navigate('Explorer')}
+                onPress={() => navigation.navigate('Search')}
                 style={[styles.footerButton, { borderColor: colors.primary }]}
                 labelStyle={{ color: colors.primary }}
               >

@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { Component, ErrorInfo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from 'react-native-paper';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
 
 // Screens
@@ -17,7 +18,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import PreferenceCarouselScreen from '../screens/PreferenceCarouselScreen';
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SavedScreen from '../screens/SavedScreen';
 import MapScreen from '../screens/MapScreen';
 import MessageListScreen from '../screens/MessageListScreen';
@@ -43,125 +44,185 @@ import { useFavoritesStore } from '../store/favorites';
 // Types
 import { RootStackParamList } from '../types';
 
+class NavigationErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Navigation error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.gray[700], fontSize: typography.fontSize.base }}>
+            Une erreur inattendue s'est produite. Veuillez redémarrer l'application.
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-// Tab Navigator Component
-const TabNavigator = () => {
-  const theme = useTheme();
+// ─── Custom Tab Bar ───────────────────────────────────────────────────────────
+const TAB_CONFIGS = [
+  { name: 'Explorer',     icon: 'search',            labelKey: 'tabs.explorer' },
+  { name: 'Favorites',    icon: 'favorite-border',   labelKey: 'tabs.favorites' },
+  { name: 'MessagesList', icon: 'chat-bubble-outline', labelKey: 'tabs.messages' },
+  { name: 'Profile',      icon: 'account-circle',    labelKey: 'tabs.profile' },
+] as const;
+
+const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { t } = useTranslation();
   const { totalUnreadCount } = useMessagesStore();
   const { favoriteIds } = useFavoritesStore();
-  const favoriteCount = favoriteIds.length;
+
+  const getBadge = (name: string) => {
+    if (name === 'Favorites') return favoriteIds.length > 0 ? String(favoriteIds.length > 9 ? '9+' : favoriteIds.length) : null;
+    if (name === 'MessagesList') return totalUnreadCount > 0 ? String(totalUnreadCount > 9 ? '9+' : totalUnreadCount) : null;
+    return null;
+  };
 
   return (
+    <View style={tabStyles.wrapper} pointerEvents="box-none">
+      <View style={tabStyles.bar}>
+        {state.routes.map((route, index) => {
+          const isFocused = state.index === index;
+          const cfg = TAB_CONFIGS.find(c => c.name === route.name)!;
+          const badge = getBadge(route.name);
+
+          const onPress = () => {
+            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name as any);
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              activeOpacity={0.8}
+              style={tabStyles.tab}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={t(cfg.labelKey) as string}
+            >
+              {/* Icon + badge */}
+              <View style={tabStyles.iconWrap}>
+                <MaterialIcons
+                  name={cfg.icon as any}
+                  size={26}
+                  color={isFocused ? colors.primary : colors.gray[400]}
+                />
+                {badge && (
+                  <View style={tabStyles.badge}>
+                    <Text style={tabStyles.badgeTxt}>{badge}</Text>
+                  </View>
+                )}
+              </View>
+              {/* Label */}
+              <Text style={[tabStyles.label, isFocused && tabStyles.labelActive]}>
+                {t(cfg.labelKey) as string}
+              </Text>
+              {/* Active dot */}
+              {isFocused && <View style={tabStyles.dot} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const tabStyles = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+  },
+  bar: {
+    flexDirection: 'row',
+    backgroundColor: colors.white,
+    borderRadius: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.10,
+        shadowRadius: 24,
+      },
+      android: { elevation: 12 },
+    }),
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    gap: 2,
+  },
+  iconWrap: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -7,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: colors.white,
+  },
+  badgeTxt: {
+    color: colors.white,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  label: {
+    fontSize: 10,
+    color: colors.gray[400],
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  labelActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 1,
+  },
+});
+
+// Tab Navigator Component
+const TabNavigator = () => {
+  return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.gray[500],
-        tabBarShowLabel: true,
-        tabBarStyle: {
-          backgroundColor: colors.white,
-          borderTopColor: colors.gray[200],
-          height: 55,
-          paddingBottom: 5,
-          position: 'absolute',
-          bottom: 16,
-          left: 20,
-          right: 20,
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          borderLeftRadius: 16,
-          borderRightRadius: 16,
-          borderRadius: 16,
-          ...Platform.select({
-            ios: {
-              shadowColor: colors.gray[400],
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-            },
-            android: {
-              elevation: 8,
-            },
-          }),
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginBottom: 3,
-        },
-      }}
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen 
-        name="Explorer" 
-        component={ExplorerScreen}
-        options={{
-          tabBarLabel: t('tabs.explorer'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="search" size={size} color={color} />
-          ),
-        }} 
-      />
-      <Tab.Screen 
-        name="LocalGuide" 
-        component={LocalGuideScreen}
-        options={{
-          tabBarLabel: t('tabs.guides'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="menu-book" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Favorites" 
-        component={FavoritesScreen}
-        options={{
-          tabBarLabel: t('tabs.favorites'),
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <MaterialIcons name="favorite-border" size={size} color={color} />
-              {favoriteCount > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>
-                    {favoriteCount > 9 ? '9+' : favoriteCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="MessagesList" 
-        component={MessageListScreen}
-        options={{
-          tabBarLabel: t('tabs.messages'),
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <MaterialIcons name="chat-bubble-outline" size={size} color={color} />
-              {totalUnreadCount > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>
-                    {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: t('tabs.profile'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="account-circle" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Explorer"     component={ExplorerScreen} />
+      <Tab.Screen name="Favorites"    component={FavoritesScreen} />
+      <Tab.Screen name="MessagesList" component={MessageListScreen} />
+      <Tab.Screen name="Profile"      component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
@@ -175,7 +236,7 @@ const AppNavigator = () => {
   const screenOptions = {
     headerShown: true,
     headerTitleStyle: {
-      fontWeight: '600',
+      fontWeight: '600' as const,
       fontSize: typography.fontSize.lg,
       color: colors.gray[800],
     },
@@ -190,10 +251,11 @@ const AppNavigator = () => {
     contentStyle: {
       backgroundColor: colors.white,
     },
-    animation: 'slide_from_right',
-  };
+    animation: 'slide_from_right' as const,
+  } as const;
 
   return (
+    <NavigationErrorBoundary>
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={screenOptions}
@@ -324,29 +386,10 @@ const AppNavigator = () => {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </NavigationErrorBoundary>
   );
 };
 
-const styles = StyleSheet.create({
-  badgeContainer: {
-    position: 'absolute',
-    top: -6,
-    right: -8,
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-    borderWidth: 1.5,
-    borderColor: 'white',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-});
+const styles = StyleSheet.create({});
 
 export default AppNavigator; 

@@ -52,7 +52,7 @@ const MapScreen: React.FC = () => {
   const navigation = useNavigation<MapScreenNavigationProp>();
   const theme = useTheme();
   const mapRef = useRef<MapView>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const { toggleFiltersModal, showFiltersModal } = useSearchStore();
   
@@ -120,7 +120,7 @@ const MapScreen: React.FC = () => {
   const renderMarker = (item: Property) => (
     <Marker
       key={item.id}
-      coordinate={item.location.coordinates}
+      coordinate={item.location?.coordinates || { latitude: 0, longitude: 0 }}
       onPress={() => handleMarkerPress(item.id)}
     >
       <View style={[
@@ -156,7 +156,7 @@ const MapScreen: React.FC = () => {
         
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardLocation}>{item.location.district}</Text>
+            <Text style={styles.cardLocation}>{item.location?.district}</Text>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={14} color={colors.black} />
               <Text style={styles.ratingText}>{item.rating}</Text>
@@ -177,8 +177,8 @@ const MapScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
       
       {/* Map View */}
       <MapView

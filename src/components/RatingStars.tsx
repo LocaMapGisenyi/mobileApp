@@ -82,7 +82,7 @@ const RatingStars: React.FC<RatingStarsProps> = ({
           disabled={isReadOnly}
           style={styles.starButton}
         >
-          <Ionicons name={iconName} size={size} color={color} />
+          <Ionicons name={iconName as any} size={size} color={color} />
         </TouchableOpacity>
       );
     }

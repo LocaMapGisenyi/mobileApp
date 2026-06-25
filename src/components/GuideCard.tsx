@@ -12,12 +12,14 @@ interface GuideCardProps {
   guide: Guide;
   style?: object;
   size?: 'small' | 'medium' | 'large';
+  onPress?: () => void;
 }
 
-const GuideCard: React.FC<GuideCardProps> = ({ 
-  guide, 
+const GuideCard: React.FC<GuideCardProps> = ({
+  guide,
   style,
-  size = 'medium' 
+  size = 'medium',
+  onPress: onPressProp
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = Dimensions.get('window');
@@ -49,7 +51,11 @@ const GuideCard: React.FC<GuideCardProps> = ({
   
   // Naviguer vers le détail du guide
   const handlePress = () => {
-    navigation.navigate('GuideDetail', { guideId: guide.id });
+    if (onPressProp) {
+      onPressProp();
+    } else {
+      navigation.navigate('GuideDetail', { guideId: guide.id });
+    }
   };
   
   return (

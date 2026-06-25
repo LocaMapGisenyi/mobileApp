@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Image,
+  TouchableOpacity,
   StatusBar,
   SafeAreaView,
-  TextInput,
   ScrollView,
   ImageBackground,
-  Dimensions
+  useWindowDimensions,
 } from 'react-native';
 import { Text, Button, useTheme, Searchbar, Chip, Avatar, Surface } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -29,8 +28,6 @@ import Animated, { FadeInUp, FadeIn, SlideInDown } from 'react-native-reanimated
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
-const QUICK_ACCESS_BUTTON_SIZE = Dimensions.get('window').width / 4.8;
-
 // Mock user name - replace with actual user data from store
 const getUserFirstName = (fullName: string | undefined): string => {
   if (!fullName) return 'Cher utilisateur'; // Default if no name
@@ -43,6 +40,8 @@ const HomeScreen = () => {
   const theme = useTheme();
   const { user } = useUserStore();
   const { listings, fetchListings } = useSearchStore();
+  const { width } = useWindowDimensions();
+  const QUICK_ACCESS_BUTTON_SIZE = width / 4.8;
   const [featuredListings, setFeaturedListings] = useState<Property[]>([]);
   const [newGuides, setNewGuides] = useState<typeof localGuides>([]);
   
@@ -60,16 +59,21 @@ const HomeScreen = () => {
     navigation.navigate('GuideDetail', { guideId });
   };
 
-  const QuickAccessButton = ({ icon, label, onPress, delay }: { icon: keyof typeof MaterialCommunityIcons.glyphMap, label: string, onPress: () => void, delay?: number }) => (
+  const QuickAccessButton = useCallback(({ icon, label, onPress: handlePress, delay }: { icon: keyof typeof MaterialCommunityIcons.glyphMap, label: string, onPress: () => void, delay?: number }) => (
     <Animated.View entering={FadeInUp.delay(delay || 0).duration(500)} style={styles.quickAccessButtonContainer}>
-      <TouchableOpacity onPress={onPress} style={styles.quickAccessButton}>
-        <Surface style={[styles.quickAccessIconWrapper, {backgroundColor: theme.colors.surfaceVariant}]}>
+      <TouchableOpacity
+        onPress={handlePress}
+        style={styles.quickAccessButton}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
+        <Surface style={[styles.quickAccessIconWrapper, { backgroundColor: theme.colors.surfaceVariant, width: QUICK_ACCESS_BUTTON_SIZE * 0.7, height: QUICK_ACCESS_BUTTON_SIZE * 0.7 }]}>
           <MaterialCommunityIcons name={icon} size={QUICK_ACCESS_BUTTON_SIZE * 0.4} color={theme.colors.primary} />
         </Surface>
-        <Text style={[styles.quickAccessLabel, {color: theme.colors.onSurfaceVariant}]}>{label}</Text>
+        <Text style={[styles.quickAccessLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
-  );
+  ), [theme, QUICK_ACCESS_BUTTON_SIZE]);
   
   const SectionHeader = ({ title, onViewAll, delay }: { title: string, onViewAll?: () => void, delay?: number }) => (
     <Animated.View entering={FadeInUp.delay(delay || 0).duration(500)} style={styles.sectionHeaderContainer}>
@@ -98,7 +102,7 @@ const HomeScreen = () => {
           >
             <View style={styles.headerOverlay} />
             <View style={styles.headerTextContainer}>
-              <Text style={styles.welcomeMessage}>{t('home.welcomeUser', { name: getUserFirstName(user.displayName || user.email) })}</Text>
+              <Text style={styles.welcomeMessage}>{t('home.welcomeUser', { name: getUserFirstName(user.fullName || user.email || undefined) })}</Text>
               <Text style={styles.subWelcomeMessage}>{t('home.discoverGisenyi')}</Text>
         </View>
           </ImageBackground>
@@ -106,6 +110,8 @@ const HomeScreen = () => {
           <View style={styles.searchBarContainer}>
              <Searchbar
                 placeholder={t('home.searchPlaceholder')}
+                value=""
+                onChangeText={() => {}}
                 onFocus={() => navigation.navigate('Search')} // Navigate to SearchScreen on focus
                 style={[styles.searchBar, {backgroundColor: theme.colors.elevation.level3}]}
                 inputStyle={{color: theme.colors.onSurface}}
@@ -128,15 +134,15 @@ const HomeScreen = () => {
         <View style={styles.sectionContainer}>
             <SectionHeader title={t('home.featuredListings')} onViewAll={() => navigation.navigate('Search')} delay={500} />
           <FlatList
+              listKey="featured-listings"
               horizontal
               data={featuredListings}
               renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInUp.delay(index * 100 + 600).duration(500)} style={{ marginLeft: index === 0 ? spacing[4] : 0, marginRight: spacing[3]}}>
-                    <PropertyCard 
-                        property={item} 
-                        onPress={() => handleViewProperty(item.id)} 
-                        // Adjust PropertyCard props if needed for horizontal style
-                        // Example: variant="horizontal", width={Dimensions.get('window').width * 0.7}
+                <Animated.View entering={FadeInUp.delay(index * 100 + 600).duration(500)} style={[styles.listItemContainer, index === 0 && styles.listItemFirst]}>
+                    <PropertyCard
+                        property={item}
+                        index={index}
+                        onPress={() => handleViewProperty(item.id)}
                     />
                 </Animated.View>
               )}
@@ -152,11 +158,11 @@ const HomeScreen = () => {
           <View style={styles.sectionContainer}>
             <SectionHeader title={t('home.newInGisenyi')} onViewAll={() => navigation.navigate('LocalGuide')} delay={700} />
             <FlatList
+              listKey="new-guides"
               horizontal
               data={newGuides}
               renderItem={({ item, index }) => (
-                // Make sure GuideCard is styled for horizontal display and accepts 'guide' prop
-                <Animated.View entering={FadeInUp.delay(index * 100 + 800).duration(500)} style={{ marginLeft: index === 0 ? spacing[4] : 0, marginRight: spacing[3]}}>
+                <Animated.View entering={FadeInUp.delay(index * 100 + 800).duration(500)} style={[styles.listItemContainer, index === 0 && styles.listItemFirst]}>
                   <GuideCard guide={item} onPress={() => handleViewGuide(item.id)} />
                 </Animated.View>
               )}
@@ -184,7 +190,7 @@ const styles = StyleSheet.create({
     position: 'relative', // For search bar positioning
   },
   headerImageBackground: {
-    height: Dimensions.get('window').height * 0.25, // Adjust height as needed
+    height: 200,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
@@ -197,7 +203,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing[5], // Adjust if status bar is translucent
   },
   welcomeMessage: {
-    fontSize: typography.fontSize.h2,
+    fontSize: typography.fontSize['2xl'],
     fontWeight: 'bold',
     color: colors.white,
     marginBottom: spacing[1],
@@ -214,7 +220,7 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     position: 'absolute',
-    bottom: -spacing[3.5], // Position it to overlap slightly with section below
+    bottom: -14,
     left: spacing[4],
     right: spacing[4],
     zIndex: 10, // Ensure it floats above header image if needed, but below content that scrolls over it
@@ -235,19 +241,17 @@ const styles = StyleSheet.create({
   },
   quickAccessButtonContainer: {
     alignItems: 'center',
-    width: QUICK_ACCESS_BUTTON_SIZE,
+    flex: 1,
   },
   quickAccessButton: {
     alignItems: 'center',
     padding: spacing[1],
   },
   quickAccessIconWrapper: {
-    width: QUICK_ACCESS_BUTTON_SIZE * 0.7,
-    height: QUICK_ACCESS_BUTTON_SIZE * 0.7,
-    borderRadius: borderRadius.lg, // Airbnb-like rounded squares
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing[1.5],
+    marginBottom: spacing[1],
     ...shadows.sm,
   },
   quickAccessLabel: {
@@ -266,7 +270,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   sectionTitle: {
-    fontSize: typography.fontSize.h3,
+    fontSize: typography.fontSize.xl,
     fontWeight: 'bold',
   },
   viewAllButton: {
@@ -274,9 +278,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   horizontalListContent: {
-    paddingRight: spacing[4], // Ensure last item is not cut off
+    paddingRight: spacing[4],
   },
-  // Add styles for GuideCard if different from PropertyCard, or ensure PropertyCard is adaptable
+  listItemContainer: {
+    marginRight: spacing[3],
+  },
+  listItemFirst: {
+    marginLeft: spacing[4],
+  },
 });
 
 export default HomeScreen; 

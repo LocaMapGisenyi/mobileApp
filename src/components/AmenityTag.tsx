@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { Text, useTheme, Surface } from 'react-native-paper';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface AmenityTagProps {
   label: string;
@@ -41,7 +41,7 @@ const AmenityTag: React.FC<AmenityTagProps> = ({
   return (
     <Surface style={[styles.surface, style]}>
       <View style={[styles.container, { borderColor: theme.colors.primary }]}>
-        <MaterialIcons name={iconName} size={18} color={theme.colors.primary} />
+        <MaterialIcons name={iconName as any} size={18} color={theme.colors.primary} />
         <Text style={[styles.label, { color: theme.colors.primary }]}>
           {label}
         </Text>

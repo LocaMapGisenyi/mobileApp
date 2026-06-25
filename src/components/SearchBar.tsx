@@ -25,10 +25,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onPress, onFilterPress, isFloatin
         isFloating && styles.floatingContainer
       ]}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.searchBar}
         onPress={onPress}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Rechercher un logement"
+        accessibilityHint="Ouvre la recherche avec filtres"
       >
         <View style={styles.searchIconContainer}>
           <Ionicons name="search" size={20} color={colors.gray[600]} />
@@ -43,9 +46,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onPress, onFilterPress, isFloatin
           </Text>
         </View>
         
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={onFilterPress}
+          accessibilityRole="button"
+          accessibilityLabel="Filtres"
+          accessibilityHint="Ouvre les options de filtrage"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="options-outline" size={20} color={colors.gray[800]} />
         </TouchableOpacity>
@@ -77,7 +84,7 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[200],
     borderRadius: 50,
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2.5],
+    paddingVertical: 10,
     ...shadows.md,
   },
   searchIconContainer: {
@@ -98,9 +105,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.gray[200],
     justifyContent: 'center',

@@ -21,7 +21,7 @@ import {
   Surface, 
   useTheme
 } from 'react-native-paper';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useUser, useUserActions } from '../store/user';
 import { usePreferences } from '../store/preferences';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
@@ -32,7 +32,7 @@ import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
 // Card wrapper component for section items
-const SectionCard = ({ children, style = {} }) => {
+const SectionCard = ({ children, style = {} }: { children: React.ReactNode; style?: object }) => {
   const theme = useTheme();
   return (
     <Surface 
@@ -49,37 +49,48 @@ const SectionCard = ({ children, style = {} }) => {
 };
 
 // Item component for action items
-const ActionItem = ({ title, icon, iconColor, onPress }) => {
+const ActionItem = ({ title, icon, iconColor, onPress, comingSoon = false }: {
+  title: string;
+  icon: string;
+  iconColor?: string;
+  onPress: () => void;
+  comingSoon?: boolean;
+}) => {
   const theme = useTheme();
-  
+
   return (
-    <TouchableOpacity 
-      style={styles.actionItem} 
+    <TouchableOpacity
+      style={[styles.actionItem, comingSoon && styles.actionItemDisabled]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={comingSoon ? 1 : 0.7}
     >
       <View style={styles.actionItemLeft}>
-        <MaterialIcons 
-          name={icon} 
-          size={24} 
-          color={iconColor || theme.colors.primary} 
-          style={styles.actionIcon} 
+        <MaterialIcons
+          name={icon as any}
+          size={24}
+          color={comingSoon ? theme.colors.onSurfaceVariant : (iconColor || theme.colors.primary)}
+          style={styles.actionIcon}
         />
-        <Text style={[styles.actionTitle, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.actionTitle, { color: comingSoon ? theme.colors.onSurfaceVariant : theme.colors.onSurface }]}>
           {title}
         </Text>
+        {comingSoon && (
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonText}>Bientôt</Text>
+          </View>
+        )}
       </View>
-      <MaterialIcons 
-        name="chevron-right" 
-        size={24} 
-        color={theme.colors.onSurfaceVariant} 
+      <MaterialIcons
+        name="chevron-right"
+        size={24}
+        color={theme.colors.onSurfaceVariant}
       />
     </TouchableOpacity>
   );
 };
 
 // Preference item component
-const PreferenceItem = ({ title, value, icon, onPress }) => {
+const PreferenceItem = ({ title, value, icon, onPress }: { title: string; value: string; icon: string; onPress: () => void }) => {
   const theme = useTheme();
   
   return (
@@ -90,7 +101,7 @@ const PreferenceItem = ({ title, value, icon, onPress }) => {
     >
       <View style={styles.preferenceItemLeft}>
         <MaterialIcons 
-          name={icon} 
+          name={icon as any} 
           size={24} 
           color={theme.colors.primary} 
           style={styles.preferenceIcon} 
@@ -214,11 +225,11 @@ const ProfileScreen = () => {
   };
 
   // Helper functions to get display names
-  const getLanguageDisplayName = (langCode) => {
+  const getLanguageDisplayName = (langCode: string) => {
     return t(`languages.${langCode}`);
   }
 
-  const getCurrencySymbol = (currencyCode) => {
+  const getCurrencySymbol = (currencyCode: string) => {
     switch(currencyCode) {
       case 'USD': return '$';
       case 'EUR': return '€';
@@ -239,7 +250,7 @@ const ProfileScreen = () => {
     const options = languageOptions.map(opt => ({
       text: `${opt.icon} ${opt.label}`,
       onPress: async () => {
-        await preferences.setLanguage(opt.value);
+        await preferences.setLanguage(opt.value as any);
         i18n.changeLanguage(opt.value);
       }
     }));
@@ -256,7 +267,7 @@ const ProfileScreen = () => {
     const options = currencyOptions.map(opt => ({
       text: `${opt.icon} ${opt.label}`,
       onPress: async () => {
-        await preferences.setCurrency(opt.value);
+        await preferences.setCurrency(opt.value as any);
       }
     }));
     
@@ -267,7 +278,7 @@ const ProfileScreen = () => {
   };
   
   // Helper functions for selectors
-  const showIOSActionSheet = (title, options) => {
+  const showIOSActionSheet = (title: string, options: Array<{ text: string; onPress: () => void }>) => {
     const buttons = [
       ...options.map(opt => ({ text: opt.text, onPress: opt.onPress })),
       { text: t('common.cancel'), style: 'cancel' }
@@ -280,15 +291,16 @@ const ProfileScreen = () => {
         cancelButtonIndex: buttons.length - 1,
         title
       },
-      (buttonIndex) => {
+      (buttonIndex: number) => {
         if (buttonIndex !== buttons.length - 1 && buttonIndex >= 0) {
-          buttons[buttonIndex].onPress();
+          const btn = buttons[buttonIndex] as { text: string; onPress: () => void };
+          btn.onPress();
         }
       }
     );
   };
   
-  const showAndroidOptionDialog = (title, options) => {
+  const showAndroidOptionDialog = (title: string, options: Array<{ text: string; onPress: () => void }>) => {
     // Alert.alert for Android
     require('react-native').Alert.alert(
       title,
@@ -396,10 +408,11 @@ const ProfileScreen = () => {
             />
             <Divider style={styles.divider} />
             
-            <ActionItem 
-              title={t('profile.myGuides')} 
-              icon="menu-book" 
-              onPress={navigateToGuides} 
+            <ActionItem
+              title={t('profile.myGuides') || 'Guides locaux'}
+              icon="menu-book"
+              onPress={() => {}}
+              comingSoon
             />
         <Divider style={styles.divider} />
         
@@ -586,6 +599,21 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '500',
+  },
+  actionItemDisabled: {
+    opacity: 0.7,
+  },
+  comingSoonBadge: {
+    marginLeft: spacing[2],
+    backgroundColor: colors.secondary,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+  },
+  comingSoonText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.white,
+    fontWeight: '600',
   },
   divider: {
     height: 1,

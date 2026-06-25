@@ -106,3 +106,30 @@ export const mockListings: Property[] = [
     type: 'house',
   }
 ];
+
+export const propertyTypes = [
+  { id: 'apartment', name: 'Appartement' },
+  { id: 'house', name: 'Maison' },
+  { id: 'villa', name: 'Villa' },
+  { id: 'studio', name: 'Studio' },
+  { id: 'room', name: 'Chambre' },
+];
+
+export const amenities = [
+  { id: 'wifi', name: 'Wifi' },
+  { id: 'parking', name: 'Parking' },
+  { id: 'ac', name: 'Climatisation' },
+  { id: 'pool', name: 'Piscine' },
+  { id: 'kitchen', name: 'Cuisine équipée' },
+  { id: 'washing_machine', name: 'Machine à laver' },
+  { id: 'security', name: 'Sécurité' },
+  { id: 'lake_view', name: 'Vue sur le lac' },
+];
+
+export const pointsOfInterest = [
+  { id: 'lake', name: 'Lac Kivu' },
+  { id: 'center', name: 'Centre-ville' },
+  { id: 'airport', name: 'Aéroport' },
+  { id: 'university', name: 'Université' },
+  { id: 'market', name: 'Marché' },
+];

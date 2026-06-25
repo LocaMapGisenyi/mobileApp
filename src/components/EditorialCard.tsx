@@ -6,7 +6,6 @@ import {
   TouchableOpacity, 
   ImageBackground 
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 
@@ -40,17 +39,14 @@ const EditorialCard: React.FC<EditorialCardProps> = ({
           style={styles.imageBackground}
           imageStyle={styles.image}
         >
-          <LinearGradient
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
-            style={styles.gradient}
-          >
+          <View style={[styles.gradient, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
             <View style={styles.contentContainer}>
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.description} numberOfLines={2}>
                 {description}
               </Text>
             </View>
-          </LinearGradient>
+          </View>
         </ImageBackground>
       </TouchableOpacity>
     </Animated.View>

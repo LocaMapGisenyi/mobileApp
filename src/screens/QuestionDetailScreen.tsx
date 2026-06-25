@@ -335,13 +335,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   h1: {
-    fontSize: typography.fontSize.h2,
+    fontSize: typography.fontSize['2xl'],
     fontWeight: 'bold',
     marginTop: spacing[4],
     marginBottom: spacing[3],
   },
   h2: {
-    fontSize: typography.fontSize.h3,
+    fontSize: typography.fontSize.xl,
     fontWeight: 'bold',
     marginTop: spacing[3],
     marginBottom: spacing[2],

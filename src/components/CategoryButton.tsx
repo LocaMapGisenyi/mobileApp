@@ -35,10 +35,10 @@ const CategoryButton: React.FC<CategoryButtonProps> = ({
           {category.emoji ? (
             <Text style={styles.emoji}>{category.emoji}</Text>
           ) : (
-            <Ionicons 
-              name={category.icon} 
-              size={24} 
-              color={isSelected ? colors.primary : colors.gray[600]} 
+            <Ionicons
+              name={category.icon as any}
+              size={24}
+              color={isSelected ? colors.primary : colors.gray[600]}
             />
           )}
         </View>
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing[1.5],
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: colors.gray[200],
     ...shadows.sm,

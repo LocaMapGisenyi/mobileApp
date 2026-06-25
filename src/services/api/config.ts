@@ -1,5 +1,11 @@
 import axios from 'axios';
-import { useUserStore } from '../../store/user';
+// Import lazy pour éviter le cycle circulaire :
+// api/config → store/user → services/api → api/config
+let _useUserStore: typeof import('../../store/user').useUserStore | null = null;
+const getUserStore = () => {
+  if (!_useUserStore) _useUserStore = require('../../store/user').useUserStore;
+  return _useUserStore!;
+};
 
 // URL de base de l'API - à remplacer par l'URL réelle du backend
 export const API_BASE_URL = 'https://api.locamap.com/v1';
@@ -16,8 +22,8 @@ const api = axios.create({
 
 // Intercepteur pour ajouter automatiquement le token d'authentification aux requêtes
 api.interceptors.request.use(
-  (config) => {
-    const token = useUserStore.getState().user.token;
+  (config: any) => {
+    const token = getUserStore().getState().user.token;
     
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -25,18 +31,18 @@ api.interceptors.request.use(
     
     return config;
   },
-  (error) => {
+  (error: any) => {
     return Promise.reject(error);
   }
 );
 
 // Intercepteur pour gérer les réponses et les erreurs
 api.interceptors.response.use(
-  (response) => {
+  (response: any) => {
     // Retourner directement les données pour simplifier l'utilisation
     return response.data;
   },
-  (error) => {
+  (error: any) => {
     // Gérer les erreurs communes
     if (error.response) {
       // Le serveur a répondu avec un code d'erreur
@@ -44,7 +50,7 @@ api.interceptors.response.use(
       
       if (status === 401) {
         // Token expiré ou invalide, déconnecter l'utilisateur
-        useUserStore.getState().logout();
+        getUserStore().getState().actions.logout();
       }
       
       // Retourner les détails de l'erreur du serveur

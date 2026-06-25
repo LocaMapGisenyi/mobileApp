@@ -164,6 +164,8 @@ const SearchScreen = () => {
         >
           <Searchbar
             placeholder={t('search.startSearch')}
+            value=""
+            onChangeText={() => {}}
             iconColor={colors.gray[700]}
             inputStyle={styles.searchInput}
             style={styles.searchBar}
@@ -223,8 +225,8 @@ const SearchScreen = () => {
                   <Text style={styles.featuredBadgeText}>{t('search.travelersChoice')}</Text>
                 </View>
                 
-                <Image 
-                  source={property.images[0]} 
+                <Image
+                  source={{ uri: property.images[0] as string }}
                   style={styles.propertyImage}
                   resizeMode="cover"
                 />
@@ -240,7 +242,7 @@ const SearchScreen = () => {
 
                 <View style={styles.propertyDetails}>
                   <View style={styles.locationRatingRow}>
-                    <Text style={styles.locationText}>{property.location.district || property.location.city}, Rwanda</Text>
+                    <Text style={styles.locationText}>{property.location?.district || property.location?.city}, Rwanda</Text>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={14} color={colors.black} />
                       <Text style={styles.ratingText}>{property.rating || 4.5}</Text>
@@ -420,7 +422,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: typography.fontSize.base,
     fontWeight: '500',
-    color: colors.gray[900],
+    color: colors.gray[800],
   },
   ratingContainer: {
     flexDirection: 'row',

@@ -83,7 +83,7 @@ const SocialLoginButton = ({ provider, onPress, style }: SocialLoginButtonProps)
         ]}
       >
         <MaterialCommunityIcons
-          name={config.icon}
+          name={config.icon as any}
           size={20}
           color={config.iconColor}
           style={styles.icon}

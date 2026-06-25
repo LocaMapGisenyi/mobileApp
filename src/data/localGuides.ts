@@ -1,4 +1,5 @@
 import { Guide, GuideCategory } from '../types';
+export type { Guide, GuideCategory };
 
 // Catégories de guides
 export const guideCategories: GuideCategory[] = [

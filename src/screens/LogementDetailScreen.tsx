@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { Text, Button, Chip, ActivityIndicator, IconButton, Divider, Surface, useTheme, SegmentedButtons } from 'react-native-paper';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import Animated from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp, FadeInDown, SlideInUp, SlideInDown } from 'react-native-reanimated';
 import MapView, { Marker } from 'react-native-maps';
 import { useTranslation } from 'react-i18next';
 
@@ -149,8 +149,9 @@ const LogementDetailScreen = () => {
       };
       
       // Convertir depuis la devise originale vers la devise choisie
-      if (originalCurrency in rates && currency in rates[originalCurrency as keyof typeof rates]) {
-        const rate = rates[originalCurrency as keyof typeof rates][currency as keyof typeof rates[typeof originalCurrency]];
+      const ratesTyped = rates as Record<string, Record<string, number>>;
+      if (originalCurrency in ratesTyped && currency in (ratesTyped[originalCurrency] || {})) {
+        const rate = ratesTyped[originalCurrency][currency];
         convertedPrice = Math.round(price * rate);
       }
     }
@@ -265,13 +266,13 @@ const LogementDetailScreen = () => {
   }
 
   // Déterminer si le logement est adapté pour certains types de locataires
-  const isSuitableForStudents = listing.amenities.some(a => 
-    a.toLowerCase().includes('bureau') || 
-    a.toLowerCase().includes('wifi') || 
+  const isSuitableForStudents = (listing.amenities || []).some(a =>
+    a.toLowerCase().includes('bureau') ||
+    a.toLowerCase().includes('wifi') ||
     a.toLowerCase().includes('étude')
   );
-  
-  const isLongTermFriendly = listing.size >= 40 && listing.bedrooms >= 1;
+
+  const isLongTermFriendly = (listing.size || 0) >= 40 && (listing.bedrooms || 0) >= 1;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -316,7 +317,7 @@ const LogementDetailScreen = () => {
           
           {/* Badge disponibilité */}
           <Animated.View 
-            entering={Animated.SlideInUp ? Animated.SlideInUp.duration(400).delay(200) : undefined}
+            entering={SlideInUp ? SlideInUp.duration(400).delay(200) : undefined}
             style={styles.availabilityBadgeContainer}
           >
             <Surface style={[
@@ -347,7 +348,7 @@ const LogementDetailScreen = () => {
 
         {/* Informations principales */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400) : undefined}
           style={styles.mainInfoContainer}
         >
           <Text style={styles.title}>{listing.title}</Text>
@@ -355,8 +356,8 @@ const LogementDetailScreen = () => {
           <View style={styles.locationRow}>
             <MaterialIcons name="place" size={20} color={colors.gray[600]} />
             <Text style={styles.location}>
-              {listing.location.district ? `${listing.location.district}, ` : ''}
-              {listing.location.city}
+              {listing.location?.district ? `${listing.location?.district}, ` : ''}
+              {listing.location?.city}
             </Text>
           </View>
           
@@ -424,14 +425,14 @@ const LogementDetailScreen = () => {
             <View style={styles.infoItem}>
               <MaterialIcons name="king-bed" size={22} color={colors.primary} />
               <Text style={styles.infoText}>
-                {listing.bedrooms} {listing.bedrooms > 1 ? t('property.bedroomsPlural') : t('property.bedroomsSingular')}
+                {listing.bedrooms || 0} {(listing.bedrooms || 0) > 1 ? t('property.bedroomsPlural') : t('property.bedroomsSingular')}
               </Text>
             </View>
             
             <View style={styles.infoItem}>
               <MaterialIcons name="bathtub" size={22} color={colors.primary} />
               <Text style={styles.infoText}>
-                {listing.bathrooms} {listing.bathrooms > 1 ? t('property.bathroomsPlural') : t('property.bathroomsSingular')}
+                {listing.bathrooms || 0} {(listing.bathrooms || 0) > 1 ? t('property.bathroomsPlural') : t('property.bathroomsSingular')}
               </Text>
             </View>
             
@@ -446,7 +447,7 @@ const LogementDetailScreen = () => {
 
         {/* Description */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(100) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(100) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -461,7 +462,7 @@ const LogementDetailScreen = () => {
 
         {/* Conditions de location */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(150) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(150) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -508,7 +509,7 @@ const LogementDetailScreen = () => {
 
         {/* Commodités */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(200) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(200) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -517,7 +518,7 @@ const LogementDetailScreen = () => {
           />
           
           <View style={styles.amenitiesContainer}>
-            {listing.amenities.map((amenity, index) => (
+            {(listing.amenities || []).map((amenity, index) => (
               <AmenityTag key={index} label={amenity} />
             ))}
           </View>
@@ -526,9 +527,9 @@ const LogementDetailScreen = () => {
         <Divider style={styles.divider} />
 
         {/* Localisation sur la carte */}
-        {listing.location.coordinates && (
+        {listing.location?.coordinates && (
           <Animated.View 
-            entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(300) : undefined}
+            entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
             style={styles.section}
           >
             <SectionTitle 
@@ -541,8 +542,8 @@ const LogementDetailScreen = () => {
                 <MapView
                   style={styles.map}
                   initialRegion={{
-                    latitude: listing.location.coordinates.latitude,
-                    longitude: listing.location.coordinates.longitude,
+                    latitude: listing.location?.coordinates.latitude,
+                    longitude: listing.location?.coordinates.longitude,
                     latitudeDelta: 0.01,
                     longitudeDelta: 0.01,
                   }}
@@ -552,11 +553,11 @@ const LogementDetailScreen = () => {
                 >
                   <Marker
                     coordinate={{
-                      latitude: listing.location.coordinates.latitude,
-                      longitude: listing.location.coordinates.longitude,
+                      latitude: listing.location?.coordinates.latitude,
+                      longitude: listing.location?.coordinates.longitude,
                     }}
                     title={listing.title}
-                    description={listing.location.address}
+                    description={listing.location?.address}
                   />
                 </MapView>
               </View>
@@ -576,7 +577,7 @@ const LogementDetailScreen = () => {
 
         {/* Services à proximité */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(350) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(350) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -611,7 +612,7 @@ const LogementDetailScreen = () => {
 
         {/* Informations pratiques */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(400) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(400) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -632,7 +633,7 @@ const LogementDetailScreen = () => {
             
             <View style={styles.infoItem}>
               <MaterialIcons name="people" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>{t('property.occupancy', { max: listing.bedrooms * 2 })}</Text>
+              <Text style={styles.infoText}>{t('property.occupancy', { max: (listing.bedrooms || 0) * 2 })}</Text>
             </View>
           </View>
         </Animated.View>
@@ -641,7 +642,7 @@ const LogementDetailScreen = () => {
 
         {/* Coordonnées du propriétaire */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(500) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(500) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -668,7 +669,7 @@ const LogementDetailScreen = () => {
 
         {/* Section des avis */}
         <Animated.View 
-          entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(450) : undefined}
+          entering={FadeInUp ? FadeInUp.duration(400).delay(450) : undefined}
           style={styles.section}
         >
           <SectionTitle 
@@ -777,7 +778,7 @@ const LogementDetailScreen = () => {
       
       {/* Boutons de contact */}
       <Animated.View 
-        entering={Animated.FadeInUp ? Animated.FadeInUp.duration(400).delay(300) : undefined}
+        entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
         style={styles.footerContainer}
       >
         <View style={styles.contactContainer}>
@@ -904,7 +905,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: colors.gray[800],
     marginBottom: spacing[2],
   },
   locationRow: {
@@ -1087,7 +1088,7 @@ const styles = StyleSheet.create({
   ownerName: {
     fontSize: typography.fontSize.lg,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: colors.gray[800],
     marginBottom: 4,
   },
   ownerContact: {

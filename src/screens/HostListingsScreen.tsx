@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, Property } from '../types';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
 import { propertyService } from '../services/api';
 import { useUserStore } from '../store/user';
@@ -108,7 +108,7 @@ const HostListingsScreen = () => {
         const formattedListings: ListingItem[] = properties.map(property => ({
           id: property.id,
           title: property.title,
-          location: `${property.location.district || ''}, ${property.location.city}`,
+          location: `${property.location?.district || ''}, ${property.location?.city}`,
           price: property.price,
           currency: property.currency,
           rating: property.rating,

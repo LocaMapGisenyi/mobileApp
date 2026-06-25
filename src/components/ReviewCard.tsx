@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Review } from '../types';
 import RatingStars from './RatingStars';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+
+const STAR_COLOR = '#FFB100';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 interface ReviewCardProps {
@@ -92,11 +94,11 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
             <Text style={styles.dateText}>{formatDate(review.date)}</Text>
           </View>
           
-          <RatingStars 
-            rating={review.rating} 
-            size={16} 
+          <RatingStars
+            rating={review.rating}
+            size={16}
             disabled={true}
-            color="#FFB100"
+            color={STAR_COLOR}
           />
         </View>
         

@@ -54,6 +54,10 @@ const mockProperties: Property[] = [
     size: 120,
     images: ['https://example.com/image1.jpg'],
     amenities: ['Wifi', 'Parking', 'Sécurité'],
+    available: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    type: 'apartment',
     contactInfo: {
       name: 'John Doe',
       phone: '+250123456789',
@@ -79,6 +83,10 @@ const mockProperties: Property[] = [
     size: 75,
     images: ['https://example.com/image2.jpg'],
     amenities: ['Wifi', 'Eau chaude'],
+    available: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    type: 'apartment',
     contactInfo: {
       name: 'Jane Smith',
       phone: '+250987654321',
@@ -114,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const mockUser: User = {
           id: '1',
           name: 'Test User',
+          fullName: 'Test User',
           email: 'test@example.com',
           favorites: [],
         };
@@ -174,7 +183,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (user) {
       const updatedUser = {
         ...user,
-        favorites: [...user.favorites, propertyId],
+        favorites: [...(user.favorites || []), propertyId],
       };
       set({ user: updatedUser });
     }
@@ -185,7 +194,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (user) {
       const updatedUser = {
         ...user,
-        favorites: user.favorites.filter(id => id !== propertyId),
+        favorites: (user.favorites || []).filter(id => id !== propertyId),
       };
       set({ user: updatedUser });
     }
@@ -211,24 +220,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     
     if (searchFilters.bedrooms !== undefined) {
-      filtered = filtered.filter(p => p.bedrooms >= (searchFilters.bedrooms || 0));
+      filtered = filtered.filter(p => (p.bedrooms || 0) >= (searchFilters.bedrooms || 0));
     }
-    
+
     if (searchFilters.bathrooms !== undefined) {
-      filtered = filtered.filter(p => p.bathrooms >= (searchFilters.bathrooms || 0));
+      filtered = filtered.filter(p => (p.bathrooms || 0) >= (searchFilters.bathrooms || 0));
     }
     
     if (searchFilters.minSize !== undefined) {
-      filtered = filtered.filter(p => p.size >= (searchFilters.minSize || 0));
+      filtered = filtered.filter(p => (p.size || 0) >= (searchFilters.minSize || 0));
     }
-    
+
     if (searchFilters.maxSize !== undefined) {
-      filtered = filtered.filter(p => p.size <= (searchFilters.maxSize || Infinity));
+      filtered = filtered.filter(p => (p.size || 0) <= (searchFilters.maxSize || Infinity));
     }
     
     if (searchFilters.amenities && searchFilters.amenities.length > 0) {
       filtered = filtered.filter(p => 
-        searchFilters.amenities?.every(amenity => p.amenities.includes(amenity))
+        searchFilters.amenities?.every(amenity => (p.amenities || []).includes(amenity))
       );
     }
     

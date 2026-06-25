@@ -19,7 +19,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { localGuides, Guide } from '../data/localGuides';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
-import Animated, { FadeIn, SlideInRight, useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInRight, useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useUserStore } from '../store/user';
 
@@ -86,7 +86,7 @@ const parseContentSections = (content: string) => {
         if (currentSection.content && currentSection.type !== '') sections.push({ ...currentSection });
         currentSection = { type: 'paragraph', content: line + '\n' };
       } else {
-         if (currentSection.type === '') currentSection.type = 'paragraph'; // Start new paragraph if empty
+         if ((currentSection.type as string) === '') currentSection.type = 'paragraph'; // Start new paragraph if empty
         currentSection.content += (currentSection.type === 'paragraph' && !currentSection.content.endsWith('\n\n') && currentSection.content !== '') ? ' ' : '' + line + '\n';
       }
     }
@@ -110,7 +110,7 @@ const GuideDetailScreen = () => {
   const route = useRoute<GuideDetailRouteProp>();
   const { guideId } = route.params;
   const { t, i18n } = useTranslation();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
   const scrollY = useSharedValue(0);
 
   // États
@@ -193,7 +193,7 @@ const GuideDetailScreen = () => {
       scrollY.value,
       [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
       [1, 1, 0],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
     return {
       opacity,
@@ -205,13 +205,13 @@ const GuideDetailScreen = () => {
       scrollY.value,
       [HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
       [0, 1],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
      const translateY = interpolate(
       scrollY.value,
       [0, HEADER_SCROLL_DISTANCE],
       [-30, 0], // Start off-screen and slide down
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
     return {
       opacity,
@@ -256,24 +256,24 @@ const GuideDetailScreen = () => {
     const calloutStyles = {
       info: {
         icon: 'information-outline' as const,
-        backgroundColor: colors.blue[50],
-        borderColor: colors.blue[300],
-        iconColor: colors.blue[700],
-        textColor: colors.blue[800],
+        backgroundColor: '#EFF6FF',
+        borderColor: '#93C5FD',
+        iconColor: '#1D4ED8',
+        textColor: '#1E40AF',
       },
       tip: {
         icon: 'lightbulb-on-outline' as const,
-        backgroundColor: colors.green[50],
-        borderColor: colors.green[300],
-        iconColor: colors.green[700],
-        textColor: colors.green[800],
+        backgroundColor: '#F0FDF4',
+        borderColor: '#86EFAC',
+        iconColor: '#15803D',
+        textColor: '#166534',
       },
       avoid: {
         icon: 'alert-octagon-outline' as const,
-        backgroundColor: colors.red[50],
-        borderColor: colors.red[300],
-        iconColor: colors.red[700],
-        textColor: colors.red[800],
+        backgroundColor: '#FFF1F2',
+        borderColor: '#FCA5A5',
+        iconColor: '#B91C1C',
+        textColor: '#991B1B',
       },
     };
     const style = calloutStyles[type];
@@ -418,14 +418,14 @@ const GuideDetailScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background, // Airbnb white background
+    backgroundColor: colors.white,
   },
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[4],
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   loadingText: {
     marginTop: spacing[3],
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: spacing[3],
     fontSize: typography.fontSize.base,
-    color: colors.text,
+    color: colors.gray[700],
     textAlign: 'center',
     marginBottom: spacing[4],
   },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   stickyTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.gray[800],
     textAlign: 'center',
     flex: 1, // Allows title to take space and center
     marginHorizontal: spacing[2],
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   title: {
-    fontSize: typography.fontSize.h1, // Larger title
+    fontSize: typography.fontSize['3xl'], // Larger title
     fontWeight: 'bold',
     color: colors.white,
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   summary: {
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.relaxed,
-    color: colors.text,
+    color: colors.gray[700],
   },
   divider: {
     marginHorizontal: spacing[4],
@@ -548,29 +548,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
   },
   heading1: {
-    fontSize: typography.fontSize.h2,
+    fontSize: typography.fontSize['2xl'],
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.gray[800],
     marginTop: spacing[4],
     marginBottom: spacing[3],
   },
   heading2: {
-    fontSize: typography.fontSize.h3,
+    fontSize: typography.fontSize.xl,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.gray[800],
     marginTop: spacing[3],
     marginBottom: spacing[2],
   },
   heading3: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600', // Semi-bold
-    color: colors.text,
+    color: colors.gray[800],
     marginTop: spacing[3],
     marginBottom: spacing[2],
   },
   paragraph: {
     fontSize: typography.fontSize.base,
-    lineHeight: typography.lineHeight.loose, // Generous line height
+    lineHeight: typography.lineHeight.relaxed,
     color: colors.gray[700], // Slightly lighter than titles
     marginBottom: spacing[3],
     textAlign: 'justify',
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     fontSize: typography.fontSize.base,
-    lineHeight: typography.lineHeight.loose,
+    lineHeight: typography.lineHeight.relaxed,
     color: colors.gray[700],
     marginBottom: spacing[1],
     marginLeft: spacing[2], // Indent list items

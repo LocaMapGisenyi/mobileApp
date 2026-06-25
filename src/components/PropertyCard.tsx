@@ -1,14 +1,14 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Dimensions, Platform, ImageSourcePropType } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, Image, useWindowDimensions, Platform, ImageSourcePropType } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import PriceDisplay from './PriceDisplay';
-import { Property } from '../../types';
+import { Property } from '../types';
 import { convertToRwf } from '../utils/currency';
-import { Currency } from '../../store/preferences';
+import { Currency } from '../store/preferences';
 
 interface PropertyCardProps {
   property: Property;
@@ -19,9 +19,14 @@ interface PropertyCardProps {
 }
 
 const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteState }: PropertyCardProps) => {
-  const { width } = Dimensions.get('window');
+  const { width } = useWindowDimensions();
   const imageWidth = width - (spacing[4] * 2);
   const { t } = useTranslation();
+
+  const handleFavoritePress = useCallback((e: any) => {
+    e.stopPropagation();
+    onFavoritePress?.();
+  }, [onFavoritePress]);
 
   const priceInRwf = property.currency === 'RWF' 
     ? property.price 
@@ -39,7 +44,7 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
   }
 
   const displayLocation = property.location?.address || property.location?.district || property.location?.city || t('common.unknownLocation');
-  const currentIsFavorite = isFavoriteState !== undefined ? isFavoriteState : property.isFavorite;
+  const currentIsFavorite = isFavoriteState !== undefined ? isFavoriteState : false;
 
   return (
     <Animated.View
@@ -50,6 +55,8 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
         style={styles.card}
         onPress={onPress}
         activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={`${property.title}, ${displayLocation}`}
       >
         {/* Image */}
         <View style={styles.imageContainer}>
@@ -63,15 +70,16 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
           {onFavoritePress && (
             <TouchableOpacity
               style={styles.heartButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onFavoritePress();
-              }}
+              onPress={handleFavoritePress}
+              accessibilityRole="button"
+              accessibilityLabel={currentIsFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              accessibilityHint={currentIsFavorite ? 'Appuyez pour retirer ce logement de vos favoris' : 'Appuyez pour sauvegarder ce logement'}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons 
-                name={currentIsFavorite ? "heart" : "heart-outline"} 
-                size={20} 
-                color={currentIsFavorite ? colors.error : colors.white} 
+              <Ionicons
+                name={currentIsFavorite ? 'heart' : 'heart-outline'}
+                size={20}
+                color={currentIsFavorite ? colors.error : colors.white}
               />
             </TouchableOpacity>
           )}
@@ -80,7 +88,7 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
         {/* Contenu */}
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
               {property.title}
             </Text>
           </View>
@@ -218,4 +226,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PropertyCard; 
+export default React.memo(PropertyCard); 

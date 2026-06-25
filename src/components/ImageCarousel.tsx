@@ -1,29 +1,29 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, View, Dimensions, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, useWindowDimensions, Image, TouchableOpacity } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
+
+const DEFAULT_IMAGE = require('../assets/images/house-logo.png');
 
 interface ImageCarouselProps {
   images: (string | number)[];
   height?: number;
+  autoPlay?: boolean;
+  showPagination?: boolean;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
-
-const ImageCarousel: React.FC<ImageCarouselProps> = ({ 
+const ImageCarousel: React.FC<ImageCarouselProps> = ({
   images,
-  height = 250
+  height = 250,
 }) => {
   const theme = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
-  const carouselRef = useRef(null);
+  const carouselRef = useRef<any>(null);
 
-  // Si aucune image n'est fournie, afficher une image par défaut
-  const displayImages = images.length > 0 
-    ? images 
-    : [require('../assets/images/house-logo.svg')];
+  const displayImages = images.length > 0 ? images : [DEFAULT_IMAGE];
 
   return (
     <View style={styles.container}>
@@ -36,7 +36,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         autoPlay={false}
         data={displayImages}
         scrollAnimationDuration={500}
-        onSnapToItem={(index) => setActiveIndex(index)}
+        onScrollEnd={(index) => setActiveIndex(index)}
         renderItem={({ item, index }) => (
           <Animated.View 
             entering={FadeIn.duration(300)}

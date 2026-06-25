@@ -21,7 +21,7 @@ export const fontFamilies = {
   }),
 };
 
-export const fontWeights = {
+export const fontWeights: Record<string, TextStyle['fontWeight']> = {
   regular: '400',
   medium: '500',
   semiBold: '600',

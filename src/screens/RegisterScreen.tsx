@@ -6,14 +6,14 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
-  Image,
 } from 'react-native';
 import { Text, Button, Snackbar } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthNavigator';
 import TextInputField from '../components/TextInputField';
-import { useUserActions } from '../store/user';
+import { useUserStore } from '../store/user';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,7 @@ type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList
 
 const RegisterScreen = () => {
   const navigation = useNavigation<RegisterScreenNavigationProp>();
-  const { login } = useUserActions();
+  const register = useUserStore(s => s.actions.register);
   const { t } = useTranslation();
 
   // Form state
@@ -113,17 +113,26 @@ const RegisterScreen = () => {
     
     // Simulate API call
     setTimeout(() => {
-      login({
-        fullName: formData.fullName,
-        email: formData.email,
-        authProvider: 'manual',
-      });
-      
+      // Mock registration sans backend
+      useUserStore.setState(state => ({
+        user: {
+          ...state.user,
+          id: 'mock-user-new',
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: null,
+          photoURL: null,
+          authProvider: 'manual',
+          isLoggedIn: true,
+          hasCompletedOnboarding: false,
+          token: 'mock-token-new',
+        },
+      }));
+
       setLoading(false);
-      setSnackbarMessage(t('auth.accountCreated'));
+      setSnackbarMessage(t('auth.accountCreated') || 'Compte créé !');
       setSnackbarVisible(true);
-      
-      // Redirect to preferences after registration
+
       setTimeout(() => {
         navigation.navigate('PreferenceCarousel');
       }, 1000);
@@ -152,11 +161,9 @@ const RegisterScreen = () => {
           <Text style={styles.subtitle}>
             {t('auth.joinUsText')}
           </Text>
-          <Image 
-            source={require('../assets/images/registration-image.svg')} 
-            style={styles.registrationImage}
-            resizeMode="contain"
-          />
+          <View style={styles.registrationIcon}>
+            <Ionicons name="home-outline" size={64} color="#006064" />
+          </View>
         </Animated.View>
 
         <Animated.View 
@@ -305,10 +312,10 @@ const styles = StyleSheet.create({
   snackbar: {
     backgroundColor: '#323232',
   },
-  registrationImage: {
-    width: '100%',
+  registrationIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 120,
-    alignSelf: 'center',
     marginVertical: 16,
   },
 });

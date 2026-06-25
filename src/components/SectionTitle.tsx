@@ -9,6 +9,7 @@ interface SectionTitleProps {
   actionText?: string;
   onActionPress?: () => void;
   delay?: number;
+  icon?: string;
 }
 
 const SectionTitle: React.FC<SectionTitleProps> = ({ 
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray[900],
+    color: colors.gray[800],
   },
   subtitle: {
     fontSize: typography.fontSize.sm,

@@ -117,7 +117,7 @@ const ConversationScreen = () => {
       >
         <ChatHeader 
           userName={conversation.otherUser.name}
-          userAvatar={conversation.otherUser.avatar}
+          userAvatar={conversation.otherUser.avatar || ''}
           propertyTitle={conversation.propertyTitle}
         />
         

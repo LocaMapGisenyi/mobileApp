@@ -151,7 +151,7 @@ const PreferenceCarouselScreen = () => {
               illustration={slide.illustration}
               options={slide.options}
               selectedValue={slide.selectedValue}
-              onSelect={slide.onSelect}
+              onSelect={slide.onSelect as (value: string | boolean) => void}
               type={slide.type}
               index={index}
             />

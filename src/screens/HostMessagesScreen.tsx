@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 type HostScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -65,7 +65,7 @@ const mockMessages = [
   },
 ];
 
-const MessageItem = ({ item, onPress }) => {
+const MessageItem = ({ item, onPress }: { item: any; onPress: () => void }) => {
   const theme = useTheme();
   
   return (
@@ -101,9 +101,9 @@ const HostMessagesScreen = () => {
   const navigation = useNavigation<HostScreenNavigationProp>();
   const [searchQuery, setSearchQuery] = React.useState('');
   
-  const onChangeSearch = (query) => setSearchQuery(query);
-  
-  const navigateToConversation = (messageId) => {
+  const onChangeSearch = (query: string) => setSearchQuery(query);
+
+  const navigateToConversation = (messageId: string) => {
     // Navigation vers la conversation
     console.log(`Navigating to conversation ${messageId}`);
     // navigation.navigate('Conversation', { conversationId: messageId });

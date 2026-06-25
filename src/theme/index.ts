@@ -25,11 +25,29 @@ export const colors = {
     800: '#222222', // Texte très foncé
   },
   
+  // Shortcut aliases for screens that use colors.background / colors.text
+  background: '#FFFFFF',
+  text: '#222222',
+  // Social color shortcuts
+  apple: '#000000',
+  facebook: '#1877F2',
+  google: '#4285F4',
+  // Outline color
+  outline: '#DDDDDD',
+
   // États
-  success: '#00A699', // Vert Airbnb
-  warning: '#FFB400', // Orange/Jaune
-  error: '#FF5A5F',   // Rouge vif, variante du primaire
-  info: '#007A87',    // Bleu-vert
+  success: '#00A699',
+  warning: '#FFB400',
+  error: '#FF5A5F',
+  info: '#007A87',
+  // Marque LocaMap
+  secondary: '#4F46E5',
+  // Réseaux sociaux
+  social: {
+    google: '#4285F4',
+    facebook: '#1877F2',
+    apple: '#000000',
+  },
 };
 
 // Typographie
@@ -67,14 +85,16 @@ export const typography = {
     '3xl': 32,
   },
   fontWeight: {
-    normal: '400',
-    medium: '500',
-    semiBold: '600',
-    bold: '700',
+    normal: '400' as const,
+    medium: '500' as const,
+    semiBold: '600' as const,
+    bold: '700' as const,
   },
   lineHeight: {
     tight: 1.15,
+    base: 1.4,
     normal: 1.4,
+    md: 1.5,
     relaxed: 1.6,
   },
 };
@@ -234,6 +254,9 @@ export const commonStyles = {
     color: colors.gray[500],
   },
 };
+
+// Re-export colors from colors.ts as darkColors for dark-theme usage
+export { default as darkColors } from './colors';
 
 export default {
   colors,

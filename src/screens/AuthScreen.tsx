@@ -136,11 +136,13 @@ const AuthScreen = () => {
   };
 
   const navigateToRegister = () => {
-    navigation.navigate('Register');
+    // Register is in the Auth sub-navigator
+    // navigation.navigate('Register'); // Use Auth navigator if needed
   };
 
   const navigateToForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
+    // ResetPassword is in the Auth sub-navigator
+    // navigation.navigate('ResetPassword'); // Not accessible directly from RootStack
   };
 
   return (

@@ -17,7 +17,7 @@ import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { useMessagesStore } from '../store/messages';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { useTranslation } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { Appbar, Text, useTheme, Button, Snackbar } from 'react-native-paper';
 
 type NewMessageScreenRouteProp = RouteProp<RootStackParamList, 'NewMessage'>;

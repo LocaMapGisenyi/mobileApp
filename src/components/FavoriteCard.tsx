@@ -49,8 +49,8 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
         activeOpacity={0.9}
       >
         <View style={styles.imageContainer}>
-          <Image 
-            source={property.images[0]} 
+          <Image
+            source={{ uri: property.images[0] as string }}
             style={styles.image}
             resizeMode="cover"
           />
@@ -59,7 +59,7 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
             <Text style={styles.location} numberOfLines={1}>
-              {property.location.district || property.location.city}
+              {property.location?.district || property.location?.city}
             </Text>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={14} color={colors.gray[800]} />
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: colors.gray[800],
     marginBottom: spacing[2],
   },
   detailsContainer: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   priceBold: {
     fontWeight: '600',
-    color: colors.gray[900],
+    color: colors.gray[800],
     fontSize: typography.fontSize.base,
   },
 });

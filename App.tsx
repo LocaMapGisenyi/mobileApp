@@ -88,7 +88,7 @@ const theme = {
     card: colors.white,
     border: colors.gray[200],
   },
-  fonts: configureFonts({ config: fontConfig }),
+  fonts: configureFonts({ config: fontConfig as any }),
   roundness: 8,
   dark: false,
 };

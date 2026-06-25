@@ -58,18 +58,18 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   
   return (
     <TouchableOpacity
-      style={[
-        showBackground && styles.container,
-        style
-      ]}
-      onPress={() => {
-        if (onPress) onPress();
-      }}
+      style={[showBackground && styles.container, style]}
+      onPress={onPress}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={favorited ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      accessibilityHint={favorited ? 'Appuyez pour retirer ce logement de vos favoris' : 'Appuyez pour sauvegarder ce logement'}
+      accessibilityState={{ selected: favorited }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Animated.View style={animatedStyle}>
         <Ionicons
-          name={favorited ? "heart" : "heart-outline"}
+          name={favorited ? 'heart' : 'heart-outline'}
           size={size}
           color={favorited ? colors.primary : colors.gray[700]}
         />
@@ -80,9 +80,9 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',

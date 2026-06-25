@@ -1,15 +1,22 @@
-import React from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Image, 
-  Text, 
-  TouchableOpacity, 
-  Dimensions 
+import React, { useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  Image,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+
+// Badge colors anchored to the brand palette
+const BADGE_COLORS = {
+  longTerm: '#4a6da7',
+  student: '#6a7d5e',
+  lake: '#2b87b9',
+} as const;
 import { ExploreListing } from '../data/exploreListings';
 
 interface GridListingCardProps {
@@ -19,15 +26,14 @@ interface GridListingCardProps {
   displayMode?: 'nightly' | 'monthly';
 }
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - spacing[4] * 2 - spacing[3]) / 2;
-
-const GridListingCard: React.FC<GridListingCardProps> = ({ 
-  listing, 
+const GridListingCard: React.FC<GridListingCardProps> = ({
+  listing,
   onPress,
   index,
-  displayMode = 'monthly'
+  displayMode = 'monthly',
 }) => {
+  const { width } = useWindowDimensions();
+  const cardWidth = (width - spacing[4] * 2 - spacing[3]) / 2;
   // Calcul du prix mensuel (approximatif, en pratique viendrait de l'API)
   const calculateMonthlyPrice = (nightlyPrice: number) => {
     return Math.round(nightlyPrice * 25); // Approximation simple: 25 jours par mois
@@ -42,25 +48,15 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
   };
   
   // Déterminer l'icône et le texte à afficher pour le badge
+  const handlePress = useCallback(() => onPress(listing.id), [listing.id, onPress]);
+
   const getBadgeInfo = () => {
     if (listing.longTerm) {
-      return { 
-        icon: 'event',
-        text: 'Long terme',
-        color: '#4a6da7'
-      };
+      return { icon: 'event', text: 'Long terme', color: BADGE_COLORS.longTerm };
     } else if (listing.forStudents) {
-      return { 
-        icon: 'school',
-        text: 'Étudiants',
-        color: '#6a7d5e'
-      };
+      return { icon: 'school', text: 'Étudiants', color: BADGE_COLORS.student };
     } else if (listing.nearLake) {
-      return { 
-        icon: 'water-drop',
-        text: 'Vue lac',
-        color: '#2b87b9'
-      };
+      return { icon: 'water-drop', text: 'Vue lac', color: BADGE_COLORS.lake };
     }
     return null;
   };
@@ -68,14 +64,16 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
   const badgeInfo = getBadgeInfo();
   
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeInDown.delay(100 + index * 100).duration(400)}
-      style={styles.container}
+      style={[styles.container, { width: cardWidth }]}
     >
       <TouchableOpacity
         style={styles.card}
-        onPress={() => onPress(listing.id)}
+        onPress={handlePress}
         activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={`${listing.title}, ${listing.location?.district}`}
       >
         <View style={styles.imageContainer}>
           <Image 
@@ -84,7 +82,12 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
             resizeMode="cover"
           />
           
-          <TouchableOpacity style={styles.heartButton}>
+          <TouchableOpacity
+            style={styles.heartButton}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter aux favoris"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <MaterialIcons name="favorite-border" size={20} color={colors.white} />
           </TouchableOpacity>
           
@@ -99,7 +102,7 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
         <View style={styles.contentContainer}>
           <View style={styles.topRow}>
             <Text style={styles.location} numberOfLines={1}>
-              {listing.location.district}, {listing.location.city}
+              {listing.location?.district}, {listing.location?.city}
             </Text>
             
             <View style={styles.ratingContainer}>
@@ -139,7 +142,6 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: CARD_WIDTH,
     marginBottom: spacing[4],
   },
   card: {
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.sm,
     fontWeight: '500',
-    color: colors.gray[900],
+    color: colors.gray[800],
     marginTop: spacing[1],
     height: 36, // Limit to 2 lines
   },
@@ -228,7 +230,7 @@ const styles = StyleSheet.create({
   },
   priceBold: {
     fontWeight: '600',
-    color: colors.gray[900],
+    color: colors.gray[800],
   },
   priceUnit: {
     color: colors.gray[600],
@@ -242,10 +244,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   tagText: {
-    fontSize: typography.fontSize.xxs,
+    fontSize: typography.fontSize.xs,
     color: colors.primary,
     marginLeft: 2,
   },
 });
 
-export default GridListingCard; 
+export default React.memo(GridListingCard); 

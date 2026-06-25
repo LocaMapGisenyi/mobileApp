@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.sm,
     color: colors.gray[500],
-    marginBottom: spacing[0.5],
+    marginBottom: 2,
   },
   value: {
     fontSize: typography.fontSize.base,

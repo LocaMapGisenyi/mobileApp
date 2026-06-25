@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 type HostScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -38,10 +38,10 @@ const hostData = {
   superHost: true,
 };
 
-const StatItem = ({ icon, label, value }) => {
+const StatItem = ({ icon, label, value }: { icon: string; label: string; value: string | number }) => {
   return (
     <View style={styles.statItem}>
-      <MaterialIcons name={icon} size={24} color="#FF5A5F" style={styles.statIcon} />
+      <MaterialIcons name={icon as any} size={24} color="#FF5A5F" style={styles.statIcon} />
       <View>
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
@@ -50,7 +50,7 @@ const StatItem = ({ icon, label, value }) => {
   );
 };
 
-const ActionButton = ({ icon, label, onPress, primary = false }) => {
+const ActionButton = ({ icon, label, onPress, primary = false }: { icon: string; label: string; onPress: () => void; primary?: boolean }) => {
   const theme = useTheme();
   
   return (
@@ -62,10 +62,10 @@ const ActionButton = ({ icon, label, onPress, primary = false }) => {
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <MaterialIcons 
-        name={icon} 
-        size={20} 
-        color={primary ? '#FFFFFF' : '#717171'} 
+      <MaterialIcons
+        name={icon as any}
+        size={20}
+        color={primary ? '#FFFFFF' : '#717171'}
       />
       <Text style={[
         styles.actionButtonText,
@@ -273,6 +273,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  statIcon: {
+    marginRight: 12,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222222',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#717171',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#F0F0F0',
+    marginBottom: 8,
+  },
+  actionButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#222222',
+    fontWeight: '500',
   },
 });
 

@@ -241,7 +241,8 @@ const EditProfileScreen = () => {
       },
       (buttonIndex: number) => {
         if (buttonIndex !== buttons.length - 1) {
-          buttons[buttonIndex].onPress();
+          const btn = buttons[buttonIndex] as { text: string; onPress: () => void };
+          btn.onPress();
         }
       }
     );

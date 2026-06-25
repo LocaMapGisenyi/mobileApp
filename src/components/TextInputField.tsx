@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TextInput as RNTextInput, TextInputProps } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, View, TextInput as RNTextInput, TextInputProps, Animated } from 'react-native';
 import { Text, TouchableRipple } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Animated } from 'react-native';
+import { darkColors as dc } from '../theme';
 
 interface TextInputFieldProps extends TextInputProps {
   label: string;
@@ -22,8 +22,8 @@ const TextInputField = ({
 }: TextInputFieldProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const animatedOpacity = new Animated.Value(0);
-  
+  const animatedOpacity = useRef(new Animated.Value(0.7)).current;
+
   React.useEffect(() => {
     Animated.timing(animatedOpacity, {
       toValue: isFocused || props.value ? 1 : 0.7,
@@ -33,61 +33,81 @@ const TextInputField = ({
   }, [isFocused, props.value]);
 
   const togglePasswordVisibility = () => {
-    setIsPasswordVisible(!isPasswordVisible);
+    setIsPasswordVisible(v => !v);
   };
+
+  const iconColor = error && touched
+    ? dc.border.error
+    : isFocused
+    ? dc.border.focus
+    : dc.text.secondary;
 
   return (
     <View style={styles.container}>
-      <Text style={[
-        styles.label, 
-        isFocused && styles.focusedLabel,
-        error && touched && styles.errorLabel
-      ]}>
+      <Text
+        style={[
+          styles.label,
+          isFocused && styles.focusedLabel,
+          error && touched && styles.errorLabel,
+        ]}
+        accessibilityLabel={label}
+      >
         {label}
       </Text>
-      
-      <View style={[
-        styles.inputContainer,
-        isFocused && styles.focusedContainer,
-        error && touched && styles.errorContainer
-      ]}>
+
+      <View
+        style={[
+          styles.inputContainer,
+          isFocused && styles.focusedContainer,
+          error && touched && styles.errorContainer,
+        ]}
+      >
         {icon && (
           <Animated.View style={{ opacity: animatedOpacity }}>
             <MaterialCommunityIcons
-              name={icon}
+              name={icon as any}
               size={20}
-              color={error && touched ? '#FF5252' : isFocused ? '#4F46E5' : '#9E9E9E'}
+              color={iconColor}
               style={styles.icon}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
             />
           </Animated.View>
         )}
-        
+
         <RNTextInput
           style={styles.input}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholderTextColor="#666666"
+          placeholderTextColor={dc.text.placeholder}
           secureTextEntry={secureTextEntry && !isPasswordVisible}
-          selectionColor="#4F46E5"
+          selectionColor={dc.border.focus}
+          accessibilityLabel={label}
           {...props}
         />
-        
+
         {secureTextEntry && (
           <TouchableRipple
             onPress={togglePasswordVisibility}
             rippleColor="rgba(79, 70, 229, 0.2)"
             style={styles.toggleButton}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           >
             <MaterialCommunityIcons
               name={isPasswordVisible ? 'eye-off' : 'eye'}
               size={22}
-              color="#9E9E9E"
+              color={dc.text.secondary}
             />
           </TouchableRipple>
         )}
       </View>
-      
-      {error && touched && <Text style={styles.errorText}>{error}</Text>}
+
+      {error && touched && (
+        <Text style={styles.errorText} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
     </View>
   );
 };
@@ -100,33 +120,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     marginBottom: 6,
-    color: '#E5E5E5',
+    color: dc.text.primary,
     fontWeight: '500',
   },
   focusedLabel: {
-    color: '#4F46E5',
+    color: dc.border.focus,
     fontWeight: '600',
   },
   errorLabel: {
-    color: '#FF5252',
+    color: dc.border.error,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: dc.background.input,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: dc.border.default,
     paddingHorizontal: 12,
     height: 56,
   },
   focusedContainer: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#222222',
+    borderColor: dc.border.focus,
+    backgroundColor: dc.background.inputFocused,
   },
   errorContainer: {
-    borderColor: '#FF5252',
-    backgroundColor: '#2C1A1A',
+    borderColor: dc.border.error,
+    backgroundColor: dc.background.error,
   },
   icon: {
     marginRight: 8,
@@ -134,18 +154,22 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#E5E5E5',
+    color: dc.text.primary,
     paddingVertical: 10,
   },
   toggleButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
-    color: '#FF5252',
+    color: dc.border.error,
     fontSize: 12,
     marginTop: 4,
     paddingLeft: 4,
   },
 });
 
-export default TextInputField; 
+export default TextInputField;

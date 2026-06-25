@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  TouchableOpacity,
   StatusBar,
   SafeAreaView,
-  Dimensions,
+  useWindowDimensions,
   Platform,
   RefreshControl,
-  ScrollView,
   Image,
-  TextInput,
-  ImageBackground,
 } from 'react-native';
 import {
   Text,
@@ -26,7 +23,7 @@ import {
 } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { Property } from '../types/index';
 import SearchFiltersModal from '../components/SearchFiltersModal';
@@ -39,15 +36,14 @@ import Animated, {
   FadeInUp,
   FadeIn,
   FadeInRight,
-  SlideInUp,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   interpolate,
-  Extrapolate,
+  Extrapolation,
 } from 'react-native-reanimated';
+import { colors as themeColors, spacing as themeSpacing, typography as themeTypo, borderRadius as themeBR } from '../theme';
 
-const { width } = Dimensions.get('window');
 const NUM_COLUMNS_THRESHOLD = 700;
 const SEARCH_BAR_HEIGHT = 60;
 
@@ -110,39 +106,15 @@ const CUSTOM_CATEGORIES = [
   }
 ];
 
-// Guides locaux mockés
-const LOCAL_GUIDES = [
-  {
-    id: '1',
-    title: 'Transport à Gisenyi',
-    description: 'Comment se déplacer facilement dans la ville',
-    image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    icon: 'directions-bus'
-  },
-  {
-    id: '2',
-    title: 'Les quartiers de Gisenyi',
-    description: 'Guide des différents quartiers et leurs caractéristiques',
-    image: 'https://images.unsplash.com/photo-1580223530509-849e0b42a99a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    icon: 'place'
-  },
-  {
-    id: '3',
-    title: 'Activités au bord du lac',
-    description: 'Découvrez toutes les activités autour du lac Kivu',
-    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    icon: 'beach-access'
-  }
-];
 
 const ExplorerScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
-  const { user } = useUserStore();
   const { currency } = usePreferences();
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
-  
+  const { width } = useWindowDimensions();
+
   const {
     listings,
     filteredListings,
@@ -158,6 +130,11 @@ const ExplorerScreen = () => {
   } = useSearchStore();
 
   const [numColumns, setNumColumns] = useState(width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
+
+  // Update numColumns reactively when width changes (orientation, multi-window)
+  useEffect(() => {
+    setNumColumns(width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
+  }, [width]);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
@@ -176,7 +153,7 @@ const ExplorerScreen = () => {
       scrollY.value,
       [0, 10],
       [0, 4],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
 
     return {
@@ -198,18 +175,8 @@ const ExplorerScreen = () => {
       if (listings.length === 0) {
         handleFetchListings();
       }
-      setNumColumns(Dimensions.get('window').width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
     }, [listings.length, handleFetchListings])
   );
-
-  // Update numColumns on dimension change
-  useEffect(() => {
-    const updateLayout = () => {
-      setNumColumns(Dimensions.get('window').width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
-    };
-    const subscription = Dimensions.addEventListener('change', updateLayout);
-    return () => subscription?.remove();
-  }, []);
 
   const handleSearch = () => {
     setQuery(searchText);
@@ -276,35 +243,8 @@ const ExplorerScreen = () => {
     }
   };
   
-  // Render functions
-  const renderGuideCard = ({ item, index }: { item: typeof LOCAL_GUIDES[0]; index: number }) => (
-    <Animated.View
-      entering={FadeInUp.delay(200 + index * 100).duration(400)}
-      style={styles.guideCardContainer}
-    >
-      <TouchableOpacity
-        style={styles.guideCard}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('LocalGuide')}
-      >
-        <Image source={{ uri: item.image }} style={styles.guideImage} />
-        <View style={styles.guideContentOverlay}>
-          <View style={styles.guideIconContainer}>
-            <MaterialIcons name={item.icon as any} size={24} color="#FFFFFF" />
-          </View>
-          <View style={styles.guideContent}>
-            <Text style={styles.guideTitle}>{item.title}</Text>
-            <Text style={styles.guideDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
   const renderCategoryItem = ({ item, index }: { item: typeof CUSTOM_CATEGORIES[0]; index: number }) => (
-    <Animated.View 
+    <Animated.View
       entering={FadeInRight.delay(index * 30).duration(300)}
       style={styles.categoryItem}
     >
@@ -314,17 +254,22 @@ const ExplorerScreen = () => {
           styles.categoryButton,
           activeCategory === item.id && styles.activeCategoryButton,
         ]}
+        accessibilityRole="button"
+        accessibilityLabel={t(item.labelKey)}
+        accessibilityState={{ selected: activeCategory === item.id }}
       >
-        <MaterialIcons 
-          name={item.icon as any} 
-          size={20} 
-          color={activeCategory === item.id ? "#FFFFFF" : "#222222"} 
+        <MaterialIcons
+          name={item.icon as any}
+          size={20}
+          color={activeCategory === item.id ? themeColors.white : themeColors.black}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
         />
       </TouchableOpacity>
-      <Text 
+      <Text
         style={[
           styles.categoryLabel,
-          activeCategory === item.id && styles.activeCategoryLabel
+          activeCategory === item.id && styles.activeCategoryLabel,
         ]}
         numberOfLines={1}
       >
@@ -366,14 +311,17 @@ const ExplorerScreen = () => {
               style={styles.propertyImage} 
               resizeMode="cover" 
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.favoriteButton}
               onPress={handleToggleFavorite}
+              accessibilityRole="button"
+              accessibilityLabel={currentlyFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              accessibilityState={{ selected: currentlyFavorite }}
             >
-              <MaterialIcons 
-                name={currentlyFavorite ? "favorite" : "favorite-border"}
-                size={22} 
-                color={currentlyFavorite ? "#FF5A5F" : "white"}
+              <MaterialIcons
+                name={currentlyFavorite ? 'favorite' : 'favorite-border'}
+                size={22}
+                color={currentlyFavorite ? themeColors.error : themeColors.white}
               />
             </TouchableOpacity>
             {isNew && (
@@ -386,11 +334,11 @@ const ExplorerScreen = () => {
           <View style={styles.propertyInfo}>
             <View style={styles.ratingRow}>
               <Text style={styles.locationText}>
-                {item.location.district || item.location.city}
+                {item.location?.district || item.location?.city || ''}
               </Text>
               {item.rating && (
                 <View style={styles.ratingContainer}>
-                  <MaterialIcons name="star" size={16} color="#222222" />
+                  <MaterialIcons name="star" size={16} color={themeColors.black} />
                   <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
                 </View>
               )}
@@ -420,14 +368,14 @@ const ExplorerScreen = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Animated.View entering={FadeIn.duration(400)} style={styles.emptyContent}>
-        <MaterialIcons name="search-off" size={56} color="#666666" />
+        <MaterialIcons name="search-off" size={56} color={themeColors.gray[400]} />
         <Text style={styles.emptyTitle}>{t('explore.noResults')}</Text>
         <Text style={styles.emptySubtitle}>{t('explore.tryDifferent')}</Text>
-        <Button 
-          mode="contained" 
-          onPress={onResetFilters} 
+        <Button
+          mode="contained"
+          onPress={onResetFilters}
           style={styles.resetButton}
-          buttonColor="#FF5A5F"
+          buttonColor={themeColors.error}
         >
           {t('explore.resetFilters')}
         </Button>
@@ -444,30 +392,40 @@ const ExplorerScreen = () => {
   
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={themeColors.white} />
       
       {/* Sticky Search Bar */}
       <Animated.View style={[styles.searchBarContainer, searchBarAnimatedStyle]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.searchBar}
           activeOpacity={0.9}
           onPress={() => toggleFiltersModal()}
+          accessibilityRole="button"
+          accessibilityLabel={t('explore.searchPlaceholder')}
+          accessibilityHint="Ouvre les filtres de recherche"
         >
-          <MaterialIcons name="search" size={24} color="#222222" style={styles.searchIcon} />
+          <MaterialIcons name="search" size={24} color={themeColors.black} style={styles.searchIcon} />
           <Text style={styles.searchPlaceholder}>{t('explore.searchPlaceholder')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={toggleFiltersModal}
+          accessibilityRole="button"
+          accessibilityLabel="Filtres"
+          accessibilityHint="Ouvre le panneau de filtres"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <MaterialIcons name="tune" size={24} color="#222222" />
+          <MaterialIcons name="tune" size={24} color={themeColors.black} />
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={() => navigation.navigate('MapScreen')}
+          accessibilityRole="button"
+          accessibilityLabel="Voir sur la carte"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <MaterialIcons name="map" size={24} color="#222222" />
-            </TouchableOpacity>
+          <MaterialIcons name="map" size={24} color={themeColors.black} />
+        </TouchableOpacity>
       </Animated.View>
       
       {/* Main Content */}
@@ -481,8 +439,8 @@ const ExplorerScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => handleFetchListings(true)}
-            colors={["#FF5A5F"]}
-            tintColor={"#FF5A5F"}
+            colors={[themeColors.primary]}
+            tintColor={themeColors.primary}
           />
         }
       >
@@ -509,38 +467,27 @@ const ExplorerScreen = () => {
         <View style={styles.propertiesSection}>
           {isLoading ? (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#FF5A5F" />
+              <ActivityIndicator size="large" color={themeColors.primary} />
             </View>
           ) : displayedListings.length === 0 ? (
             renderEmptyState()
           ) : (
-            <View style={styles.propertiesGrid}>
-              {displayedListings.map((item, index) => (
-                React.cloneElement(renderPropertyCard({ item, index }), { key: item.id || index })
-              ))}
-            </View>
+            <FlatList
+              data={displayedListings}
+              renderItem={renderPropertyCard}
+              keyExtractor={(item) => item.id}
+              numColumns={numColumns}
+              key={numColumns}
+              scrollEnabled={false}
+              columnWrapperStyle={numColumns > 1 ? styles.propertiesGrid : undefined}
+              maxToRenderPerBatch={8}
+              windowSize={5}
+              removeClippedSubviews
+            />
           )}
         </View>
-        
-        {/* Local Guides Section */}
-        <View style={styles.guidesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('explore.localGuidesTitle')}</Text>
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => navigation.navigate('LocalGuide')}
-            >
-              <Text style={styles.viewAllText}>{t('explore.viewAll')}</Text>
-              <MaterialIcons name="arrow-forward" size={16} color="#FF5A5F" />
-            </TouchableOpacity>
-          </View>
-          
-          <Text style={styles.sectionSubtitle}>{t('explore.localGuidesSubtitle')}</Text>
-          
-          <View style={styles.guidesList}>
-            {LOCAL_GUIDES.map((guide, index) => React.cloneElement(renderGuideCard({ item: guide, index }), { key: guide.id || index }))}
-          </View>
-        </View>
+
+
       </Animated.ScrollView>
       
       {/* Map Floating Button */}
@@ -548,9 +495,12 @@ const ExplorerScreen = () => {
         style={styles.mapButton}
         activeOpacity={0.9}
         onPress={() => navigation.navigate('MapScreen')}
+        accessibilityRole="button"
+        accessibilityLabel={t('map.title')}
+        accessibilityHint="Ouvre la vue carte des logements"
       >
         <View style={styles.mapButtonInner}>
-          <MaterialIcons name="map" size={20} color="#FFFFFF" />
+          <MaterialIcons name="map" size={20} color={themeColors.white} />
           <Text style={styles.mapButtonText}>{t('map.title')}</Text>
         </View>
       </TouchableOpacity>
@@ -567,41 +517,41 @@ const ExplorerScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.white,
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: themeSpacing[5],
+    paddingVertical: themeSpacing[3],
+    backgroundColor: themeColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: themeColors.gray[100],
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     height: SEARCH_BAR_HEIGHT - 16,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: themeColors.gray[50],
     borderRadius: 30,
-    paddingHorizontal: 16,
+    paddingHorizontal: themeSpacing[4],
     borderWidth: 1,
-    borderColor: '#EBEBEB',
+    borderColor: themeColors.gray[200],
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: themeSpacing[2],
   },
   searchPlaceholder: {
-    color: '#717171',
-    fontSize: 15,
+    color: themeColors.gray[500],
+    fontSize: themeTypo.fontSize.base,
   },
   filterButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: themeSpacing[2],
   },
   container: {
     flex: 1,
@@ -610,69 +560,67 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   categoriesSection: {
-    marginVertical: 8,
+    marginVertical: themeSpacing[2],
   },
   categoriesList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: themeSpacing[5],
   },
   categoryItem: {
     alignItems: 'center',
     width: 70,
-    marginRight: 16,
+    marginRight: themeSpacing[4],
   },
   categoryButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-    backgroundColor: '#F7F7F7',
+    marginBottom: themeSpacing[2],
+    backgroundColor: themeColors.gray[50],
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: themeColors.gray[200],
   },
   activeCategoryButton: {
-    backgroundColor: '#FF5A5F',
-    borderColor: '#FF5A5F',
+    backgroundColor: themeColors.primary,
+    borderColor: themeColors.primary,
   },
   categoryLabel: {
-    fontSize: 12,
-    color: '#717171',
+    fontSize: themeTypo.fontSize.xs,
+    color: themeColors.gray[500],
     textAlign: 'center',
   },
   activeCategoryLabel: {
-    color: '#FF5A5F',
+    color: themeColors.primary,
     fontWeight: 'bold',
   },
   resultsCountContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    paddingHorizontal: themeSpacing[5],
+    marginBottom: themeSpacing[2],
   },
   resultsCount: {
-    fontSize: 14,
-    color: '#717171',
+    fontSize: themeTypo.fontSize.sm,
+    color: themeColors.gray[500],
   },
   propertiesSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: themeSpacing[5],
   },
   propertiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -8,
+    justifyContent: 'space-between',
   },
   cardWrapper: {
-    paddingHorizontal: 8,
-    marginBottom: 24,
+    paddingHorizontal: themeSpacing[2],
+    marginBottom: themeSpacing[6],
   },
   propertyCard: {
     overflow: 'hidden',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderRadius: themeBR.lg,
+    backgroundColor: themeColors.white,
   },
   imageContainer: {
     position: 'relative',
     height: 200,
-    borderRadius: 12,
+    borderRadius: themeBR.lg,
     overflow: 'hidden',
   },
   propertyImage: {
@@ -684,9 +632,9 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     backgroundColor: 'rgba(0,0,0,0.3)',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -694,143 +642,63 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: '#FF5A5F',
+    backgroundColor: themeColors.error,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 4,
+    borderRadius: themeBR.sm,
   },
   badgeText: {
-    fontSize: 12,
+    fontSize: themeTypo.fontSize.xs,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: themeColors.white,
   },
   propertyInfo: {
-    padding: 12,
+    padding: themeSpacing[3],
   },
   ratingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: themeSpacing[1],
   },
   locationText: {
-    fontSize: 14,
+    fontSize: themeTypo.fontSize.sm,
     fontWeight: '600',
-    color: '#222222',
+    color: themeColors.black,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   ratingText: {
-    fontSize: 14,
+    fontSize: themeTypo.fontSize.sm,
     fontWeight: '500',
-    color: '#222222',
+    color: themeColors.black,
     marginLeft: 4,
   },
   titleText: {
-    fontSize: 16,
+    fontSize: themeTypo.fontSize.base,
     fontWeight: '500',
-    color: '#222222',
-    marginBottom: 4,
+    color: themeColors.black,
+    marginBottom: themeSpacing[1],
   },
   detailsText: {
-    fontSize: 14,
-    color: '#717171',
+    fontSize: themeTypo.fontSize.sm,
+    color: themeColors.gray[500],
   },
   priceContainer: {
-    marginTop: 8,
+    marginTop: themeSpacing[2],
   },
   priceText: {
-    fontSize: 15,
+    fontSize: themeTypo.fontSize.base,
   },
   priceBold: {
     fontWeight: 'bold',
-    color: '#222222',
+    color: themeColors.black,
   },
   priceUnit: {
     fontWeight: 'normal',
-    color: '#717171',
-  },
-  guidesSection: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    backgroundColor: '#F8F8F8',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#222222',
-  },
-  sectionSubtitle: {
-    fontSize: 16,
-    color: '#717171',
-    marginBottom: 16,
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#FF5A5F',
-    marginRight: 4,
-  },
-  guidesList: {
-    marginTop: 16,
-  },
-  guideCardContainer: {
-    marginBottom: 16,
-  },
-  guideCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    height: 180,
-  },
-  guideImage: {
-    width: '100%',
-    height: '100%',
-  },
-  guideContentOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  guideIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FF5A5F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  guideContent: {
-    flex: 1,
-  },
-  guideTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  guideDescription: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.8,
+    color: themeColors.gray[500],
   },
   emptyContainer: {
     paddingVertical: 40,
@@ -838,24 +706,24 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: themeSpacing[5],
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: themeTypo.fontSize.md,
     fontWeight: 'bold',
-    color: '#222222',
-    marginTop: 20,
+    color: themeColors.black,
+    marginTop: themeSpacing[5],
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 15,
-    color: '#717171',
+    fontSize: themeTypo.fontSize.base,
+    color: themeColors.gray[500],
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: themeSpacing[2],
+    marginBottom: themeSpacing[6],
   },
   resetButton: {
-    borderRadius: 8,
+    borderRadius: themeBR.button,
   },
   loaderContainer: {
     paddingVertical: 40,
@@ -866,7 +734,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     alignSelf: 'center',
     borderRadius: 30,
-    backgroundColor: '#222222',
+    backgroundColor: themeColors.black,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -880,11 +748,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   mapButtonText: {
-    color: '#FFFFFF',
+    color: themeColors.white,
     fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 8,
-  }
+    fontSize: themeTypo.fontSize.sm,
+    marginLeft: themeSpacing[2],
+  },
 });
 
 export default ExplorerScreen; 

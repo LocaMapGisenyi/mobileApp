@@ -29,7 +29,7 @@ const DEFAULT_PREFERENCES: Omit<PreferencesState, 'setLanguage' | 'setCurrency' 
 
 // Fonction utilitaire pour obtenir la langue du système
 const getSystemLanguage = (): Language => {
-  const deviceLocale = Localization.locale.slice(0, 2);
+  const deviceLocale = ((Localization as any).locale || (Localization.getLocales?.()[0]?.languageCode) || 'fr').slice(0, 2);
   
   // Vérifier si la langue est supportée, sinon utiliser français par défaut
   switch (deviceLocale) {

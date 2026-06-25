@@ -44,16 +44,16 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
 
       <View style={styles.cardContent}>
         <View style={styles.imageContainer}>
-          <Image 
-            source={property.images[0]} 
+          <Image
+            source={{ uri: property.images[0] as string }}
             style={styles.image}
-            resizeMode="cover" 
+            resizeMode="cover"
           />
         </View>
 
         <View style={styles.infoContainer}>
           <Text style={styles.location}>
-            {property.location.district || property.location.city}
+            {property.location?.district || property.location?.city}
           </Text>
           
           <Text style={styles.title} numberOfLines={1}>
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: colors.gray[800],
     marginBottom: 4,
   },
   detailsRow: {
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    color: colors.gray[900],
+    color: colors.gray[800],
   },
   details: {
     fontSize: typography.fontSize.sm,

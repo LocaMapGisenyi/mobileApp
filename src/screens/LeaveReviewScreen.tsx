@@ -78,7 +78,7 @@ const LeaveReviewScreen = () => {
         propertyId,
       authorId: user.id || 'anonymous_user',
       authorName: user.fullName || t('reviews.anonymousUser'),
-      authorAvatar: user.photoURL,
+      authorAvatar: user.photoURL || undefined,
         rating,
       comment: comment.trim(),
         isVerified: true,

@@ -29,11 +29,15 @@ const mockSavedProperties: Property[] = [
       'https://a0.muscache.com/im/pictures/miso/Hosting-47971380/original/aa078255-d1be-4e76-a28b-c28dc49973c4.jpeg'
     ],
     amenities: ['Wifi', 'Parking', 'Eau chaude', 'Jardin', 'Sécurité 24/7'],
-    ownerId: 'owner1',
+    owner: { id: 'owner1', name: 'Propriétaire' },
     verified: true,
     dateAdded: new Date('2023-08-15').toISOString(),
     rating: 4.8,
-    reviewCount: 24
+    reviewCount: 24,
+    available: true,
+    type: 'villa',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
     id: '2',
@@ -57,11 +61,15 @@ const mockSavedProperties: Property[] = [
       'https://a0.muscache.com/im/pictures/miso/Hosting-826494959841460145/original/32f161d5-b7a4-43a0-8909-f216428f8117.jpeg'
     ],
     amenities: ['Wifi', 'Parking', 'Balcon', 'Climatisation'],
-    ownerId: 'owner2',
+    owner: { id: 'owner2', name: 'Propriétaire' },
     verified: true,
     dateAdded: new Date('2023-09-20').toISOString(),
     rating: 4.6,
-    reviewCount: 18
+    reviewCount: 18,
+    available: true,
+    type: 'apartment',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
     id: '3',
@@ -85,11 +93,15 @@ const mockSavedProperties: Property[] = [
       'https://a0.muscache.com/im/pictures/prohost-api/Hosting-48509375/original/0e479ecc-4d7c-41f2-a3c1-9ba74abf15e2.jpeg'
     ],
     amenities: ['Wifi', 'Kitchenette', 'Vue sur le lac'],
-    ownerId: 'owner3',
+    owner: { id: 'owner3', name: 'Propriétaire' },
     verified: false,
     dateAdded: new Date('2023-10-05').toISOString(),
     rating: 4.2,
-    reviewCount: 8
+    reviewCount: 8,
+    available: true,
+    type: 'house',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
     id: '4',
@@ -113,11 +125,15 @@ const mockSavedProperties: Property[] = [
       'https://a0.muscache.com/im/pictures/miso/Hosting-43500243/original/f63bc77e-e666-4e1c-8787-497c62ef2a30.jpeg'
     ],
     amenities: ['Wifi', 'Parking', 'Jardin', 'Terrasse', 'Cuisine équipée', 'Machine à laver'],
-    ownerId: 'owner4',
+    owner: { id: 'owner4', name: 'Propriétaire' },
     verified: true,
     dateAdded: new Date('2023-07-10').toISOString(),
     rating: 4.9,
-    reviewCount: 36
+    reviewCount: 36,
+    available: true,
+    type: 'villa',
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 

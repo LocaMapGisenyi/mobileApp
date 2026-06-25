@@ -76,7 +76,7 @@ const PropertyDetailsScreen = () => {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${t('property.checkOut')} ${selectedProperty.title} - ${selectedProperty.location.city}`,
+        message: `${t('property.checkOut')} ${selectedProperty.title} - ${selectedProperty.location?.city}`,
         url: 'https://locamap.app/property/' + propertyId,
       });
     } catch (error) {
@@ -163,8 +163,8 @@ const PropertyDetailsScreen = () => {
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={18} color={colors.gray[500]} />
             <Text style={styles.locationText}>
-              {selectedProperty.location.district && `${selectedProperty.location.district}, `}
-              {selectedProperty.location.city}
+              {selectedProperty.location?.district && `${selectedProperty.location?.district}, `}
+              {selectedProperty.location?.city}
             </Text>
           </View>
           

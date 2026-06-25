@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { Card, Text, Chip, useTheme } from 'react-native-paper';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Property } from '../types';
 import { usePreferences } from '../store/preferences';
 import Animated, { FadeInRight } from 'react-native-reanimated';
@@ -31,8 +31,9 @@ const CardLogement = ({ logement, index, onPress }: CardLogementProps) => {
       };
       
       // Convertir depuis la devise originale vers la devise choisie
-      if (originalCurrency in rates && currency in rates[originalCurrency as keyof typeof rates]) {
-        const rate = rates[originalCurrency as keyof typeof rates][currency as keyof typeof rates[typeof originalCurrency]];
+      const ratesTyped = rates as Record<string, Record<string, number>>;
+      if (originalCurrency in ratesTyped && currency in (ratesTyped[originalCurrency] || {})) {
+        const rate = ratesTyped[originalCurrency][currency];
         convertedPrice = Math.round(price * rate);
       }
     }
@@ -125,7 +126,7 @@ const CardLogement = ({ logement, index, onPress }: CardLogementProps) => {
             
             <View style={styles.locationContainer}>
               <MaterialIcons name="place" size={16} color="#6366F1" />
-              <Text style={styles.location}>{logement.location.city}</Text>
+              <Text style={styles.location}>{logement.location?.city}</Text>
             </View>
           </View>
           

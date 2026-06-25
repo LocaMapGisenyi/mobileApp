@@ -70,7 +70,7 @@ const CarouselSlide = ({
               <View style={styles.optionContent}>
                 {option.icon && (
                   <Ionicons
-                    name={option.icon}
+                    name={option.icon as any}
                     size={24}
                     color={selectedValue === option.value ? colors.primary : colors.gray[500]}
                     style={styles.optionIcon}
@@ -99,7 +99,7 @@ const CarouselSlide = ({
               <View style={styles.switchLabelContainer}>
                 {option.icon && (
                   <Ionicons
-                    name={option.icon}
+                    name={option.icon as any}
                     size={24}
                     color={selectedValue ? colors.primary : colors.gray[500]}
                     style={styles.optionIcon}
