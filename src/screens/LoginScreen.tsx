@@ -97,7 +97,7 @@ const LoginScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        {/* Header */}
+        {/* Header bar */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('auth.login') || 'Connexion'}</Text>
         </View>
@@ -107,18 +107,17 @@ const LoginScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo / Titre */}
-          <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="home" size={40} color={colors.primary} />
-            </View>
+          {/* Hero / Logo section */}
+          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.heroSection}>
             <Text style={styles.appName}>LocaMap</Text>
             <Text style={styles.appSubtitle}>Trouvez votre logement à Gisenyi</Text>
+            <View style={styles.heroAccentLine} />
           </Animated.View>
 
+          {/* Form section */}
           <View style={styles.formContainer}>
-            {/* Champ email */}
-            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
+            {/* Email field */}
+            <Animated.View entering={FadeInDown.delay(160).duration(400)}>
               <TextInputField
                 label={t('auth.email') || 'Email'}
                 value={email}
@@ -134,8 +133,8 @@ const LoginScreen = () => {
               />
             </Animated.View>
 
-            {/* Champ mot de passe */}
-            <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+            {/* Password field */}
+            <Animated.View entering={FadeInDown.delay(220).duration(400)}>
               <TextInputField
                 label={t('auth.password') || 'Mot de passe'}
                 value={password}
@@ -150,11 +149,12 @@ const LoginScreen = () => {
               />
             </Animated.View>
 
-            {/* Lien mot de passe oublié */}
-            <Animated.View entering={FadeInDown.delay(350).duration(500)}>
+            {/* Forgot password */}
+            <Animated.View entering={FadeInDown.delay(270).duration(400)}>
               <TouchableOpacity
                 style={styles.forgotPassword}
                 onPress={() => navigation.navigate('ResetPassword')}
+                accessibilityRole="button"
               >
                 <Text style={styles.forgotPasswordText}>
                   {t('auth.forgotPassword') || 'Mot de passe oublié ?'}
@@ -162,16 +162,16 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Message d'erreur global */}
+            {/* Error message */}
             {error ? (
-              <Animated.View entering={FadeInDown.duration(300)} style={styles.errorContainer}>
+              <Animated.View entering={FadeInDown.duration(250)} style={styles.errorContainer}>
                 <Ionicons name="alert-circle" size={16} color={colors.error} />
                 <Text style={styles.errorText}>{error}</Text>
               </Animated.View>
             ) : null}
 
-            {/* Bouton connexion */}
-            <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+            {/* Login button */}
+            <Animated.View entering={FadeInDown.delay(320).duration(400)}>
               <Button
                 mode="contained"
                 onPress={handleLogin}
@@ -186,15 +186,15 @@ const LoginScreen = () => {
               </Button>
             </Animated.View>
 
-            {/* Séparateur */}
-            <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.dividerContainer}>
+            {/* Divider */}
+            <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.dividerContainer}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>{t('common.or') || 'ou'}</Text>
               <View style={styles.divider} />
             </Animated.View>
 
-            {/* Boutons sociaux — colonne */}
-            <Animated.View entering={FadeInDown.delay(600).duration(500)} style={styles.socialButtonsContainer}>
+            {/* Social buttons */}
+            <Animated.View entering={FadeInDown.delay(460).duration(400)} style={styles.socialButtonsContainer}>
               <TouchableOpacity
                 style={[styles.socialButton, { backgroundColor: colors.google }]}
                 onPress={() => handleSocialLogin('Google')}
@@ -232,12 +232,15 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Lien inscription */}
-            <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.registerContainer}>
+            {/* Register link */}
+            <Animated.View entering={FadeInDown.delay(540).duration(400)} style={styles.registerContainer}>
               <Text style={styles.registerText}>
                 {t('auth.noAccount') || 'Pas encore de compte ?'}
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Register')}
+                accessibilityRole="button"
+              >
                 <Text style={styles.registerLink}>
                   {' '}{t('auth.register') || "S'inscrire"}
                 </Text>
@@ -253,56 +256,68 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
   },
+
+  // ─── Header bar ───────────────────────────────────────────────────────────────
   header: {
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray[800],
+    color: colors.ink,
   },
+
+  // ─── Scroll ───────────────────────────────────────────────────────────────────
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: spacing[12],
+    paddingBottom: 120,
   },
-  logoContainer: {
+
+  // ─── Hero section ─────────────────────────────────────────────────────────────
+  heroSection: {
+    backgroundColor: colors.surfaceSunken,
+    paddingVertical: 40,
+    paddingHorizontal: spacing[5],
     alignItems: 'center',
-    paddingTop: spacing[8],
-    paddingBottom: spacing[6],
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.gray[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
   },
   appName: {
     fontSize: typography.fontSize['2xl'],
-    fontWeight: '700',
-    color: colors.gray[800],
-    marginBottom: spacing[1],
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: -0.5,
   },
   appSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    fontSize: typography.fontSize.base,
+    color: colors.inkSubtle,
+    textAlign: 'center',
+    marginTop: spacing[2],
   },
+  heroAccentLine: {
+    width: 40,
+    height: 3,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+
+  // ─── Form ─────────────────────────────────────────────────────────────────────
   formContainer: {
     paddingHorizontal: spacing[5],
+    paddingTop: spacing[6],
   },
+
+  // ─── Forgot password ──────────────────────────────────────────────────────────
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: spacing[5],
@@ -313,10 +328,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
+
+  // ─── Error container ──────────────────────────────────────────────────────────
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF1F2',
+    backgroundColor: '#FFF1F0',
+    borderWidth: 1,
+    borderColor: colors.error,
     borderRadius: borderRadius.md,
     padding: spacing[3],
     marginBottom: spacing[4],
@@ -327,17 +346,22 @@ const styles = StyleSheet.create({
     color: colors.error,
     flex: 1,
   },
+
+  // ─── Login button ─────────────────────────────────────────────────────────────
   loginButton: {
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     marginBottom: spacing[5],
   },
   buttonContent: {
-    height: 50,
+    height: 52,
   },
   buttonLabel: {
     fontSize: typography.fontSize.base,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: colors.white,
   },
+
+  // ─── Divider ──────────────────────────────────────────────────────────────────
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,13 +370,15 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.gray[200],
+    backgroundColor: colors.border,
   },
   dividerText: {
     paddingHorizontal: spacing[3],
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: colors.inkSubtle,
   },
+
+  // ─── Social buttons ───────────────────────────────────────────────────────────
   socialButtonsContainer: {
     gap: spacing[3],
     marginBottom: spacing[6],
@@ -361,15 +387,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     height: 50,
     gap: spacing[3],
   },
   socialButtonText: {
     fontSize: typography.fontSize.base,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.white,
   },
+
+  // ─── Register link ────────────────────────────────────────────────────────────
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -377,12 +405,12 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
   },
   registerLink: {
     fontSize: typography.fontSize.sm,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 

@@ -1,30 +1,27 @@
 import React from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert, 
-  SafeAreaView, 
-  StatusBar, 
-  Image,
-  Platform
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  StatusBar,
+  Platform,
+  Text as RNText,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import { 
-  Avatar, 
-  Text, 
-  Button, 
-  Divider, 
-  Surface, 
-  useTheme
+import {
+  Avatar,
+  Text,
+  useTheme,
 } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useUser, useUserActions } from '../store/user';
 import { usePreferences } from '../store/preferences';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
 import { useSyncLanguage } from '../hooks/useLanguage';
 import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
@@ -33,94 +30,96 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 
 // Card wrapper component for section items
 const SectionCard = ({ children, style = {} }: { children: React.ReactNode; style?: object }) => {
-  const theme = useTheme();
   return (
-    <Surface 
-      style={[
-        styles.sectionCard, 
-        { backgroundColor: theme.colors.surface },
-        style
-      ]}
-      elevation={1}
-    >
+    <View style={[styles.sectionCard, style]}>
       {children}
-    </Surface>
+    </View>
   );
 };
 
 // Item component for action items
-const ActionItem = ({ title, icon, iconColor, onPress, comingSoon = false }: {
+const ActionItem = ({
+  title,
+  icon,
+  iconColor,
+  onPress,
+  comingSoon = false,
+  isLast = false,
+}: {
   title: string;
   icon: string;
   iconColor?: string;
   onPress: () => void;
   comingSoon?: boolean;
+  isLast?: boolean;
 }) => {
-  const theme = useTheme();
-
   return (
-    <TouchableOpacity
-      style={[styles.actionItem, comingSoon && styles.actionItemDisabled]}
-      onPress={onPress}
-      activeOpacity={comingSoon ? 1 : 0.7}
-    >
-      <View style={styles.actionItemLeft}>
-        <MaterialIcons
-          name={icon as any}
-          size={24}
-          color={comingSoon ? theme.colors.onSurfaceVariant : (iconColor || theme.colors.primary)}
-          style={styles.actionIcon}
-        />
-        <Text style={[styles.actionTitle, { color: comingSoon ? theme.colors.onSurfaceVariant : theme.colors.onSurface }]}>
-          {title}
-        </Text>
-        {comingSoon && (
-          <View style={styles.comingSoonBadge}>
-            <Text style={styles.comingSoonText}>Bientôt</Text>
-          </View>
-        )}
-      </View>
-      <MaterialIcons
-        name="chevron-right"
-        size={24}
-        color={theme.colors.onSurfaceVariant}
-      />
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={[styles.actionItem, comingSoon && styles.actionItemDisabled]}
+        onPress={onPress}
+        activeOpacity={comingSoon ? 1 : 0.7}
+      >
+        <View style={styles.actionItemLeft}>
+          <MaterialIcons
+            name={icon as any}
+            size={22}
+            color={comingSoon ? colors.inkSubtle : (iconColor || colors.primary)}
+            style={styles.actionIcon}
+          />
+          <Text style={[styles.actionTitle, comingSoon && styles.actionTitleDisabled]}>
+            {title}
+          </Text>
+          {comingSoon && (
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>Bientôt</Text>
+            </View>
+          )}
+        </View>
+        <RNText style={styles.chevron}>›</RNText>
+      </TouchableOpacity>
+      {!isLast && <View style={styles.itemDivider} />}
+    </>
   );
 };
 
 // Preference item component
-const PreferenceItem = ({ title, value, icon, onPress }: { title: string; value: string; icon: string; onPress: () => void }) => {
-  const theme = useTheme();
-  
+const PreferenceItem = ({
+  title,
+  value,
+  icon,
+  onPress,
+  isLast = false,
+}: {
+  title: string;
+  value: string;
+  icon: string;
+  onPress: () => void;
+  isLast?: boolean;
+}) => {
   return (
-    <TouchableOpacity 
-      style={styles.preferenceItem} 
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.preferenceItemLeft}>
-        <MaterialIcons 
-          name={icon as any} 
-          size={24} 
-          color={theme.colors.primary} 
-          style={styles.preferenceIcon} 
-        />
-        <Text style={[styles.preferenceTitle, { color: theme.colors.onSurface }]}>
-          {title}
-        </Text>
-      </View>
-      <View style={styles.preferenceValueContainer}>
-        <Text style={[styles.preferenceValue, { color: theme.colors.onSurfaceVariant }]}>
-          {value}
-        </Text>
-        <MaterialIcons 
-          name="chevron-right" 
-          size={20} 
-          color={theme.colors.onSurfaceVariant} 
-        />
-      </View>
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={styles.preferenceItem}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.preferenceItemLeft}>
+          <MaterialIcons
+            name={icon as any}
+            size={22}
+            color={colors.primary}
+            style={styles.preferenceIcon}
+          />
+          <Text style={styles.preferenceTitle}>{title}</Text>
+        </View>
+        <View style={styles.preferenceValueContainer}>
+          <Text style={styles.preferenceValue}>{value}</Text>
+          <RNText style={styles.chevron}>›</RNText>
+        </View>
+      </TouchableOpacity>
+      {!isLast && <View style={styles.itemDivider} />}
+    </>
   );
 };
 
@@ -131,13 +130,13 @@ const ProfileScreen = () => {
   const { logout } = useUserActions();
   const preferences = usePreferences();
   const { t, i18n } = useTranslation();
-  
+
   // Synchroniser la langue
   useSyncLanguage();
 
   // Calculate member since date from user id
-  const memberSinceDate = user.isLoggedIn && user.id ? 
-    new Date(parseInt(user.id.split('-')[1])).toLocaleDateString(preferences.language, { year: 'numeric', month: 'long' }) 
+  const memberSinceDate = user.isLoggedIn && user.id
+    ? new Date(parseInt(user.id.split('-')[1])).toLocaleDateString(preferences.language, { year: 'numeric', month: 'long' })
     : 'August 2024'; // Fallback date for demo
 
   // Languages and currencies options
@@ -147,7 +146,7 @@ const ProfileScreen = () => {
     { value: 'rw', label: t('languages.rw'), icon: '🇷🇼' },
     { value: 'sw', label: t('languages.sw'), icon: '🇹🇿' },
   ];
-  
+
   const currencyOptions = [
     { value: 'RWF', label: t('currencies.RWF'), icon: 'FRw' },
     { value: 'USD', label: t('currencies.USD'), icon: '$' },
@@ -185,12 +184,12 @@ const ProfileScreen = () => {
     // Placeholder for terms and conditions
     Alert.alert('Terms and Conditions', 'This will show the terms and conditions in a future update.');
   };
-  
+
   // Show support screen (placeholder)
   const showSupport = () => {
     Alert.alert('Support', 'This will show the support screen in a future update.');
   };
-  
+
   // Show about screen (placeholder)
   const showAbout = () => {
     Alert.alert('About LocaMap', 'This will show information about LocaMap in a future update.');
@@ -216,7 +215,7 @@ const ProfileScreen = () => {
           text: t('profile.logout'),
           style: 'destructive',
           onPress: async () => {
-    await logout();
+            await logout();
             await preferences.resetPreferences(); // Reset preferences on logout
           },
         },
@@ -227,22 +226,22 @@ const ProfileScreen = () => {
   // Helper functions to get display names
   const getLanguageDisplayName = (langCode: string) => {
     return t(`languages.${langCode}`);
-  }
+  };
 
   const getCurrencySymbol = (currencyCode: string) => {
-    switch(currencyCode) {
+    switch (currencyCode) {
       case 'USD': return '$';
       case 'EUR': return '€';
       case 'RWF': return 'FRw';
       default: return currencyCode;
     }
-  }
+  };
 
   const getNotificationStatus = () => {
-    return preferences.notifications 
-      ? t('profile.notificationsEnabled') 
+    return preferences.notifications
+      ? t('profile.notificationsEnabled')
       : t('profile.notificationsDisabled');
-  }
+  };
 
   // Function to handle language selection directly
   const handleLanguageSelect = () => {
@@ -252,15 +251,15 @@ const ProfileScreen = () => {
       onPress: async () => {
         await preferences.setLanguage(opt.value as any);
         i18n.changeLanguage(opt.value);
-      }
+      },
     }));
-    
+
     // Show language selector
-    Platform.OS === 'ios' 
+    Platform.OS === 'ios'
       ? showIOSActionSheet(t('preferences.chooseLanguage'), options)
       : showAndroidOptionDialog(t('preferences.chooseLanguage'), options);
   };
-  
+
   // Function to handle currency selection directly
   const handleCurrencySelect = () => {
     // Prepare options for the selector
@@ -268,28 +267,28 @@ const ProfileScreen = () => {
       text: `${opt.icon} ${opt.label}`,
       onPress: async () => {
         await preferences.setCurrency(opt.value as any);
-      }
+      },
     }));
-    
+
     // Show currency selector
     Platform.OS === 'ios'
       ? showIOSActionSheet(t('preferences.chooseCurrency'), options)
       : showAndroidOptionDialog(t('preferences.chooseCurrency'), options);
   };
-  
+
   // Helper functions for selectors
   const showIOSActionSheet = (title: string, options: Array<{ text: string; onPress: () => void }>) => {
     const buttons = [
       ...options.map(opt => ({ text: opt.text, onPress: opt.onPress })),
-      { text: t('common.cancel'), style: 'cancel' }
+      { text: t('common.cancel'), style: 'cancel' },
     ];
-    
+
     // ActionSheetIOS for iOS
     require('react-native').ActionSheetIOS.showActionSheetWithOptions(
       {
         options: buttons.map(b => b.text),
         cancelButtonIndex: buttons.length - 1,
-        title
+        title,
       },
       (buttonIndex: number) => {
         if (buttonIndex !== buttons.length - 1 && buttonIndex >= 0) {
@@ -299,7 +298,7 @@ const ProfileScreen = () => {
       }
     );
   };
-  
+
   const showAndroidOptionDialog = (title: string, options: Array<{ text: string; onPress: () => void }>) => {
     // Alert.alert for Android
     require('react-native').Alert.alert(
@@ -308,9 +307,9 @@ const ProfileScreen = () => {
       [
         ...options.map(opt => ({
           text: opt.text,
-          onPress: opt.onPress
+          onPress: opt.onPress,
         })),
-        { text: t('common.cancel'), style: 'cancel' }
+        { text: t('common.cancel'), style: 'cancel' },
       ],
       { cancelable: true }
     );
@@ -332,362 +331,404 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
-      
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={colors.background}
+      />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Profile Header Section */}
-        <Animated.View entering={FadeIn.duration(500)} style={styles.headerContainer}>
-          <SectionCard style={styles.profileHeader}>
-            {/* User Avatar */}
-            <View style={styles.avatarContainer}>
-          {user.photoURL ? (
-            <Avatar.Image
-                  size={90}
-              source={{ uri: user.photoURL }}
-              style={styles.avatar}
-            />
-          ) : (
-                <Avatar.Text 
-                  size={90} 
-                  label={user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'U'} 
-                  style={[styles.avatar, { backgroundColor: theme.colors.primary }]} 
-                  color={theme.colors.surface}
-                />
-              )}
-            </View>
-            
-            {/* User Info */}
-            <View style={styles.userInfoContainer}>
-              <Text style={[styles.userName, { color: theme.colors.onSurface }]}>
-                {user.fullName || 'Guest User'}
-              </Text>
-              
-              <Text style={[styles.userEmail, { color: theme.colors.onSurfaceVariant }]}>
-                {user.email || 'guest@example.com'}
-              </Text>
-              
-              <Text style={[styles.memberSince, { color: theme.colors.onSurfaceVariant }]}>
-                {t('profile.memberSince', { date: memberSinceDate })}
-              </Text>
-          
-          <Button
-            mode="outlined"
-            onPress={navigateToEditProfile}
-            style={styles.editButton}
-            labelStyle={styles.editButtonLabel}
-                icon={() => <MaterialIcons name="edit" size={16} color={theme.colors.primary} />}
-          >
-            {t('profile.editProfile')}
-          </Button>
-        </View>
-          </SectionCard>
+        {/* Profile Header — full-width flush block, no card elevation */}
+        <Animated.View entering={FadeIn.duration(400)} style={styles.profileHeader}>
+          {/* Avatar */}
+          <View style={styles.avatarContainer}>
+            {user.photoURL ? (
+              <Avatar.Image
+                size={72}
+                source={{ uri: user.photoURL }}
+              />
+            ) : (
+              <Avatar.Text
+                size={72}
+                label={user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'U'}
+                style={styles.avatarText}
+                color={colors.white}
+              />
+            )}
+          </View>
+
+          {/* User Info */}
+          <View style={styles.userInfoContainer}>
+            <Text style={styles.userName}>
+              {user.fullName || 'Guest User'}
+            </Text>
+
+            <Text style={styles.userEmail}>
+              {user.email || 'guest@example.com'}
+            </Text>
+
+            <Text style={styles.memberSince}>
+              {t('profile.memberSince', { date: memberSinceDate })}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={navigateToEditProfile}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="edit" size={14} color={colors.primary} style={styles.editButtonIcon} />
+              <RNText style={styles.editButtonLabel}>{t('profile.editProfile')}</RNText>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
-        
+
         {/* Quick Actions Section */}
-        <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
+        <Animated.View entering={FadeInUp.delay(100).duration(350)} style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
             {t('profile.actionsTitle')}
           </Text>
-          
+
           <SectionCard>
-            <ActionItem 
-              title={t('profile.myFavorites')} 
-              icon="favorite-border" 
-              onPress={navigateToFavorites} 
+            <ActionItem
+              title={t('profile.myFavorites')}
+              icon="favorite-border"
+              onPress={navigateToFavorites}
             />
-            <Divider style={styles.divider} />
-            
-            <ActionItem 
-              title={t('profile.myAlerts')} 
-              icon="notifications-none" 
-              onPress={navigateToAlerts} 
+            <ActionItem
+              title={t('profile.myAlerts')}
+              icon="notifications-none"
+              onPress={navigateToAlerts}
             />
-            <Divider style={styles.divider} />
-            
             <ActionItem
               title={t('profile.myGuides') || 'Guides locaux'}
               icon="menu-book"
               onPress={() => {}}
               comingSoon
             />
-        <Divider style={styles.divider} />
-        
-            <ActionItem 
-              title={t('profile.viewHistory')} 
-              icon="history" 
-              onPress={navigateToHistory} 
+            <ActionItem
+              title={t('profile.viewHistory')}
+              icon="history"
+              onPress={navigateToHistory}
+              isLast
             />
           </SectionCard>
         </Animated.View>
-        
+
         {/* Preferences Section */}
-        <Animated.View entering={FadeInUp.delay(200).duration(400)} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
+        <Animated.View entering={FadeInUp.delay(180).duration(350)} style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
             {t('profile.preferencesTitle')}
           </Text>
-        
+
           <SectionCard>
-            <PreferenceItem 
-              title={t('profile.language')} 
-              value={getLanguageDisplayName(preferences.language)} 
-              icon="language" 
+            <PreferenceItem
+              title={t('profile.language')}
+              value={getLanguageDisplayName(preferences.language)}
+              icon="language"
               onPress={navigateToLanguageSettings}
             />
-            <Divider style={styles.divider} />
-            
-            <PreferenceItem 
-              title={t('profile.currency')} 
-              value={`${preferences.currency} (${getCurrencySymbol(preferences.currency)})`} 
-              icon="attach-money" 
+            <PreferenceItem
+              title={t('profile.currency')}
+              value={`${preferences.currency} (${getCurrencySymbol(preferences.currency)})`}
+              icon="attach-money"
               onPress={navigateToCurrencySettings}
             />
-        <Divider style={styles.divider} />
-        
-            <PreferenceItem 
-              title={t('profile.notifications')} 
-              value={getNotificationStatus()} 
-              icon="notifications" 
+            <PreferenceItem
+              title={t('profile.notifications')}
+              value={getNotificationStatus()}
+              icon="notifications"
               onPress={toggleNotifications}
+              isLast
             />
           </SectionCard>
         </Animated.View>
-        
+
         {/* App & Info Section */}
-        <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
+        <Animated.View entering={FadeInUp.delay(260).duration(350)} style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
             {t('profile.appInfoTitle')}
           </Text>
-          
+
           <SectionCard>
-            <ActionItem 
-              title={t('profile.termsAndConditions')} 
-              icon="description" 
-              onPress={showTermsConditions} 
+            <ActionItem
+              title={t('profile.termsAndConditions')}
+              icon="description"
+              onPress={showTermsConditions}
             />
-            <Divider style={styles.divider} />
-            
-            <ActionItem 
-              title={t('profile.support')} 
-              icon="support-agent" 
-              onPress={showSupport} 
+            <ActionItem
+              title={t('profile.support')}
+              icon="support-agent"
+              onPress={showSupport}
             />
-            <Divider style={styles.divider} />
-            
-            <ActionItem 
-              title={t('profile.aboutLocaMap')} 
-              icon="info-outline" 
-              onPress={showAbout} 
+            <ActionItem
+              title={t('profile.aboutLocaMap')}
+              icon="info-outline"
+              onPress={showAbout}
+              isLast
             />
           </SectionCard>
         </Animated.View>
-        
+
         {/* Logout Button */}
-        <Animated.View entering={FadeInUp.delay(400).duration(400)} style={styles.logoutContainer}>
-          <Button
-            mode="contained"
+        <Animated.View entering={FadeInUp.delay(340).duration(350)} style={styles.logoutContainer}>
+          <TouchableOpacity
+            style={styles.logoutButton}
             onPress={handleLogout}
-            style={[styles.logoutButton, { backgroundColor: theme.colors.error }]}
-            labelStyle={styles.logoutButtonLabel}
-            icon={() => <MaterialIcons name="logout" size={20} color="white" />}
+            activeOpacity={0.85}
           >
-            {t('profile.logout')}
-          </Button>
+            <MaterialIcons name="logout" size={20} color={colors.white} style={styles.logoutIcon} />
+            <RNText style={styles.logoutButtonLabel}>{t('profile.logout')}</RNText>
+          </TouchableOpacity>
         </Animated.View>
-        
-        {/* Bottom padding */}
-        <View style={{ height: 90 }} />
+
+        {/* Bottom padding — space for floating button + navbar pill */}
+        <View style={{ height: 140 }} />
       </ScrollView>
 
-      {/* Floating Become a Host Button */}
+      {/* Floating Become a Host button */}
       <TouchableOpacity
-        style={[styles.becomeHostButton, { backgroundColor: colors.primary }]}
+        style={styles.becomeHostButton}
         onPress={navigateToBecomeHost}
-        activeOpacity={0.9}
+        activeOpacity={0.88}
       >
         <MaterialIcons name="add-home" size={20} color={colors.white} style={styles.becomeHostIcon} />
-        <Text style={styles.becomeHostText}>{t('host.become')}</Text>
+        <RNText style={styles.becomeHostText}>{t('host.become')}</RNText>
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // ─── Screen shell ────────────────────────────────────────────────────────────
   safeArea: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingVertical: spacing[2],
+    paddingBottom: 140,
   },
-  headerContainer: {
-    marginHorizontal: spacing[4],
-    marginBottom: spacing[3],
-  },
+
+  // ─── Profile header — flush, no elevation ────────────────────────────────────
   profileHeader: {
-    padding: spacing[4],
-    borderRadius: borderRadius.lg,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[5],
+    paddingBottom: spacing[5],
   },
   avatarContainer: {
     marginRight: spacing[4],
   },
-  avatar: {
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  avatarText: {
+    backgroundColor: colors.primary,
   },
   userInfoContainer: {
     flex: 1,
   },
   userName: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: '600',
-    marginBottom: spacing[1],
+    fontSize: typography.fontSize.xl,    // 24px
+    fontWeight: '700',
+    color: colors.ink,
+    marginBottom: 2,
   },
   userEmail: {
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing[1],
+    fontSize: typography.fontSize.sm,   // 13px
+    color: colors.inkSubtle,
+    marginBottom: 2,
   },
   memberSince: {
-    fontSize: typography.fontSize.xs,
-    marginBottom: spacing[2],
-  },
-  editButton: {
-    alignSelf: 'flex-start',
-    borderRadius: borderRadius.md,
-    marginTop: spacing[1],
-  },
-  editButtonLabel: {
-    fontSize: typography.fontSize.sm,
-  },
-  sectionContainer: {
-    marginHorizontal: spacing[4],
+    fontSize: typography.fontSize.xs,   // 11px
+    color: colors.inkSubtle,
     marginBottom: spacing[3],
   },
-  sectionTitle: {
-    fontSize: typography.fontSize.sm,
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,      // 6px
+    paddingVertical: 5,
+    paddingHorizontal: spacing[3],
+    backgroundColor: colors.surface,
+  },
+  editButtonIcon: {
+    marginRight: 5,
+  },
+  editButtonLabel: {
+    fontSize: typography.fontSize.sm,   // 13px
+    color: colors.primary,
     fontWeight: '500',
-    letterSpacing: 0.5,
+  },
+
+  // ─── Section layout ──────────────────────────────────────────────────────────
+  sectionContainer: {
+    marginHorizontal: spacing[4],
+    marginTop: spacing[5],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.xs,   // 11px
+    fontWeight: '700',
+    color: colors.inkSubtle,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: spacing[2],
-    marginLeft: spacing[1],
+    marginLeft: 2,
   },
+
+  // ─── Section card ────────────────────────────────────────────────────────────
   sectionCard: {
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.card,    // 12px
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
+
+  // ─── Action item ─────────────────────────────────────────────────────────────
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[4],
   },
   actionItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   actionIcon: {
     marginRight: spacing[3],
   },
   actionTitle: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.base, // 15px
     fontWeight: '500',
+    color: colors.ink,
+  },
+  actionTitleDisabled: {
+    color: colors.inkSubtle,
   },
   actionItemDisabled: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
+  chevron: {
+    fontSize: typography.fontSize.lg,  // 20px
+    color: colors.inkSubtle,
+    lineHeight: 24,
+    marginLeft: spacing[2],
+  },
+
+  // ─── Item divider (full-width inside card) ───────────────────────────────────
+  itemDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 0,
+  },
+
+  // ─── Coming soon badge ───────────────────────────────────────────────────────
   comingSoonBadge: {
     marginLeft: spacing[2],
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing[2],
     paddingVertical: 2,
   },
   comingSoonText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.white,
+    fontSize: typography.fontSize.xs,  // 11px
+    color: colors.inkSubtle,
     fontWeight: '600',
   },
-  divider: {
-    height: 1,
-    marginHorizontal: spacing[4],
-  },
+
+  // ─── Preference item ─────────────────────────────────────────────────────────
   preferenceItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[4],
   },
   preferenceItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   preferenceIcon: {
     marginRight: spacing[3],
   },
   preferenceTitle: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.base, // 15px
     fontWeight: '500',
-  },
-  preferenceValue: {
-    fontSize: typography.fontSize.sm,
+    color: colors.ink,
   },
   preferenceValueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  editPreferencesButton: {
+  preferenceValue: {
+    fontSize: typography.fontSize.sm,  // 13px
+    fontWeight: '600',
+    color: colors.primary,
+    marginRight: 4,
+  },
+
+  // ─── Logout ──────────────────────────────────────────────────────────────────
+  logoutContainer: {
+    marginHorizontal: spacing[4],
+    marginTop: spacing[5],
+  },
+  logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing[3],
-    marginTop: spacing[1],
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.md,      // 6px
+    height: 52,
   },
-  logoutContainer: {
-    marginHorizontal: spacing[4],
-    marginTop: spacing[2],
-  },
-  logoutButton: {
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing[1],
+  logoutIcon: {
+    marginRight: spacing[2],
   },
   logoutButtonLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base, // 15px
+    fontWeight: '700',
+    color: colors.white,
   },
-  // Floating Button Styles
+
+  // ─── Floating "Become a Host" pill ───────────────────────────────────────────
   becomeHostButton: {
     position: 'absolute',
     bottom: 90,
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 30,
+    // Tinted teal shadow per design system
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    zIndex: 999,
+    zIndex: 10,
   },
   becomeHostIcon: {
-    marginRight: 8,
+    marginRight: spacing[2],
   },
   becomeHostText: {
     color: colors.white,
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: typography.fontSize.sm,  // 13px
   },
 });
 
-export default ProfileScreen; 
+export default ProfileScreen;

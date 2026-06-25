@@ -53,55 +53,55 @@ const CUSTOM_CATEGORIES = [
     id: 'all',
     labelKey: 'explore.categories.all',
     icon: 'explore',
-    color: '#FF5A5F',
+    color: themeColors.primary,
   },
   {
     id: 'lake_view',
     labelKey: 'explore.categories.lake',
     icon: 'water',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     amenityFilter: ['Vue sur le lac', 'Lakefront']
   },
   {
     id: 'student',
     labelKey: 'explore.categories.student',
     icon: 'school',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     amenityFilter: ['Pour étudiants', 'Student housing']
   },
   {
     id: 'furnished',
     labelKey: 'explore.categories.furnished',
     icon: 'chair',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     amenityFilter: ['Meublé', 'Furnished']
   },
   {
     id: 'longTerm',
     labelKey: 'explore.categories.longTerm',
     icon: 'event-available',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     amenityFilter: ['Long séjour', 'Long term']
   },
   {
     id: 'villa',
     labelKey: 'explore.categories.villas',
     icon: 'villa',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     propertyType: 'villa'
   },
   {
     id: 'appartement',
     labelKey: 'explore.categories.apartments',
     icon: 'apartment',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     propertyType: 'appartement'
   },
   {
     id: 'new',
     labelKey: 'explore.categories.new',
     icon: 'fiber-new',
-    color: '#FF5A5F',
+    color: themeColors.primary,
     isNew: true
   }
 ];
@@ -138,7 +138,7 @@ const ExplorerScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
-  
+
   // Animation values for scroll-based effects
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -163,7 +163,7 @@ const ExplorerScreen = () => {
       shadowOffset: { width: 0, height: elevation * 0.5 },
     };
   });
-  
+
   const handleFetchListings = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     await fetchListings();
@@ -185,21 +185,21 @@ const ExplorerScreen = () => {
 
   const handleCategoryPress = (categoryId: string) => {
     setActiveCategory(categoryId);
-    
+
     const category = CUSTOM_CATEGORIES.find(cat => cat.id === categoryId);
-    
+
     if (categoryId === 'all') {
       // Reset filters but keep the search query if any
-      const newFilters: Partial<SearchFilters> = { 
-        ...filters, 
+      const newFilters: Partial<SearchFilters> = {
+        ...filters,
         propertyType: undefined,
         amenities: undefined
       };
       setFilters(newFilters);
     } else if (category?.amenityFilter) {
       // Filter by amenities
-      setFilters({ 
-        ...filters, 
+      setFilters({
+        ...filters,
         amenities: category.amenityFilter
       });
     } else if (category?.propertyType) {
@@ -212,19 +212,19 @@ const ExplorerScreen = () => {
       // Filter for 'new' properties (added in the last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       // Apply a custom filter for new properties
-      // Since our SearchFilters doesn't have dateAddedAfter directly, 
+      // Since our SearchFilters doesn't have dateAddedAfter directly,
       // we'll filter the listings after applying other filters
       setFilters({
         ...filters,
         // We'll handle the date filter in the rendering
       });
     }
-    
+
     applyFilters();
   };
-  
+
   const onResetFilters = () => {
     resetFilters();
     setActiveCategory('all');
@@ -242,7 +242,7 @@ const ExplorerScreen = () => {
         return `${price.toLocaleString()} RWF`;
     }
   };
-  
+
   const renderCategoryItem = ({ item, index }: { item: typeof CUSTOM_CATEGORIES[0]; index: number }) => (
     <Animated.View
       entering={FadeInRight.delay(index * 30).duration(300)}
@@ -261,7 +261,7 @@ const ExplorerScreen = () => {
         <MaterialIcons
           name={item.icon as any}
           size={20}
-          color={activeCategory === item.id ? themeColors.white : themeColors.black}
+          color={activeCategory === item.id ? themeColors.white : themeColors.inkMid}
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
@@ -281,7 +281,7 @@ const ExplorerScreen = () => {
   const renderPropertyCard = ({ item, index }: { item: Property; index: number }) => {
     const currentlyFavorite = isFavorite(item.id);
     const isNew = new Date(item.createdAt).getTime() > Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
+
     const handleToggleFavorite = () => {
       if (currentlyFavorite) {
         removeFavorite(item.id);
@@ -291,10 +291,9 @@ const ExplorerScreen = () => {
     };
 
     return (
-      <Animated.View 
-        entering={FadeInUp.delay(index * 50).duration(300)}
+      <View
         style={[
-          styles.cardWrapper, 
+          styles.cardWrapper,
           { width: numColumns === 1 ? '100%' : '50%' }
         ]}
       >
@@ -303,13 +302,16 @@ const ExplorerScreen = () => {
           onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
           style={styles.propertyCard}
         >
-          <View style={styles.imageContainer}>
-            <Image 
-              source={{ uri: Array.isArray(item.images) && item.images.length > 0 ? 
-                item.images[0] : 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80' 
-              }} 
-              style={styles.propertyImage} 
-              resizeMode="cover" 
+          <Animated.View
+            entering={FadeInUp.delay(index * 50).duration(300)}
+            style={styles.imageContainer}
+          >
+            <Image
+              source={{ uri: Array.isArray(item.images) && item.images.length > 0 ?
+                item.images[0] : 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80'
+              }}
+              style={styles.propertyImage}
+              resizeMode="cover"
             />
             <TouchableOpacity
               style={styles.favoriteButton}
@@ -329,7 +331,7 @@ const ExplorerScreen = () => {
                 <Text style={styles.badgeText}>{t('common.new')}</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
 
           <View style={styles.propertyInfo}>
             <View style={styles.ratingRow}>
@@ -338,19 +340,19 @@ const ExplorerScreen = () => {
               </Text>
               {item.rating && (
                 <View style={styles.ratingContainer}>
-                  <MaterialIcons name="star" size={16} color={themeColors.black} />
+                  <MaterialIcons name="star" size={14} color={themeColors.inkMid} />
                   <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
                 </View>
               )}
             </View>
-            
+
             <Text style={styles.titleText} numberOfLines={1}>{item.title}</Text>
-            
+
             <Text style={styles.detailsText}>
               {item.bedrooms} {t('property.bedrooms')} · {item.bathrooms} {t('property.bathrooms')}
               {item.size ? ` · ${item.size}m²` : ''}
             </Text>
-            
+
             <View style={styles.priceContainer}>
               <Text style={styles.priceText}>
                 <Text style={styles.priceBold}>
@@ -361,21 +363,21 @@ const ExplorerScreen = () => {
             </View>
           </View>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Animated.View entering={FadeIn.duration(400)} style={styles.emptyContent}>
-        <MaterialIcons name="search-off" size={56} color={themeColors.gray[400]} />
+        <MaterialIcons name="search-off" size={56} color={themeColors.inkDisabled} />
         <Text style={styles.emptyTitle}>{t('explore.noResults')}</Text>
         <Text style={styles.emptySubtitle}>{t('explore.tryDifferent')}</Text>
         <Button
           mode="contained"
           onPress={onResetFilters}
           style={styles.resetButton}
-          buttonColor={themeColors.error}
+          buttonColor={themeColors.primary}
         >
           {t('explore.resetFilters')}
         </Button>
@@ -384,16 +386,16 @@ const ExplorerScreen = () => {
   );
 
   // Filter new items if the "new" category is selected
-  const displayedListings = activeCategory === 'new' 
+  const displayedListings = activeCategory === 'new'
     ? filteredListings.filter(
         item => new Date(item.createdAt).getTime() > Date.now() - (30 * 24 * 60 * 60 * 1000)
       )
     : filteredListings;
-  
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={themeColors.white} />
-      
+      <StatusBar barStyle="dark-content" backgroundColor={themeColors.surface} />
+
       {/* Sticky Search Bar */}
       <Animated.View style={[styles.searchBarContainer, searchBarAnimatedStyle]}>
         <TouchableOpacity
@@ -404,7 +406,7 @@ const ExplorerScreen = () => {
           accessibilityLabel={t('explore.searchPlaceholder')}
           accessibilityHint="Ouvre les filtres de recherche"
         >
-          <MaterialIcons name="search" size={24} color={themeColors.black} style={styles.searchIcon} />
+          <MaterialIcons name="search" size={22} color={themeColors.inkMid} style={styles.searchIcon} />
           <Text style={styles.searchPlaceholder}>{t('explore.searchPlaceholder')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -415,7 +417,7 @@ const ExplorerScreen = () => {
           accessibilityHint="Ouvre le panneau de filtres"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <MaterialIcons name="tune" size={24} color={themeColors.black} />
+          <MaterialIcons name="tune" size={22} color={themeColors.inkMid} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.filterButton}
@@ -424,10 +426,10 @@ const ExplorerScreen = () => {
           accessibilityLabel="Voir sur la carte"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <MaterialIcons name="map" size={24} color={themeColors.black} />
+          <MaterialIcons name="map" size={22} color={themeColors.inkMid} />
         </TouchableOpacity>
       </Animated.View>
-      
+
       {/* Main Content */}
       <Animated.ScrollView
         style={styles.container}
@@ -455,14 +457,17 @@ const ExplorerScreen = () => {
             contentContainerStyle={styles.categoriesList}
           />
         </View>
-        
+
         {/* Results Count */}
-        <View style={styles.resultsCountContainer}>
-          <Text style={styles.resultsCount}>
-            {displayedListings.length} {t('explore.results')}
-          </Text>
+        <View style={styles.resultsCountWrapper}>
+          <View style={styles.resultsSeparator} />
+          <View style={styles.resultsCountContainer}>
+            <Text style={styles.resultsCount}>
+              {displayedListings.length} {t('explore.results')}
+            </Text>
+          </View>
         </View>
-        
+
         {/* Properties section */}
         <View style={styles.propertiesSection}>
           {isLoading ? (
@@ -489,7 +494,7 @@ const ExplorerScreen = () => {
 
 
       </Animated.ScrollView>
-      
+
       {/* Map Floating Button */}
       <TouchableOpacity
         style={styles.mapButton}
@@ -504,7 +509,7 @@ const ExplorerScreen = () => {
           <Text style={styles.mapButtonText}>{t('map.title')}</Text>
         </View>
       </TouchableOpacity>
-      
+
       {/* Filters Modal */}
       <SearchFiltersModal
         visible={showFiltersModal}
@@ -517,50 +522,58 @@ const ExplorerScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: themeColors.white,
+    backgroundColor: themeColors.background,
   },
+
+  // ─── Search Bar ───────────────────────────────────────────────────────────
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: themeSpacing[5],
+    paddingHorizontal: themeSpacing[4],
     paddingVertical: themeSpacing[3],
-    backgroundColor: themeColors.white,
+    backgroundColor: themeColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: themeColors.gray[100],
+    borderBottomColor: themeColors.border,
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    height: SEARCH_BAR_HEIGHT - 16,
-    backgroundColor: themeColors.gray[50],
-    borderRadius: 30,
+    height: 50,
+    backgroundColor: themeColors.surfaceSunken,
+    borderRadius: themeBR.searchBar,
     paddingHorizontal: themeSpacing[4],
-    borderWidth: 1,
-    borderColor: themeColors.gray[200],
+    borderWidth: 1.5,
+    borderColor: themeColors.border,
   },
   searchIcon: {
     marginRight: themeSpacing[2],
   },
   searchPlaceholder: {
-    color: themeColors.gray[500],
+    color: themeColors.inkSubtle,
     fontSize: themeTypo.fontSize.base,
+    flex: 1,
   },
   filterButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: themeSpacing[2],
+    marginLeft: themeSpacing[1],
   },
+
+  // ─── Scroll Container ─────────────────────────────────────────────────────
   container: {
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 80,
+    paddingBottom: 120,
   },
+
+  // ─── Categories ───────────────────────────────────────────────────────────
   categoriesSection: {
-    marginVertical: themeSpacing[2],
+    marginTop: themeSpacing[3],
+    marginBottom: themeSpacing[2],
   },
   categoriesList: {
     paddingHorizontal: themeSpacing[5],
@@ -571,15 +584,15 @@ const styles = StyleSheet.create({
     marginRight: themeSpacing[4],
   },
   categoryButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: themeBR.full,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: themeSpacing[2],
-    backgroundColor: themeColors.gray[50],
-    borderWidth: 1,
-    borderColor: themeColors.gray[200],
+    backgroundColor: themeColors.surface,
+    borderWidth: 1.5,
+    borderColor: themeColors.border,
   },
   activeCategoryButton: {
     backgroundColor: themeColors.primary,
@@ -587,21 +600,33 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: themeTypo.fontSize.xs,
-    color: themeColors.gray[500],
+    color: themeColors.inkSubtle,
     textAlign: 'center',
+    fontWeight: '400',
   },
   activeCategoryLabel: {
     color: themeColors.primary,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+
+  // ─── Results Count ────────────────────────────────────────────────────────
+  resultsCountWrapper: {
+    marginBottom: themeSpacing[2],
+  },
+  resultsSeparator: {
+    height: 1,
+    backgroundColor: themeColors.border,
   },
   resultsCountContainer: {
     paddingHorizontal: themeSpacing[5],
-    marginBottom: themeSpacing[2],
+    paddingTop: themeSpacing[3],
   },
   resultsCount: {
     fontSize: themeTypo.fontSize.sm,
-    color: themeColors.gray[500],
+    color: themeColors.inkSubtle,
   },
+
+  // ─── Properties ───────────────────────────────────────────────────────────
   propertiesSection: {
     paddingHorizontal: themeSpacing[5],
   },
@@ -609,18 +634,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardWrapper: {
-    paddingHorizontal: themeSpacing[2],
-    marginBottom: themeSpacing[6],
+    paddingHorizontal: themeSpacing[1],
+    marginBottom: themeSpacing[5],
   },
   propertyCard: {
     overflow: 'hidden',
-    borderRadius: themeBR.lg,
-    backgroundColor: themeColors.white,
+    borderRadius: themeBR.card,
+    backgroundColor: themeColors.surface,
+    borderWidth: 1,
+    borderColor: themeColors.border,
   },
   imageContainer: {
     position: 'relative',
-    height: 200,
-    borderRadius: themeBR.lg,
+    height: 190,
+    borderTopLeftRadius: themeBR.card,
+    borderTopRightRadius: themeBR.card,
     overflow: 'hidden',
   },
   propertyImage: {
@@ -629,9 +657,9 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(15,31,31,0.35)',
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -640,17 +668,18 @@ const styles = StyleSheet.create({
   },
   badgeContainer: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: themeColors.error,
+    top: 10,
+    left: 10,
+    backgroundColor: themeColors.primary,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: themeBR.sm,
+    paddingVertical: 4,
+    borderRadius: themeBR.md,
   },
   badgeText: {
     fontSize: themeTypo.fontSize.xs,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: themeColors.white,
+    letterSpacing: 0.3,
   },
   propertyInfo: {
     padding: themeSpacing[3],
@@ -663,28 +692,30 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: themeTypo.fontSize.sm,
-    fontWeight: '600',
-    color: themeColors.black,
+    color: themeColors.inkSubtle,
+    fontWeight: '500',
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 2,
   },
   ratingText: {
     fontSize: themeTypo.fontSize.sm,
     fontWeight: '500',
-    color: themeColors.black,
-    marginLeft: 4,
+    color: themeColors.inkMid,
+    marginLeft: 2,
   },
   titleText: {
     fontSize: themeTypo.fontSize.base,
-    fontWeight: '500',
-    color: themeColors.black,
+    fontWeight: '600',
+    color: themeColors.ink,
     marginBottom: themeSpacing[1],
   },
   detailsText: {
-    fontSize: themeTypo.fontSize.sm,
-    color: themeColors.gray[500],
+    fontSize: themeTypo.fontSize.xs,
+    color: themeColors.inkSubtle,
+    lineHeight: 17,
   },
   priceContainer: {
     marginTop: themeSpacing[2],
@@ -693,66 +724,72 @@ const styles = StyleSheet.create({
     fontSize: themeTypo.fontSize.base,
   },
   priceBold: {
-    fontWeight: 'bold',
-    color: themeColors.black,
+    fontWeight: '700',
+    color: themeColors.primary,
   },
   priceUnit: {
-    fontWeight: 'normal',
-    color: themeColors.gray[500],
+    fontWeight: '400',
+    color: themeColors.inkSubtle,
+    fontSize: themeTypo.fontSize.sm,
   },
+
+  // ─── Empty State ──────────────────────────────────────────────────────────
   emptyContainer: {
-    paddingVertical: 40,
+    paddingVertical: 48,
     alignItems: 'center',
   },
   emptyContent: {
     alignItems: 'center',
-    paddingHorizontal: themeSpacing[5],
+    paddingHorizontal: themeSpacing[6],
   },
   emptyTitle: {
     fontSize: themeTypo.fontSize.md,
-    fontWeight: 'bold',
-    color: themeColors.black,
-    marginTop: themeSpacing[5],
+    fontWeight: '600',
+    color: themeColors.ink,
+    marginTop: themeSpacing[4],
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: themeTypo.fontSize.base,
-    color: themeColors.gray[500],
+    color: themeColors.inkSubtle,
     textAlign: 'center',
     marginTop: themeSpacing[2],
-    marginBottom: themeSpacing[6],
+    marginBottom: themeSpacing[5],
+    lineHeight: 22,
   },
   resetButton: {
-    borderRadius: themeBR.button,
+    borderRadius: themeBR.md,
   },
   loaderContainer: {
-    paddingVertical: 40,
+    paddingVertical: 48,
     alignItems: 'center',
   },
+
+  // ─── Floating Map Button ─────────────────────────────────────────────────
   mapButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 24,
     alignSelf: 'center',
-    borderRadius: 30,
-    backgroundColor: themeColors.black,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: themeBR.full,
+    backgroundColor: themeColors.primary,
+    shadowColor: themeColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 6,
   },
   mapButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 22,
+    gap: 6,
   },
   mapButtonText: {
     color: themeColors.white,
     fontWeight: '600',
     fontSize: themeTypo.fontSize.sm,
-    marginLeft: themeSpacing[2],
   },
 });
 
-export default ExplorerScreen; 
+export default ExplorerScreen;

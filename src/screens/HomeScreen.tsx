@@ -10,6 +10,7 @@ import {
   ScrollView,
   ImageBackground,
   useWindowDimensions,
+  TextInput,
 } from 'react-native';
 import { Text, Button, useTheme, Searchbar, Chip, Avatar, Surface } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -44,13 +45,13 @@ const HomeScreen = () => {
   const QUICK_ACCESS_BUTTON_SIZE = width / 4.8;
   const [featuredListings, setFeaturedListings] = useState<Property[]>([]);
   const [newGuides, setNewGuides] = useState<typeof localGuides>([]);
-  
+
   useEffect(() => {
     // fetchListings({ limit: 5, featured: true }); // Example: if your store supports this
     setFeaturedListings(mockListings.slice(0, 5)); // Simulate featured
     setNewGuides(localGuides.filter(guide => guide.isNew).slice(0, 5)); // Simulate new guides
   }, []);
-  
+
   const handleViewProperty = (propertyId: string) => {
     navigation.navigate('PropertyDetails', { propertyId });
   };
@@ -59,111 +60,151 @@ const HomeScreen = () => {
     navigation.navigate('GuideDetail', { guideId });
   };
 
-  const QuickAccessButton = useCallback(({ icon, label, onPress: handlePress, delay }: { icon: keyof typeof MaterialCommunityIcons.glyphMap, label: string, onPress: () => void, delay?: number }) => (
-    <Animated.View entering={FadeInUp.delay(delay || 0).duration(500)} style={styles.quickAccessButtonContainer}>
-      <TouchableOpacity
-        onPress={handlePress}
-        style={styles.quickAccessButton}
-        accessibilityRole="button"
-        accessibilityLabel={label}
+  const QuickAccessButton = useCallback(
+    ({
+      icon,
+      label,
+      onPress: handlePress,
+      delay,
+    }: {
+      icon: keyof typeof MaterialCommunityIcons.glyphMap;
+      label: string;
+      onPress: () => void;
+      delay?: number;
+    }) => (
+      <Animated.View
+        entering={FadeInUp.delay(delay || 0).duration(500)}
+        style={styles.quickAccessButtonContainer}
       >
-        <Surface style={[styles.quickAccessIconWrapper, { backgroundColor: theme.colors.surfaceVariant, width: QUICK_ACCESS_BUTTON_SIZE * 0.7, height: QUICK_ACCESS_BUTTON_SIZE * 0.7 }]}>
-          <MaterialCommunityIcons name={icon} size={QUICK_ACCESS_BUTTON_SIZE * 0.4} color={theme.colors.primary} />
-        </Surface>
-        <Text style={[styles.quickAccessLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  ), [theme, QUICK_ACCESS_BUTTON_SIZE]);
-  
-  const SectionHeader = ({ title, onViewAll, delay }: { title: string, onViewAll?: () => void, delay?: number }) => (
-    <Animated.View entering={FadeInUp.delay(delay || 0).duration(500)} style={styles.sectionHeaderContainer}>
-      <Text style={[styles.sectionTitle, {color: theme.colors.onBackground}]}>{title}</Text>
+        <TouchableOpacity
+          onPress={handlePress}
+          style={styles.quickAccessButton}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+        >
+          <View style={styles.quickAccessIconWrapper}>
+            <MaterialCommunityIcons
+              name={icon}
+              size={22}
+              color={colors.primary}
+            />
+          </View>
+          <Text style={styles.quickAccessLabel}>{label}</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    ),
+    [],
+  );
+
+  const SectionHeader = ({
+    title,
+    onViewAll,
+    delay,
+  }: {
+    title: string;
+    onViewAll?: () => void;
+    delay?: number;
+  }) => (
+    <Animated.View
+      entering={FadeInUp.delay(delay || 0).duration(500)}
+      style={styles.sectionHeaderContainer}
+    >
+      <Text style={styles.sectionTitle}>{title}</Text>
       {onViewAll && (
         <TouchableOpacity onPress={onViewAll}>
-          <Text style={[styles.viewAllButton, {color: theme.colors.primary}]}>{t('home.viewAll')}</Text>
+          <Text style={styles.viewAllButton}>{t('home.viewAll')}</Text>
         </TouchableOpacity>
       )}
     </Animated.View>
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.colors.background}]}>
-      <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
-      <ScrollView 
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surfaceSunken} />
+      <ScrollView
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Section */}
+        {/* ── Header Section ── */}
         <Animated.View entering={SlideInDown.duration(500)} style={styles.headerSection}>
-          <ImageBackground 
-            source={require('../assets/images/gisenyi_header.png')} // Replace with a dynamic or better quality header image
-            style={styles.headerImageBackground}
-            resizeMode="cover"
+          {/* Logo */}
+          <Text style={styles.logoText}>LocaMap</Text>
+
+          {/* Greeting */}
+          <Text style={styles.greetingText}>
+            {t('home.welcomeUser', {
+              name: getUserFirstName(user.fullName || user.email || undefined),
+            })}
+          </Text>
+
+          {/* Subtitle */}
+          <Text style={styles.subtitleText}>{t('home.discoverGisenyi')}</Text>
+
+          {/* Search bar — inline flow, no absolute positioning */}
+          <TouchableOpacity
+            style={styles.searchBar}
+            onPress={() => navigation.navigate('Search')}
+            accessibilityRole="search"
+            activeOpacity={0.85}
           >
-            <View style={styles.headerOverlay} />
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.welcomeMessage}>{t('home.welcomeUser', { name: getUserFirstName(user.fullName || user.email || undefined) })}</Text>
-              <Text style={styles.subWelcomeMessage}>{t('home.discoverGisenyi')}</Text>
-        </View>
-          </ImageBackground>
-          {/* Search Bar - Positioned absolutely or within the flow */}
-          <View style={styles.searchBarContainer}>
-             <Searchbar
-                placeholder={t('home.searchPlaceholder')}
-                value=""
-                onChangeText={() => {}}
-                onFocus={() => navigation.navigate('Search')} // Navigate to SearchScreen on focus
-                style={[styles.searchBar, {backgroundColor: theme.colors.elevation.level3}]}
-                inputStyle={{color: theme.colors.onSurface}}
-                placeholderTextColor={theme.colors.onSurfaceVariant}
-                iconColor={theme.colors.primary}
-             />
-          </View>
+            <Ionicons name="search-outline" size={20} color={colors.primary} style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholder}>{t('home.searchPlaceholder')}</Text>
+          </TouchableOpacity>
         </Animated.View>
 
-        {/* Quick Access Buttons */}
+        {/* ── Quick Access Row ── */}
         <View style={styles.quickAccessGrid}>
-          <QuickAccessButton icon="magnify" label={t('home.explore')} onPress={() => navigation.navigate('Search')} delay={100} />
-          <QuickAccessButton icon="map-marker-outline" label={t('home.map')} onPress={() => navigation.navigate('MapScreen')} delay={200} />
-          <QuickAccessButton icon="heart-outline" label={t('home.favorites')} onPress={() => navigation.navigate('Favorites')} delay={300} />
-          <QuickAccessButton icon="bell-outline" label={t('home.alerts')} onPress={() => navigation.navigate('AlertPreferences')} delay={400}/>
+          <QuickAccessButton
+            icon="magnify"
+            label={t('home.explore')}
+            onPress={() => navigation.navigate('Search')}
+            delay={100}
+          />
+          <QuickAccessButton
+            icon="map-marker-outline"
+            label={t('home.map')}
+            onPress={() => navigation.navigate('MapScreen')}
+            delay={200}
+          />
+          <QuickAccessButton
+            icon="heart-outline"
+            label={t('home.favorites')}
+            onPress={() => navigation.navigate('Favorites')}
+            delay={300}
+          />
+          <QuickAccessButton
+            icon="bell-outline"
+            label={t('home.alerts')}
+            onPress={() => navigation.navigate('AlertPreferences')}
+            delay={400}
+          />
         </View>
-        
-        {/* Featured Listings Section */}
+
+        {/* ── Featured Listings Section ── */}
         {featuredListings.length > 0 && (
-        <View style={styles.sectionContainer}>
-            <SectionHeader title={t('home.featuredListings')} onViewAll={() => navigation.navigate('Search')} delay={500} />
-          <FlatList
+          <View style={styles.sectionContainer}>
+            <SectionHeader
+              title={t('home.featuredListings')}
+              onViewAll={() => navigation.navigate('Search')}
+              delay={500}
+            />
+            <FlatList
               listKey="featured-listings"
               horizontal
               data={featuredListings}
               renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInUp.delay(index * 100 + 600).duration(500)} style={[styles.listItemContainer, index === 0 && styles.listItemFirst]}>
-                    <PropertyCard
-                        property={item}
-                        index={index}
-                        onPress={() => handleViewProperty(item.id)}
-                    />
-                </Animated.View>
-              )}
-            keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalListContent}
-          />
-        </View>
-        )}
-        
-        {/* Nouveautés à Gisenyi Section (Local Guides) */}
-        {newGuides.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <SectionHeader title={t('home.newInGisenyi')} onViewAll={() => navigation.navigate('LocalGuide')} delay={700} />
-            <FlatList
-              listKey="new-guides"
-              horizontal
-              data={newGuides}
-              renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInUp.delay(index * 100 + 800).duration(500)} style={[styles.listItemContainer, index === 0 && styles.listItemFirst]}>
-                  <GuideCard guide={item} onPress={() => handleViewGuide(item.id)} />
+                <Animated.View
+                  entering={FadeInUp.delay(index * 100 + 600).duration(500)}
+                  style={[
+                    styles.listItemContainer,
+                    index === 0 && styles.listItemFirst,
+                  ]}
+                >
+                  <PropertyCard
+                    property={item}
+                    index={index}
+                    onPress={() => handleViewProperty(item.id)}
+                  />
                 </Animated.View>
               )}
               keyExtractor={(item) => item.id}
@@ -173,71 +214,102 @@ const HomeScreen = () => {
           </View>
         )}
 
+        {/* ── Nouveautés à Gisenyi Section (Local Guides) ── */}
+        {newGuides.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <SectionHeader
+              title={t('home.newInGisenyi')}
+              onViewAll={() => navigation.navigate('LocalGuide')}
+              delay={700}
+            />
+            <FlatList
+              listKey="new-guides"
+              horizontal
+              data={newGuides}
+              renderItem={({ item, index }) => (
+                <Animated.View
+                  entering={FadeInUp.delay(index * 100 + 800).duration(500)}
+                  style={[
+                    styles.listItemContainer,
+                    index === 0 && styles.listItemFirst,
+                  ]}
+                >
+                  <GuideCard guide={item} onPress={() => handleViewGuide(item.id)} />
+                </Animated.View>
+              )}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalListContent}
+            />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // ── Safe area & scroll ──────────────────────────────────────────────────────
   safeArea: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   scrollViewContent: {
-    paddingBottom: spacing[4],
+    paddingBottom: 120,
   },
+
+  // ── Header ──────────────────────────────────────────────────────────────────
   headerSection: {
-    marginBottom: spacing[2], // Space between header and quick access
-    position: 'relative', // For search bar positioning
+    backgroundColor: colors.surfaceSunken,
+    paddingTop: spacing[6],        // 24
+    paddingHorizontal: spacing[5], // 20
+    paddingBottom: spacing[5],     // 20
   },
-  headerImageBackground: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+  logoText: {
+    fontSize: typography.fontSize.xl, // 24
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: spacing[4],       // 16
   },
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Dark overlay for text contrast
+  greetingText: {
+    fontSize: typography.fontSize['2xl'], // 28
+    fontWeight: '700',
+    color: colors.ink,
+    marginBottom: spacing[1],       // 4
   },
-  headerTextContainer: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[5], // Adjust if status bar is translucent
+  subtitleText: {
+    fontSize: typography.fontSize.base, // 15
+    color: colors.inkSubtle,
+    marginBottom: spacing[4],       // 16
   },
-  welcomeMessage: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: 'bold',
-    color: colors.white,
-    marginBottom: spacing[1],
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 2,
-  },
-  subWelcomeMessage: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[200], // Lighter text for subtitle
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 2,
-  },
-  searchBarContainer: {
-    position: 'absolute',
-    bottom: -14,
-    left: spacing[4],
-    right: spacing[4],
-    zIndex: 10, // Ensure it floats above header image if needed, but below content that scrolls over it
-  },
+
+  // ── Search bar ──────────────────────────────────────────────────────────────
   searchBar: {
-    borderRadius: borderRadius.lg, // Softer radius
-    height: 50,
-    elevation: 3, // Softer shadow for Paper Searchbar
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.searchBar, // 28
+    height: 52,
+    paddingHorizontal: spacing[4],  // 16
   },
+  searchIcon: {
+    marginRight: spacing[2],        // 8
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: typography.fontSize.base, // 15
+    color: colors.inkDisabled,
+  },
+
+  // ── Quick Access ─────────────────────────────────────────────────────────────
   quickAccessGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingHorizontal: spacing[3],
-    marginTop: spacing[6], // Increased space due to overlapping search bar
-    marginBottom: spacing[4],
+    paddingHorizontal: spacing[3],  // 12
+    paddingVertical: spacing[5],    // 20
+    backgroundColor: colors.background,
   },
   quickAccessButtonContainer: {
     alignItems: 'center',
@@ -245,47 +317,59 @@ const styles = StyleSheet.create({
   },
   quickAccessButton: {
     alignItems: 'center',
-    padding: spacing[1],
+    paddingVertical: spacing[1],    // 4
   },
   quickAccessIconWrapper: {
-    borderRadius: borderRadius.lg,
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,  // 12
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing[1],
-    ...shadows.sm,
+    marginBottom: spacing[2],       // 8
   },
   quickAccessLabel: {
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.xs, // 11
+    color: colors.inkSubtle,
     textAlign: 'center',
     fontWeight: '500',
   },
+
+  // ── Section headers ──────────────────────────────────────────────────────────
   sectionContainer: {
-    marginBottom: spacing[4],
+    marginBottom: spacing[4],       // 16
   },
   sectionHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing[4],
-    marginBottom: spacing[3],
+    paddingHorizontal: spacing[5],  // 20
+    marginBottom: spacing[3],       // 12
   },
   sectionTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontSize: typography.fontSize.lg, // 20
+    fontWeight: '700',
+    color: colors.ink,
   },
   viewAllButton: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '600',
+    fontSize: typography.fontSize.sm, // 13
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
+
+  // ── Horizontal list items ─────────────────────────────────────────────────────
   horizontalListContent: {
-    paddingRight: spacing[4],
+    paddingRight: spacing[5],       // 20
   },
   listItemContainer: {
-    marginRight: spacing[3],
+    width: 280,
+    marginRight: spacing[3],        // 12
   },
   listItemFirst: {
-    marginLeft: spacing[4],
+    marginLeft: spacing[5],         // 20
   },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

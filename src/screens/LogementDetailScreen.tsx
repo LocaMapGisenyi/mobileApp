@@ -112,21 +112,21 @@ const LogementDetailScreen = () => {
   const { currency } = usePreferences();
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   const { getAverageRating, getReviewsForProperty, getSortedReviews } = useReviewsStore();
-  
+
   // États locaux
   const [priceMode, setPriceMode] = useState('monthly'); // 'nightly' ou 'monthly'
-  
+
   // États pour les avis
   const [reviewSortOrder, setReviewSortOrder] = useState<'recent' | 'highest' | 'lowest'>('recent');
   const [showAllReviews, setShowAllReviews] = useState(false);
-  
+
   // Récupération des données du logement
   const { listing, isLoading, error } = useListingById(propertyId);
-  
+
   // Gestion des favoris
   const handleFavoriteToggle = () => {
     if (!listing) return;
-    
+
     if (isFavorite(propertyId)) {
       removeFavorite(propertyId);
     } else {
@@ -138,7 +138,7 @@ const LogementDetailScreen = () => {
   const formatPrice = (price: number, originalCurrency: string) => {
     let convertedPrice = price;
     let symbol = '';
-    
+
     // Simuler la conversion de devise
     if (originalCurrency !== currency) {
       // Taux de conversion simulés
@@ -147,7 +147,7 @@ const LogementDetailScreen = () => {
         USD: { RWF: 1176.47, EUR: 0.93 },
         EUR: { RWF: 1265.82, USD: 1.07 }
       };
-      
+
       // Convertir depuis la devise originale vers la devise choisie
       const ratesTyped = rates as Record<string, Record<string, number>>;
       if (originalCurrency in ratesTyped && currency in (ratesTyped[originalCurrency] || {})) {
@@ -155,7 +155,7 @@ const LogementDetailScreen = () => {
         convertedPrice = Math.round(price * rate);
       }
     }
-    
+
     // Symbole de la devise
     switch (currency) {
       case 'RWF':
@@ -168,9 +168,9 @@ const LogementDetailScreen = () => {
         symbol = '€';
         break;
     }
-    
+
     // Format du prix selon la devise
-    return currency === 'RWF' 
+    return currency === 'RWF'
       ? `${convertedPrice.toLocaleString()} ${symbol}`
       : `${symbol}${convertedPrice.toLocaleString()}`;
   };
@@ -183,11 +183,11 @@ const LogementDetailScreen = () => {
   // Partager l'annonce
   const handleShare = async () => {
     if (!listing) return;
-    
+
     try {
       await Share.share({
         title: listing.title,
-        message: t('property.shareMessage', { 
+        message: t('property.shareMessage', {
           title: listing.title,
           price: `${formatPrice(listing.price, listing.currency)}/${priceMode === 'monthly' ? 'mois' : 'nuit'} - LocaMap`,
         }),
@@ -200,7 +200,7 @@ const LogementDetailScreen = () => {
   // Contacter le propriétaire
   const handleContact = () => {
     if (!listing?.owner) return;
-    
+
     // Navigate to the NewMessage screen to contact the owner
     navigation.navigate('NewMessage', {
       propertyId: listing.id,
@@ -220,11 +220,11 @@ const LogementDetailScreen = () => {
   // Récupérer les avis pour ce logement
   const propertyReviews = getSortedReviews(propertyId, reviewSortOrder);
   const averageRating = getAverageRating(propertyId);
-  
+
   // Fonction pour aller à l'écran de publication d'avis
   const handleLeaveReview = () => {
     if (!listing) return;
-    
+
     navigation.navigate('LeaveReview', {
       propertyId: listing.id,
       propertyTitle: listing.title,
@@ -232,10 +232,10 @@ const LogementDetailScreen = () => {
       ownerName: listing.owner?.name || 'Propriétaire',
     });
   };
-  
+
   // Filtrer les avis à afficher (limité ou tous)
-  const displayedReviews = showAllReviews 
-    ? propertyReviews 
+  const displayedReviews = showAllReviews
+    ? propertyReviews
     : propertyReviews.slice(0, 3);
 
   // Indicateur de chargement
@@ -254,8 +254,8 @@ const LogementDetailScreen = () => {
       <View style={styles.errorContainer}>
         <MaterialIcons name="error-outline" size={64} color="#e57373" />
         <Text style={styles.errorText}>{error || t('common.unknownError')}</Text>
-        <Button 
-          mode="contained" 
+        <Button
+          mode="contained"
           onPress={() => navigation.goBack()}
           style={{ marginTop: 20 }}
         >
@@ -276,22 +276,22 @@ const LogementDetailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
-      
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
       {/* Header avec bouton retour */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.gray[800]} />
+          <Ionicons name="arrow-back" size={24} color={colors.ink} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerActionButton}
             onPress={handleShare}
           >
-            <Ionicons name="share-outline" size={22} color={colors.gray[800]} />
+            <Ionicons name="share-outline" size={22} color={colors.ink} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerActionButton}>
             <FavoriteButton
@@ -303,38 +303,38 @@ const LogementDetailScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-      
-      <ScrollView 
+
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Carousel d'images */}
         <View style={styles.carouselContainer}>
-          <ImageCarousel 
-            images={listing.images.length > 0 ? mockImages : []} 
+          <ImageCarousel
+            images={listing.images.length > 0 ? mockImages : []}
             height={280}
           />
-          
+
           {/* Badge disponibilité */}
-          <Animated.View 
+          <Animated.View
             entering={SlideInUp ? SlideInUp.duration(400).delay(200) : undefined}
             style={styles.availabilityBadgeContainer}
           >
             <Surface style={[
-              styles.availabilityBadge, 
-              { 
-                backgroundColor: listing.available 
-                  ? '#e6f7ed' 
+              styles.availabilityBadge,
+              {
+                backgroundColor: listing.available
+                  ? '#e6f7ed'
                   : '#ffeded',
-                borderColor: listing.available 
-                  ? '#4acf8c' 
-                  : '#f27272' 
+                borderColor: listing.available
+                  ? '#4acf8c'
+                  : '#f27272'
               }
             ]}>
-              <MaterialIcons 
-                name={listing.available ? "check-circle" : "cancel"} 
-                size={18} 
-                color={listing.available ? '#4acf8c' : '#f27272'} 
+              <MaterialIcons
+                name={listing.available ? "check-circle" : "cancel"}
+                size={18}
+                color={listing.available ? '#4acf8c' : '#f27272'}
               />
               <Text style={[
                 styles.availabilityText,
@@ -347,38 +347,36 @@ const LogementDetailScreen = () => {
         </View>
 
         {/* Informations principales */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400) : undefined}
           style={styles.mainInfoContainer}
         >
           <Text style={styles.title}>{listing.title}</Text>
-          
+
           <View style={styles.locationRow}>
-            <MaterialIcons name="place" size={20} color={colors.gray[600]} />
+            <MaterialIcons name="place" size={18} color={colors.primary} />
             <Text style={styles.location}>
               {listing.location?.district ? `${listing.location?.district}, ` : ''}
               {listing.location?.city}
             </Text>
           </View>
-          
+
           {/* Type de logement et contrat */}
           <View style={styles.contractTypeContainer}>
-            <Chip 
-              style={styles.typeChip} 
-              textStyle={styles.typeChipText}
-            >
-              {listing.type || 'Logement'}
-            </Chip>
-            
-            <Chip 
-              style={[styles.typeChip, styles.contractChip]} 
-              textStyle={styles.typeChipText}
-              icon="calendar-range"
-            >
-              Court et long terme
-            </Chip>
+            <View style={styles.typeChip}>
+              <Text style={styles.typeChipText}>
+                {listing.type || 'Logement'}
+              </Text>
+            </View>
+
+            <View style={[styles.typeChip, styles.contractChip]}>
+              <MaterialIcons name="date-range" size={12} color={colors.inkMid} style={{ marginRight: 4 }} />
+              <Text style={styles.typeChipText}>
+                Court et long terme
+              </Text>
+            </View>
           </View>
-          
+
           {/* Options de prix (nuit/mois) */}
           <View style={styles.priceOptionsContainer}>
             <SegmentedButtons
@@ -391,19 +389,19 @@ const LogementDetailScreen = () => {
               style={styles.segmentedButtons}
             />
           </View>
-          
+
           {/* Affichage du prix */}
           <View style={styles.priceContainer}>
             <Text style={styles.price}>
-              {priceMode === 'nightly' 
+              {priceMode === 'nightly'
                 ? formatPrice(listing.price, listing.currency)
                 : formatPrice(calculateMonthlyPrice(listing.price), listing.currency)}
-              <Text style={styles.priceUnit}>
-                {priceMode === 'nightly' ? '/nuit' : '/mois'}
-              </Text>
+            </Text>
+            <Text style={styles.priceUnit}>
+              {priceMode === 'nightly' ? '/nuit' : '/mois'}
             </Text>
           </View>
-          
+
           {/* Badges pour les types de séjour adaptés */}
           <View style={styles.suitableForContainer}>
             {isLongTermFriendly && (
@@ -412,7 +410,7 @@ const LogementDetailScreen = () => {
                 <Text style={styles.suitableText}>{t('property.suitableLongTerm')}</Text>
               </View>
             )}
-            
+
             {isSuitableForStudents && (
               <View style={styles.suitableBadge}>
                 <MaterialIcons name="school" size={16} color={colors.primary} />
@@ -420,7 +418,7 @@ const LogementDetailScreen = () => {
               </View>
             )}
           </View>
-          
+
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <MaterialIcons name="king-bed" size={22} color={colors.primary} />
@@ -428,14 +426,14 @@ const LogementDetailScreen = () => {
                 {listing.bedrooms || 0} {(listing.bedrooms || 0) > 1 ? t('property.bedroomsPlural') : t('property.bedroomsSingular')}
               </Text>
             </View>
-            
+
             <View style={styles.infoItem}>
               <MaterialIcons name="bathtub" size={22} color={colors.primary} />
               <Text style={styles.infoText}>
                 {listing.bathrooms || 0} {(listing.bathrooms || 0) > 1 ? t('property.bathroomsPlural') : t('property.bathroomsSingular')}
               </Text>
             </View>
-            
+
             <View style={styles.infoItem}>
               <MaterialIcons name="straighten" size={22} color={colors.primary} />
               <Text style={styles.infoText}>{listing.size} m²</Text>
@@ -443,33 +441,31 @@ const LogementDetailScreen = () => {
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Description */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(100) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.description')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.description')}
             icon="info-outline"
           />
-          
+
           <Text style={styles.description}>{listing.description}</Text>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Conditions de location */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(150) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.contract')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.contract')}
             icon="description"
           />
-          
+
           <View style={styles.contractDetailsContainer}>
             <View style={styles.contractDetailItem}>
               <MaterialIcons name="timer" size={20} color={colors.primary} />
@@ -478,7 +474,7 @@ const LogementDetailScreen = () => {
                 <Text style={styles.contractDetailText}>{t('property.contract.oneMonthRecommended')}</Text>
               </View>
             </View>
-            
+
             <View style={styles.contractDetailItem}>
               <MaterialIcons name="account-balance-wallet" size={20} color={colors.primary} />
               <View>
@@ -486,7 +482,7 @@ const LogementDetailScreen = () => {
                 <Text style={styles.contractDetailText}>{formatPrice(listing.price * 2, listing.currency)}</Text>
               </View>
             </View>
-            
+
             <View style={styles.contractDetailItem}>
               <MaterialIcons name="event-available" size={20} color={colors.primary} />
               <View>
@@ -494,7 +490,7 @@ const LogementDetailScreen = () => {
                 <Text style={styles.contractDetailText}>{t('property.contract.noticeDetails')}</Text>
               </View>
             </View>
-            
+
             <View style={styles.contractDetailItem}>
               <MaterialIcons name="attach-money" size={20} color={colors.primary} />
               <View>
@@ -505,18 +501,17 @@ const LogementDetailScreen = () => {
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Commodités */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(200) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.amenities')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.amenities')}
             icon="hotel-class"
           />
-          
+
           <View style={styles.amenitiesContainer}>
             {(listing.amenities || []).map((amenity, index) => (
               <AmenityTag key={index} label={amenity} />
@@ -524,19 +519,18 @@ const LogementDetailScreen = () => {
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Localisation sur la carte */}
         {listing.location?.coordinates && (
-          <Animated.View 
+          <Animated.View
             entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
             style={styles.section}
           >
-            <SectionTitle 
-              title={t('property.location')} 
+            <View style={styles.sectionSeparator} />
+            <SectionTitle
+              title={t('property.location')}
               icon="place"
             />
-            
+
             <View style={styles.mapContainer}>
               <View style={styles.mapWrapper}>
                 <MapView
@@ -561,8 +555,8 @@ const LogementDetailScreen = () => {
                   />
                 </MapView>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.viewOnMapButton}
                 onPress={handleViewOnMap}
               >
@@ -573,64 +567,62 @@ const LogementDetailScreen = () => {
           </Animated.View>
         )}
 
-        <Divider style={styles.divider} />
-
         {/* Services à proximité */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(350) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.nearbyServices')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.nearbyServices')}
             icon="location-city"
           />
-          
+
           <View style={styles.nearbyServicesContainer}>
             <View style={styles.nearbyService}>
-              <MaterialIcons name="school" size={18} color={colors.gray[700]} />
+              <MaterialIcons name="school" size={18} color={colors.inkSubtle} />
               <Text style={styles.nearbyServiceText}>{t('property.nearby.university', { distance: 500 })}</Text>
             </View>
-            
+
             <View style={styles.nearbyService}>
-              <MaterialIcons name="shopping-cart" size={18} color={colors.gray[700]} />
+              <MaterialIcons name="shopping-cart" size={18} color={colors.inkSubtle} />
               <Text style={styles.nearbyServiceText}>{t('property.nearby.market', { distance: 800 })}</Text>
             </View>
-            
+
             <View style={styles.nearbyService}>
-              <MaterialIcons name="local-hospital" size={18} color={colors.gray[700]} />
+              <MaterialIcons name="local-hospital" size={18} color={colors.inkSubtle} />
               <Text style={styles.nearbyServiceText}>{t('property.nearby.hospital', { distance: 1200 })}</Text>
             </View>
-            
+
             <View style={styles.nearbyService}>
-              <MaterialIcons name="restaurant" size={18} color={colors.gray[700]} />
+              <MaterialIcons name="restaurant" size={18} color={colors.inkSubtle} />
               <Text style={styles.nearbyServiceText}>{t('property.nearby.restaurants', { distance: 300 })}</Text>
             </View>
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Informations pratiques */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(400) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.practicalInfo')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.practicalInfo')}
             icon="info"
           />
-          
+
           <View style={styles.infoSection}>
             <View style={styles.infoItem}>
               <MaterialIcons name="calendar-today" size={20} color={colors.primary} />
               <Text style={styles.infoText}>{t('property.availableSince', { date: new Date(listing.createdAt).toLocaleDateString() })}</Text>
             </View>
-            
+
             <View style={styles.infoItem}>
               <MaterialIcons name="access-time" size={20} color={colors.primary} />
               <Text style={styles.infoText}>Type de bail: flexible</Text>
             </View>
-            
+
             <View style={styles.infoItem}>
               <MaterialIcons name="people" size={20} color={colors.primary} />
               <Text style={styles.infoText}>{t('property.occupancy', { max: (listing.bedrooms || 0) * 2 })}</Text>
@@ -638,54 +630,55 @@ const LogementDetailScreen = () => {
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Coordonnées du propriétaire */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(500) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('property.host')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('property.host')}
             icon="person"
           />
-          
+
           <View style={styles.ownerCard}>
             <View style={styles.ownerInfo}>
               <View style={styles.ownerIconContainer}>
                 <MaterialIcons name="person" size={24} color={colors.white} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.ownerName}>{listing.owner?.name}</Text>
                 <Text style={styles.ownerContact}>
                   {listing.owner?.phone}
                 </Text>
               </View>
+              <TouchableOpacity style={styles.contactOwnerButton} onPress={handleContact}>
+                <Text style={styles.contactOwnerButtonText}>Contacter</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
 
-        <Divider style={styles.divider} />
-
         {/* Section des avis */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp ? FadeInUp.duration(400).delay(450) : undefined}
           style={styles.section}
         >
-          <SectionTitle 
-            title={t('reviews.title')} 
+          <View style={styles.sectionSeparator} />
+          <SectionTitle
+            title={t('reviews.title')}
             icon="star"
           />
-          
+
           {propertyReviews.length > 0 ? (
             <View style={styles.reviewsContainer}>
               {/* En-tête avec note moyenne et filtres */}
               <View style={styles.reviewsHeader}>
                 <View style={styles.ratingOverview}>
                   <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
-                  <RatingStars 
-                    rating={averageRating} 
-                    size={18} 
+                  <RatingStars
+                    rating={averageRating}
+                    size={18}
                     disabled={true}
                     color="#FFB100"
                   />
@@ -693,7 +686,7 @@ const LogementDetailScreen = () => {
                     ({propertyReviews.length} avis)
                   </Text>
                 </View>
-                
+
                 {/* Sélecteur de tri */}
                 {propertyReviews.length > 1 && (
                   <View style={styles.sortContainer}>
@@ -709,8 +702,8 @@ const LogementDetailScreen = () => {
                       }}
                     >
                       <Text style={styles.sortButtonText}>
-                        {reviewSortOrder === 'recent' ? t('reviews.sortRecent') : 
-                         reviewSortOrder === 'highest' ? t('reviews.sortHighest') : 
+                        {reviewSortOrder === 'recent' ? t('reviews.sortRecent') :
+                         reviewSortOrder === 'highest' ? t('reviews.sortHighest') :
                          t('reviews.sortLowest')}
                       </Text>
                       <Ionicons name="chevron-down" size={14} color={colors.primary} />
@@ -718,7 +711,7 @@ const LogementDetailScreen = () => {
                   </View>
                 )}
               </View>
-              
+
               {/* Liste des avis */}
               <View style={styles.reviewsList}>
                 {displayedReviews.map((review, index) => (
@@ -728,7 +721,7 @@ const LogementDetailScreen = () => {
                     style={{ marginBottom: spacing[3] }}
                   />
                 ))}
-                
+
                 {/* Bouton pour voir plus d'avis */}
                 {propertyReviews.length > 3 && !showAllReviews && (
                   <TouchableOpacity
@@ -742,7 +735,7 @@ const LogementDetailScreen = () => {
                   </TouchableOpacity>
                 )}
               </View>
-              
+
               {/* Bouton pour ajouter un avis */}
               <Button
                 mode="outlined"
@@ -771,39 +764,35 @@ const LogementDetailScreen = () => {
             </View>
           )}
         </Animated.View>
-        
+
         {/* Espace pour le bouton fixed en bas */}
         <View style={{ height: 80 }} />
       </ScrollView>
-      
+
       {/* Boutons de contact */}
-      <Animated.View 
+      <Animated.View
         entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
         style={styles.footerContainer}
       >
         <View style={styles.contactContainer}>
-          <Button 
-            mode="contained" 
-            icon="message-text-outline"
+          <TouchableOpacity
             style={styles.contactButton}
-            contentStyle={styles.contactButtonContent}
-            buttonColor={colors.primary}
             onPress={handleContact}
+            activeOpacity={0.85}
           >
-            {t('property.contactOwner')}
-          </Button>
-          
+            <MaterialIcons name="message" size={18} color={colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.contactButtonText}>{t('property.contactOwner')}</Text>
+          </TouchableOpacity>
+
           {listing.owner?.phone && (
-            <Button 
-              mode="outlined" 
-              icon="phone"
-              style={[styles.contactButton, styles.callButton]}
-              contentStyle={styles.contactButtonContent}
-              textColor={colors.primary}
+            <TouchableOpacity
+              style={styles.callButton}
               onPress={() => Linking.openURL(`tel:${listing.owner?.phone}`)}
+              activeOpacity={0.85}
             >
-              {t('property.call')}
-            </Button>
+              <MaterialIcons name="phone" size={18} color={colors.inkMid} style={{ marginRight: 8 }} />
+              <Text style={styles.callButtonText}>{t('property.call')}</Text>
+            </TouchableOpacity>
           )}
         </View>
       </Animated.View>
@@ -814,7 +803,7 @@ const LogementDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   header: {
     position: 'absolute',
@@ -828,26 +817,24 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.white,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
   },
   headerActions: {
     flexDirection: 'row',
   },
   headerActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.white,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing[2],
-    ...shadows.sm,
   },
   carouselContainer: {
     position: 'relative',
@@ -859,24 +846,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   errorText: {
     marginTop: 16,
     fontSize: 16,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
     textAlign: 'center',
   },
   availabilityBadgeContainer: {
@@ -899,13 +886,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   mainInfoContainer: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[5],
+    paddingBottom: spacing[4],
   },
   title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.gray[800],
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: spacing[2],
   },
   locationRow: {
@@ -915,7 +904,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
     marginLeft: 4,
   },
   contractTypeContainer: {
@@ -924,37 +913,46 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   typeChip: {
-    backgroundColor: colors.primary + '20',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
     marginRight: spacing[2],
     marginBottom: spacing[2],
   },
   contractChip: {
-    backgroundColor: colors.gray[200],
+    // inherits typeChip styles
   },
-  typeChipText: { 
-    color: colors.primary,
+  typeChipText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.inkMid,
     fontWeight: '600',
   },
   priceOptionsContainer: {
     marginBottom: spacing[3],
   },
   segmentedButtons: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   priceContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     marginBottom: spacing[3],
   },
   price: {
     fontSize: typography.fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.primary,
   },
   priceUnit: {
-    fontSize: typography.fontSize.base,
-    fontWeight: 'normal',
-    color: colors.gray[600],
+    fontSize: typography.fontSize.sm,
+    fontWeight: '400',
+    color: colors.inkSubtle,
+    marginLeft: 4,
   },
   suitableForContainer: {
     flexDirection: 'row',
@@ -964,7 +962,9 @@ const styles = StyleSheet.create({
   suitableBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: spacing[1],
     paddingHorizontal: spacing[2],
     borderRadius: borderRadius.full,
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
   },
   suitableText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[800],
+    color: colors.inkMid,
     marginLeft: 6,
   },
   infoRow: {
@@ -989,21 +989,27 @@ const styles = StyleSheet.create({
   infoText: {
     marginLeft: 8,
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: colors.inkMid,
   },
-  divider: {
-    marginVertical: spacing[4],
+  sectionSeparator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: spacing[4],
   },
   section: {
     paddingHorizontal: spacing[4],
+    paddingTop: spacing[4],
+    backgroundColor: colors.surface,
   },
   description: {
     fontSize: typography.fontSize.base,
     lineHeight: 24,
-    color: colors.gray[700],
+    color: colors.inkMid,
+    marginBottom: spacing[4],
   },
   contractDetailsContainer: {
     marginTop: spacing[2],
+    marginBottom: spacing[4],
   },
   contractDetailItem: {
     flexDirection: 'row',
@@ -1012,12 +1018,12 @@ const styles = StyleSheet.create({
   contractDetailTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray[800],
+    color: colors.ink,
     marginLeft: spacing[2],
   },
   contractDetailText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
     marginLeft: spacing[2],
     marginTop: 2,
   },
@@ -1025,9 +1031,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing[2],
+    marginBottom: spacing[4],
   },
   nearbyServicesContainer: {
     marginTop: spacing[2],
+    marginBottom: spacing[4],
   },
   nearbyService: {
     flexDirection: 'row',
@@ -1036,41 +1044,48 @@ const styles = StyleSheet.create({
   },
   nearbyServiceText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: colors.inkMid,
     marginLeft: spacing[2],
   },
   mapContainer: {
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.card,
     overflow: 'hidden',
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing[4],
   },
   mapWrapper: {
-    borderRadius: borderRadius.lg,
+    borderTopLeftRadius: borderRadius.card,
+    borderTopRightRadius: borderRadius.card,
     overflow: 'hidden',
   },
   map: {
     height: 180,
-    borderRadius: borderRadius.lg,
   },
   viewOnMapButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing[3],
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.surfaceSunken,
   },
   viewOnMapText: {
     marginRight: 8,
     fontWeight: '500',
     color: colors.primary,
+    fontSize: typography.fontSize.sm,
   },
   infoSection: {
     gap: spacing[3],
+    marginBottom: spacing[4],
   },
   ownerCard: {
     padding: spacing[4],
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.card,
+    marginBottom: spacing[4],
   },
   ownerInfo: {
     flexDirection: 'row',
@@ -1087,38 +1102,68 @@ const styles = StyleSheet.create({
   },
   ownerName: {
     fontSize: typography.fontSize.lg,
-    fontWeight: 'bold',
-    color: colors.gray[800],
+    fontWeight: '600',
+    color: colors.ink,
     marginBottom: 4,
   },
   ownerContact: {
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
+  },
+  contactOwnerButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+  },
+  contactOwnerButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '600',
   },
   footerContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: colors.border,
   },
   contactContainer: {
     flexDirection: 'row',
   },
   contactButton: {
     flex: 1,
-    borderRadius: borderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    height: 52,
   },
-  contactButtonContent: {
-    paddingVertical: spacing[1],
+  contactButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: '600',
   },
   callButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 12,
-    borderColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 52,
+    paddingHorizontal: spacing[4],
+  },
+  callButtonText: {
+    color: colors.inkMid,
+    fontSize: typography.fontSize.base,
+    fontWeight: '500',
   },
   reviewsContainer: {
     marginTop: spacing[2],
@@ -1136,12 +1181,12 @@ const styles = StyleSheet.create({
   averageRating: {
     fontSize: typography.fontSize.xl,
     fontWeight: 'bold',
-    color: colors.gray[800],
+    color: colors.ink,
     marginRight: spacing[2],
   },
   reviewCount: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
     marginLeft: spacing[2],
   },
   sortContainer: {
@@ -1150,7 +1195,7 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
   },
   sortButton: {
     flexDirection: 'row',
@@ -1182,16 +1227,20 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     borderRadius: borderRadius.md,
     marginVertical: spacing[2],
+    marginBottom: spacing[4],
   },
   noReviewsContainer: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     padding: spacing[4],
     alignItems: 'center',
+    marginBottom: spacing[4],
   },
   noReviewsText: {
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: colors.inkSubtle,
     textAlign: 'center',
     marginBottom: spacing[3],
   },
@@ -1200,4 +1249,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LogementDetailScreen; 
+export default LogementDetailScreen;
