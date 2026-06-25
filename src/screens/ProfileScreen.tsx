@@ -197,8 +197,7 @@ const ProfileScreen = () => {
 
   // Navigate to become host screen
   const navigateToBecomeHost = () => {
-    // Navigate to the HostDashboard screen
-    navigation.navigate('HostDashboard');
+    navigation.navigate('HostOnboarding');
   };
 
   // Handle logout

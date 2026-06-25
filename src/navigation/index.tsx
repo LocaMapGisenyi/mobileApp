@@ -31,6 +31,7 @@ import LocalGuideScreen from '../screens/LocalGuideScreen';
 import GuideDetailScreen from '../screens/GuideDetailScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import HostDashboardScreen from '../screens/HostDashboardScreen';
+import HostOnboardingScreen from '../screens/HostOnboardingScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
 
 // Navigators
@@ -373,6 +374,14 @@ const AppNavigator = () => {
                 options={{
                   headerShown: false,
                   animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="HostOnboarding"
+                component={HostOnboardingScreen}
+                options={{
+                  headerShown: false,
+                  animation: 'slide_from_bottom',
                 }}
               />
               <Stack.Screen

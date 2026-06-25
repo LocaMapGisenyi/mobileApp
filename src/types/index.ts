@@ -41,6 +41,7 @@ export type RootStackParamList = {
   
   // Host screens
   HostDashboard: undefined;
+  HostOnboarding: undefined;
   CreateListing: undefined;
 
   // Question screens

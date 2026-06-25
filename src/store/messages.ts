@@ -225,21 +225,15 @@ export const useMessagesStore = create<MessagesState>()(
     }),
     {
       name: 'messages-storage',
+      version: 2,
+      migrate: () => ({ conversations: [], totalUnreadCount: 0 }),
       storage: createJSONStorage(() => AsyncStorage, {
         reviver: (key, value) => {
           if (key === 'lastMessageAt' && isISODateString(value)) {
             return new Date(value);
           }
-          // Add reviver for createdAt within each message object
-          // This is more complex as messages is an array within conversation.
-          // A simpler approach for nested dates is to parse them when the conversation is accessed,
-          // or ensure they are Date objects before persisting if possible.
-          // For now, the primary issue is lastMessageAt on the Conversation object itself.
-          // Let's handle createdAt directly in the component if needed, or improve reviver later.
           return value;
         },
-        // replacer might be needed if we want to ensure Date objects are stored in a specific string format,
-        // but usually, JSON.stringify default behavior for Dates (toISOString) is fine for the reviver to pick up.
       }),
     }
   )
