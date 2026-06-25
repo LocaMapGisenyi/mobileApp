@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Property } from '../types';
-import { mockListings } from '../data/mockListings';
 import { useSearchStore } from './search';
 
 export interface NewListingFormData {
@@ -41,7 +40,7 @@ interface HostListingsState {
 const CURRENT_HOST_ID = 'owner1';
 
 export const useHostListingsStore = create<HostListingsState>((set, get) => ({
-  hostListings: mockListings.filter(listing => listing.owner?.id === CURRENT_HOST_ID),
+  hostListings: [],
   isLoading: false,
   error: null,
 

@@ -19,7 +19,7 @@ import MessageInputBar from '../components/MessageInputBar';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { StatusBar } from 'expo-status-bar';
-import { Message } from '../data/mockMessages'; // Import Message type
+import { Message } from '../types';
 
 type ConversationScreenRouteProp = RouteProp<RootStackParamList, 'Conversation'>;
 

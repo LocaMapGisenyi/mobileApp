@@ -22,7 +22,7 @@ module.exports = (() => {
           filePath: path.resolve(__dirname, 'src/mocks/react-native-maps.tsx'),
         };
       }
-      return context.resolveRequest(context, moduleName, platform);
+return context.resolveRequest(context, moduleName, platform);
     },
   };
 

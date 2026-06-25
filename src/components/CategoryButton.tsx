@@ -3,7 +3,13 @@ import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
-import { ExploreCategory } from '../data/exploreListings';
+
+interface ExploreCategory {
+  id: string;
+  name: string;
+  icon?: string;
+  emoji?: string;
+}
 
 interface CategoryButtonProps {
   category: ExploreCategory;

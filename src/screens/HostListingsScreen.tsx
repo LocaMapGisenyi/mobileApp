@@ -25,6 +25,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
 import { propertyService } from '../services/api';
 import { useUserStore } from '../store/user';
+import { colors } from '../theme';
 
 type HostScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -49,7 +50,7 @@ const ListingCard = ({ item }: { item: ListingItem }) => {
       <View style={styles.cardStatusRow}>
         <View style={[
           styles.statusIndicator, 
-          { backgroundColor: item.status === 'active' ? '#4CAF50' : '#9E9E9E' }
+          { backgroundColor: item.status === 'active' ? colors.success : colors.inkDisabled }
         ]} />
         <Text style={styles.statusText}>
           {item.status === 'active' ? 'Actif' : 'Inactif'}
@@ -59,18 +60,18 @@ const ListingCard = ({ item }: { item: ListingItem }) => {
       <Card.Title
         title={item.title}
         subtitle={item.location}
-        left={(props) => <Avatar.Icon {...props} icon="home" color="#FFFFFF" style={{ backgroundColor: theme.colors.primary }} />}
+        left={(props) => <Avatar.Icon {...props} icon="home" color={colors.white} style={{ backgroundColor: theme.colors.primary }} />}
       />
       
       <Card.Content>
         <View style={styles.cardDetails}>
           <View style={styles.detailRow}>
-            <MaterialIcons name="attach-money" size={20} color="#717171" />
+            <MaterialIcons name="attach-money" size={20} color={colors.inkSubtle} />
             <Text style={styles.detailText}>{item.price} {item.currency} / mois</Text>
           </View>
           
           <View style={styles.detailRow}>
-            <MaterialIcons name="star" size={20} color="#FF5A5F" />
+            <MaterialIcons name="star" size={20} color={colors.primary} />
             <Text style={styles.detailText}>{item.rating || 0} ({item.reviews || 0} avis)</Text>
           </View>
         </View>
@@ -140,9 +141,9 @@ const HostListingsScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF5A5F" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Chargement de vos annonces...</Text>
         </View>
       </SafeAreaView>
@@ -151,7 +152,7 @@ const HostListingsScreen = () => {
   
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mes annonces</Text>
@@ -159,19 +160,19 @@ const HostListingsScreen = () => {
           style={styles.addButton}
           onPress={handleCreateListing}
         >
-          <MaterialIcons name="add" size={24} color="#FFFFFF" />
+          <MaterialIcons name="add" size={24} color={colors.white} />
           <Text style={styles.addButtonText}>Nouvelle annonce</Text>
         </TouchableOpacity>
       </View>
       
       {listings.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="home" size={64} color="#CCCCCC" />
+          <MaterialIcons name="home" size={64} color={colors.inkDisabled} />
           <Text style={styles.emptyText}>Vous n'avez pas encore d'annonces</Text>
           <Text style={styles.emptySubtext}>Créez votre première annonce pour commencer à louer votre logement</Text>
           <Button 
             mode="contained" 
-            style={{ backgroundColor: '#FF5A5F', marginTop: 16 }}
+            style={{ backgroundColor: colors.primary, marginTop: 16 }}
             onPress={handleCreateListing}
           >
             Créer une annonce
@@ -205,7 +206,7 @@ const HostListingsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -217,18 +218,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#000000',
+    color: colors.ink,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF5A5F',
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceSunken,
   },
   statusIndicator: {
     width: 10,
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#717171',
+    color: colors.inkSubtle,
   },
   cardDetails: {
     marginTop: 8,
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
   detailText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#717171',
+    color: colors.inkSubtle,
   },
   cardActions: {
     justifyContent: 'space-between',
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#717171',
+    color: colors.inkSubtle,
   },
   emptyContainer: {
     flex: 1,
@@ -294,11 +295,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 16,
-    color: '#333333',
+    color: colors.inkMid,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#717171',
+    color: colors.inkSubtle,
     textAlign: 'center',
     marginTop: 8,
   },

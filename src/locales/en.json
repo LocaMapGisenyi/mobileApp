@@ -21,7 +21,11 @@
     "view": "View",
     "yes": "Yes",
     "no": "No",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "ok": "OK",
+    "refreshing": "Refreshing...",
+    "unknownError": "An error occurred",
+    "unknownLocation": "Unknown location"
   },
   "tabs": {
     "explorer": "Explore",
@@ -39,6 +43,18 @@
       "noReservations": "You have no reservations",
       "discoverTools": "Discover new tools for hosts"
     }
+  },
+  "home": {
+    "searchPlaceholder": "Search for accommodation...",
+    "discoverGisenyi": "Discover Gisenyi, Rwanda",
+    "explore": "Explore",
+    "map": "Map",
+    "favorites": "Favorites",
+    "alerts": "Alerts",
+    "featuredListings": "Featured listings",
+    "newInGisenyi": "New in Gisenyi",
+    "viewAll": "See all",
+    "welcomeUser": "Hello, {{name}}"
   },
   "auth": {
     "login": "Login",
@@ -74,7 +90,8 @@
     "fullNamePlaceholder": "Your full name",
     "confirmPasswordPlaceholder": "Re-enter your password",
     "accountCreated": "Account created successfully!",
-    "loginSuccess": "Login successful!"
+    "loginSuccess": "Login successful!",
+    "noAccount": "Don't have an account yet?"
   },
   "preferences": {
     "title": "Preferences",
@@ -105,21 +122,62 @@
     "price": "Price",
     "location": "Location",
     "bedrooms": "Bedrooms",
+    "bedroomsSingular": "bedroom",
+    "bedroomsPlural": "bedrooms",
     "bathrooms": "Bathrooms",
+    "bathroomsSingular": "bathroom",
+    "bathroomsPlural": "bathrooms",
     "area": "Area",
+    "surface": "Surface area",
     "amenities": "Amenities",
     "description": "Description",
+    "noDescription": "No description available",
     "contactOwner": "Contact owner",
+    "contact": "Contact",
+    "call": "Call",
     "seeMore": "See more",
     "addToFavorites": "Add to favorites",
+    "addedToFavorites": "Added to favorites",
     "removeFromFavorites": "Remove from favorites",
+    "removedFromFavorites": "Removed from favorites",
     "share": "Share",
     "perMonth": "per month",
     "perNight": "per night",
+    "month": "month",
     "available": "Available",
     "unavailable": "Unavailable",
+    "loading": "Loading property...",
     "noResults": "No results",
     "type": "Property type",
+    "host": "Host",
+    "propertyOwner": "Owner",
+    "reviews": "Reviews",
+    "nearbyServices": "Nearby services",
+    "practicalInfo": "Practical info",
+    "viewOnMap": "View on map",
+    "loginToContact": "Log in to contact the owner",
+    "checkOut": "Check out",
+    "suitableStudents": "Suitable for students",
+    "suitableLongTerm": "Ideal for long stay",
+    "nearby": {
+      "university": "University {{distance}}m away",
+      "market": "Market {{distance}}m away",
+      "hospital": "Hospital {{distance}}m away",
+      "restaurants": "Restaurants {{distance}}m away"
+    },
+    "availableSince": "Available since {{date}}",
+    "leaseType": "Lease type: flexible",
+    "occupancy": "Max occupancy: {{max}} people",
+    "contract": {
+      "title": "Contract conditions",
+      "minDuration": "Minimum duration",
+      "deposit": "Deposit",
+      "notice": "Notice period",
+      "noticeDetails": "1 month recommended",
+      "utilities": "Utilities included",
+      "included": "Utilities included",
+      "oneMonthRecommended": "1 month minimum"
+    },
     "types": {
       "apartment": "Apartment",
       "house": "House",
@@ -131,6 +189,11 @@
   "profile": {
     "myProfile": "My Profile",
     "editProfile": "Edit Profile",
+    "personalInfo": "Personal information",
+    "fullName": "Full name",
+    "email": "Email",
+    "phoneNumber": "Phone",
+    "profileUpdated": "Profile updated",
     "settings": "Settings",
     "language": "Language",
     "currency": "Currency",
@@ -209,7 +272,8 @@
     "startBrowsing": "Start browsing properties to add favorites",
     "exploreMore": "Explore Properties",
     "savedCount_one": "{{count}} saved item",
-    "savedCount_other": "{{count}} saved items"
+    "savedCount_other": "{{count}} saved items",
+    "savedCount": "{{count}} saved"
   },
   "alerts": {
     "title": "Create Alert",
@@ -294,11 +358,26 @@
     "comment": "Comment",
     "reviewPlaceholder": "Share your experience...",
     "submitReview": "Submit review",
+    "sendReview": "Submit review",
     "thankYou": "Thank you for your review!",
+    "thankYouMessage": "Your review has been submitted successfully.",
     "you": "You",
     "rateProperty": "How would you rate this property?",
+    "yourRating": "Your rating",
+    "yourComment": "Your comment",
     "shareExperience": "Share your experience",
     "commentPlaceholder": "What did you like? What could be improved?",
+    "leaveReviewTitle": "Leave a review",
+    "reviewingAs": "Reviewing as",
+    "verifiedTenant": "Verified tenant",
+    "anonymousUser": "Anonymous user",
+    "errorRatingRequired": "Please provide a rating",
+    "submitting": "Submitting...",
+    "sortBy": "Sort by",
+    "sortRecent": "Most recent",
+    "sortHighest": "Highest rated",
+    "sortLowest": "Lowest rated",
+    "characters": "characters",
     "stayType": "Stay type",
     "stayTypes": {
       "shortTerm": "Short term",
@@ -345,6 +424,7 @@
     "noRecommendedQuestionsAvailable": "No recommended questions available at the moment",
     "clearSearch": "Clear search",
     "noGuidesInCategory": "No guides in this category",
+    "shareError": "Error sharing guide",
     "section": {
       "neighborhoods": "Recommended Neighborhoods",
       "transportation": "Getting Around",
@@ -424,7 +504,37 @@
     "invalidEmail": "Invalid email",
     "passwordMismatch": "Passwords don't match",
     "weakPassword": "Password is too weak",
-    "emailExists": "This email is already in use"
+    "emailExists": "This email is already in use",
+    "invalidPhone": "Invalid phone number"
+  },
+  "guideDetail": {
+    "backToGuides": "Back to guides",
+    "guideNotFound": "Guide not found",
+    "summary": "Summary"
+  },
+  "saved": {
+    "title": "Saved",
+    "emptyTitle": "No saved listings",
+    "empty": "You haven't saved any listings yet",
+    "explore": "Explore listings",
+    "exploreMore": "View more listings",
+    "footerText": "Find your saved listings here",
+    "viewOnMap": "View on map",
+    "sort": {
+      "date": "Date",
+      "price": "Price",
+      "type": "Type"
+    }
+  },
+  "message": {
+    "send": "Send",
+    "new": {
+      "title": "New message",
+      "propertyInfo": "Property",
+      "placeholder": "Write your message...",
+      "yourMessage": "Your message",
+      "tip": "Introduce yourself and specify your needs"
+    }
   },
   "explore": {
     "welcome": "Welcome",
@@ -447,7 +557,8 @@
       "furnished": "Furnished",
       "longTerm": "Long Term",
       "villas": "Villas",
-      "apartments": "Apartments"
+      "apartments": "Apartments",
+      "new": "New"
     }
   }
-} 
+}

@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   // ─── Floating "Become a Host" pill ───────────────────────────────────────────
   becomeHostButton: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 110,
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',

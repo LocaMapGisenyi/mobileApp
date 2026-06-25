@@ -21,27 +21,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { colors } from '../theme';
 
 type HostScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// Données simulées pour l'hôte
-const hostData = {
-  name: 'Thomas Dubois',
-  joinDate: 'Avril 2023',
-  profileComplete: 80, // pourcentage
-  listings: 3,
-  rating: 4.8,
-  reviews: 24,
-  responseRate: 98,
-  responseTime: 'Dans l\'heure',
-  identityVerified: true,
-  superHost: true,
-};
 
 const StatItem = ({ icon, label, value }: { icon: string; label: string; value: string | number }) => {
   return (
     <View style={styles.statItem}>
-      <MaterialIcons name={icon as any} size={24} color="#FF5A5F" style={styles.statIcon} />
+      <MaterialIcons name={icon as any} size={24} color={colors.primary} style={styles.statIcon} />
       <View>
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
@@ -65,11 +52,11 @@ const ActionButton = ({ icon, label, onPress, primary = false }: { icon: string;
       <MaterialIcons
         name={icon as any}
         size={20}
-        color={primary ? '#FFFFFF' : '#717171'}
+        color={primary ? colors.white : colors.inkSubtle}
       />
       <Text style={[
         styles.actionButtonText,
-        primary && { color: '#FFFFFF' }
+        primary && { color: colors.white }
       ]}>
         {label}
       </Text>
@@ -90,14 +77,14 @@ const HostProfileScreen = () => {
   
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
       {/* Header with title and icons */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Menu</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.notificationIcon}>
-            <MaterialIcons name="notifications-none" size={24} color="#000000" />
+            <MaterialIcons name="notifications-none" size={24} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.profileIconContainer}>
             <Text style={styles.profileIconText}>P</Text>
@@ -109,65 +96,65 @@ const HostProfileScreen = () => {
         {/* Menu Items */}
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="settings" size={24} color="#222222" />
+            <MaterialIcons name="settings" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Paramètres du compte</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="menu-book" size={24} color="#222222" />
+            <MaterialIcons name="menu-book" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Ressources pour les hôtes</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="help-outline" size={24} color="#222222" />
+            <MaterialIcons name="help-outline" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Obtenir de l'aide</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="group" size={24} color="#222222" />
+            <MaterialIcons name="group" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Trouver un co-hôte</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="add-home" size={24} color="#222222" />
+            <MaterialIcons name="add-home" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Créer une nouvelle annonce</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="people-outline" size={24} color="#222222" />
+            <MaterialIcons name="people-outline" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Parrainer un hôte</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="description" size={24} color="#222222" />
+            <MaterialIcons name="description" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Juridique</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={24} color="#717171" />
+          <MaterialIcons name="chevron-right" size={24} color={colors.inkSubtle} />
         </TouchableOpacity>
         
         <View style={styles.divider} />
         
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <MaterialIcons name="logout" size={24} color="#222222" />
+            <MaterialIcons name="logout" size={24} color={colors.primary} />
             <Text style={styles.menuItemText}>Déconnexion</Text>
           </View>
         </TouchableOpacity>
@@ -178,7 +165,7 @@ const HostProfileScreen = () => {
             style={styles.switchModeButton}
             onPress={handleSwitchToUser}
           >
-            <MaterialIcons name="swap-horiz" size={20} color="#FFFFFF" />
+            <MaterialIcons name="swap-horiz" size={20} color={colors.white} />
             <Text style={styles.switchModeText}>Passer en mode Locataire</Text>
           </TouchableOpacity>
         </View>
@@ -193,7 +180,7 @@ const HostProfileScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   header: {
     paddingHorizontal: 20,
@@ -202,12 +189,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: colors.surfaceSunken,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#222222',
+    color: colors.ink,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -221,12 +208,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#222222',
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileIconText: {
-    color: '#FFFFFF',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -247,11 +236,11 @@ const styles = StyleSheet.create({
   menuItemText: {
     marginLeft: 16,
     fontSize: 18,
-    color: '#222222',
+    color: colors.ink,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.border,
     marginVertical: 8,
     marginHorizontal: 20,
   },
@@ -260,7 +249,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   switchModeButton: {
-    backgroundColor: '#222222',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -269,7 +258,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   switchModeText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
@@ -286,11 +275,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#222222',
+    color: colors.ink,
   },
   statLabel: {
     fontSize: 14,
-    color: '#717171',
+    color: colors.inkSubtle,
   },
   actionButton: {
     flexDirection: 'row',
@@ -298,13 +287,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceSunken,
     marginBottom: 8,
   },
   actionButtonText: {
     marginLeft: 12,
     fontSize: 16,
-    color: '#222222',
+    color: colors.ink,
     fontWeight: '500',
   },
 });

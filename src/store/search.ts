@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Property } from '../types';
-import { mockListings } from '../data/mockListings';
 
 // Types pour les filtres de recherche avancée
 export interface SearchFilters {
@@ -89,7 +88,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   
   applyFilters: async () => {
     const { filters, listings } = get();
-    const base = listings.length > 0 ? listings : mockListings;
+    const base = listings.length > 0 ? listings : [];
 
     let result = [...base];
 
@@ -153,16 +152,15 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   fetchListingById: async (id: string) => {
     const inState = get().listings.find(l => l.id === id);
     if (inState) { set({ selectedListing: inState }); return inState; }
-    const fromMock = mockListings.find(l => l.id === id) ?? null;
-    set({ selectedListing: fromMock, isLoading: false });
-    return fromMock;
+    set({ selectedListing: null, isLoading: false });
+    return null;
   },
 
   fetchListings: async () => {
     set({ isLoading: true, error: null });
     set({
-      listings: mockListings,
-      filteredListings: mockListings,
+      listings: [],
+      filteredListings: [],
       isLoading: false,
     });
   },

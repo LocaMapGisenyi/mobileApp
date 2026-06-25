@@ -107,7 +107,7 @@ const FavoritesScreen: React.FC = () => {
       <AnimatedTouchable 
         entering={FadeIn.delay(800).duration(800)}
         style={styles.exploreButton}
-        onPress={() => navigation.navigate('Search')}
+        onPress={() => navigation.navigate('MainTabs', { screen: 'Explorer' } as any)}
         activeOpacity={0.8}
       >
         <Ionicons name="search" size={18} color={colors.white} style={styles.buttonIcon} />

@@ -21,7 +21,40 @@
     "view": "Kureba",
     "yes": "Yego",
     "no": "Oya",
-    "seeAll": "Reba byose"
+    "seeAll": "Reba byose",
+    "ok": "Sawa",
+    "refreshing": "Kuvugurura...",
+    "unknownError": "Hari ikosa ryabaye",
+    "unknownLocation": "Aho hantu ntahazwi"
+  },
+  "tabs": {
+    "explorer": "Gushakisha",
+    "guides": "Ingendanshusho",
+    "favorites": "Ibyo ukunda",
+    "messages": "Ubutumwa",
+    "profile": "Umwirondoro"
+  },
+  "host": {
+    "become": "Kuba umwiti",
+    "dashboard": {
+      "title": "Ikibaho cy'umwiti",
+      "today": "Uyu munsi",
+      "upcoming": "Ibiuzaza",
+      "noReservations": "Nta rezervasiyo ufite",
+      "discoverTools": "Menya ibikoresho bishya by'abahoze"
+    }
+  },
+  "home": {
+    "searchPlaceholder": "Shakisha aho kuba...",
+    "discoverGisenyi": "Menya Gisenyi, u Rwanda",
+    "explore": "Gushakisha",
+    "map": "Ikarita",
+    "favorites": "Ibyo ukunda",
+    "alerts": "Imenyesha",
+    "featuredListings": "Amazu yihariye",
+    "newInGisenyi": "Gishya i Gisenyi",
+    "viewAll": "Reba byose",
+    "welcomeUser": "Muraho, {{name}}"
   },
   "auth": {
     "login": "Kwinjira",
@@ -36,7 +69,8 @@
     "alreadyHaveAccount": "Ufite konti?",
     "dontHaveAccount": "Nta konti ufite?",
     "resetPassword": "Kongera gushyiraho ijambo ry'ibanga",
-    "resetPasswordInstructions": "Andika imeri yawe kugirango tukoherereze link yo guhindura ijambo ry'ibanga"
+    "resetPasswordInstructions": "Andika imeri yawe kugirango tukoherereze link yo guhindura ijambo ry'ibanga",
+    "noAccount": "Nta konti ufite?"
   },
   "preferences": {
     "title": "Ibyo Ukunda",
@@ -67,21 +101,62 @@
     "price": "Igiciro",
     "location": "Ahantu",
     "bedrooms": "Ibyumba byo kuryamamo",
+    "bedroomsSingular": "icyumba co kuryamamo",
+    "bedroomsPlural": "ibyumba byo kuryamamo",
     "bathrooms": "Ibyumba byo koga",
+    "bathroomsSingular": "icyumba co koga",
+    "bathroomsPlural": "ibyumba byo koga",
     "area": "Ubuso",
+    "surface": "Ubuso bw'inzu",
     "amenities": "Ibikoresho",
     "description": "Igisobanuro",
+    "noDescription": "Nta gisobanuro gihari",
     "contactOwner": "Kuvugisha nyir'inzu",
+    "contact": "Kuvugisha",
+    "call": "Guhamagara",
     "seeMore": "Reba ibisobanuro byose",
     "addToFavorites": "Kongeramo mu bikunda",
+    "addedToFavorites": "Byongewe mu bikunda",
     "removeFromFavorites": "Gukuramo mu bikunda",
+    "removedFromFavorites": "Byakuwe mu bikunda",
     "share": "Gusangiza",
     "perMonth": "ku kwezi",
     "perNight": "ku ijoro",
+    "month": "kwezi",
     "available": "Biraboneka",
     "unavailable": "Ntibikiboneka",
+    "loading": "Ishakishwa ry'inzu...",
     "noResults": "Nta bisubizo",
     "type": "Ubwoko bw'inzu",
+    "host": "Umwiti",
+    "propertyOwner": "Nyir'inzu",
+    "reviews": "Ibitekerezo",
+    "nearbyServices": "Serivisi zo hafi",
+    "practicalInfo": "Amakuru ajyanye na practice",
+    "viewOnMap": "Reba kuri ikarita",
+    "loginToContact": "Injira kugirango uvugishe nyir'inzu",
+    "checkOut": "Reba",
+    "suitableStudents": "Ikwiranye n'abanyeshuri",
+    "suitableLongTerm": "Ikwiranye n'igihe kirekire",
+    "nearby": {
+      "university": "Kaminuza km {{distance}}",
+      "market": "Isoko km {{distance}}",
+      "hospital": "Ibitaro km {{distance}}",
+      "restaurants": "Aho kurya km {{distance}}"
+    },
+    "availableSince": "Ibonetse kuva {{date}}",
+    "leaseType": "Ubwoko bw'amasezerano: buhanga",
+    "occupancy": "Umubare ntarengwa: {{max}}",
+    "contract": {
+      "title": "Amasezerano",
+      "minDuration": "Igihe gito cy'amasezerano",
+      "deposit": "Ingwate",
+      "notice": "Igihe cya preavisi",
+      "noticeDetails": "Ukwezi 1 gusabwa",
+      "utilities": "Ibisabwa birimo",
+      "included": "Ibisabwa birimo",
+      "oneMonthRecommended": "Ukwezi 1 nibura"
+    },
     "types": {
       "apartment": "Appartema",
       "house": "Inzu",
@@ -93,13 +168,35 @@
   "profile": {
     "myProfile": "Umwirondoro wanjye",
     "editProfile": "Guhindura umwirondoro",
+    "personalInfo": "Amakuru yanjye",
+    "fullName": "Amazina yose",
+    "email": "Imeri",
+    "phoneNumber": "Numero ya telefoni",
+    "profileUpdated": "Umwirondoro wavuguruwe",
     "settings": "Igenamiterere",
     "language": "Ururimi",
     "currency": "Amafaranga",
     "logout": "Gusohoka",
     "darkMode": "Ibara rirabukije",
     "help": "Ubufasha",
-    "about": "Ibisobanuro"
+    "about": "Ibisobanuro",
+    "logoutConfirmTitle": "Gusohoka",
+    "logoutConfirmMessage": "Uremeza ko ushaka gusohoka?",
+    "myFavorites": "Ibyo nkunda",
+    "myAlerts": "Imenyesha yanjye",
+    "myGuides": "Ingendanshusho zanjye",
+    "viewHistory": "Amazu nabonye",
+    "preferencesTitle": "Ibyo nkunda",
+    "actionsTitle": "Ibikorwa byanjye",
+    "memberSince": "Umunyamuryango kuva {{date}}",
+    "appInfoTitle": "Porogaramu & Amakuru",
+    "termsAndConditions": "Amategeko n'Amabwiriza",
+    "support": "Ubufasha",
+    "aboutLocaMap": "Ibisobanuro bya LocaMap",
+    "notifications": "Imenyesha",
+    "notificationsEnabled": "Byemewe",
+    "notificationsDisabled": "Byahagaritswe",
+    "avatarAltText": "Ifoto y'umwirondoro"
   },
   "search": {
     "title": "Gushakisha",
@@ -125,7 +222,8 @@
   "favorites": {
     "title": "Ibyo ukunda",
     "noFavorites": "Nta byo ukunda biriho",
-    "startBrowsing": "Tangira gushakisha amazu maze ugire ibyo ukunda"
+    "startBrowsing": "Tangira gushakisha amazu maze ugire ibyo ukunda",
+    "savedCount": "{{count}} byabitswe"
   },
   "alerts": {
     "title": "Kurema Imenyesha",
@@ -195,7 +293,22 @@
     "comment": "Igitekerezo",
     "reviewPlaceholder": "Sangiza abandi ibyo wabonye...",
     "submitReview": "Kohereza igitekerezo",
-    "thankYou": "Urakoze ku gitekerezo cyawe!"
+    "sendReview": "Kohereza igitekerezo",
+    "thankYou": "Urakoze ku gitekerezo cyawe!",
+    "thankYouMessage": "Igitekerezo cyawe cyoherejwe neza.",
+    "yourRating": "Isuzuma ryawe",
+    "yourComment": "Igitekerezo cyawe",
+    "leaveReviewTitle": "Tanga igitekerezo",
+    "reviewingAs": "Wandikira nka",
+    "verifiedTenant": "Umukirizi wemejwe",
+    "anonymousUser": "Umukoresha utazwi",
+    "errorRatingRequired": "Tanga isuzuma",
+    "submitting": "Koherezwa...",
+    "sortBy": "Gutondekanya na",
+    "sortRecent": "Ibyabaye vuba",
+    "sortHighest": "Amanota meza",
+    "sortLowest": "Amanota make",
+    "characters": "inyuguti"
   },
   "guides": {
     "title": "Ingendanshusho z'ahantu",
@@ -216,6 +329,7 @@
     "seeAllGuides": "Reba ingendanshusho zose",
     "refreshing": "Kuvugurura...",
     "categoryAll": "Ingendanshusho zose",
+    "shareError": "Ikosa mu gusangiza ingendanshusho",
     "neighborhoods": "Ibice by'umujyi byizwe",
     "neighborhoodsDesc": "Menya ibice byiza byo kuba muri Gisenyi",
     "transportation": "Kugendagenda i Gisenyi",
@@ -230,6 +344,35 @@
     "studentLifeDesc": "Amakuru ya ngombwa ku banyeshuri mpuzamahanga",
     "gisenyiCenter": "Hagati y'umujyi wa Gisenyi",
     "gisenyiCenterSummary": "Umutima w'umujyi wa Gisenyi, ufite amaduka na kafé ziri ku nkombe y'ikiyaga cya Kivu"
+  },
+  "guideDetail": {
+    "backToGuides": "Garuka ku ngendanshusho",
+    "guideNotFound": "Ingendanshusho ntiboneka",
+    "summary": "Incamake"
+  },
+  "saved": {
+    "title": "Ibyabitswe",
+    "emptyTitle": "Nta nzu yabitswe",
+    "empty": "Ntabwo ubitse amazu",
+    "explore": "Gushakisha amazu",
+    "exploreMore": "Reba amazu menshi",
+    "footerText": "Reba hano amazu wabitse",
+    "viewOnMap": "Reba kuri ikarita",
+    "sort": {
+      "date": "Itariki",
+      "price": "Igiciro",
+      "type": "Ubwoko"
+    }
+  },
+  "message": {
+    "send": "Kohereza",
+    "new": {
+      "title": "Ubutumwa bushya",
+      "propertyInfo": "Inzu",
+      "placeholder": "Andika ubutumwa bwawe...",
+      "yourMessage": "Ubutumwa bwawe",
+      "tip": "Iyitambulishe kandi sobanura ibyo ukeneye"
+    }
   },
   "discover": {
     "title": "Menya Gisenyi",
@@ -259,7 +402,8 @@
     "invalidEmail": "Imeri siyo",
     "passwordMismatch": "Amagambo y'ibanga ntahuye",
     "weakPassword": "Ijambo ry'ibanga ririmo intege",
-    "emailExists": "Imeri isanzwe ikoreshwa"
+    "emailExists": "Imeri isanzwe ikoreshwa",
+    "invalidPhone": "Nomero ya telefoni siyo"
   },
   "explore": {
     "findYourHome": "Shakisha aho kuba i Gisenyi",
@@ -275,6 +419,16 @@
     "studentHousing": "Amazu y'abanyeshuri",
     "studentHousingDescription": "Amazu y'igiciro gito hafi y'amashuri",
     "discoverGisenyiInfo": "Menya bike kuri Gisenyi",
-    "cityGuidesDescription": "Shakisha mu duce tw'umujyi, ibikorwa n'ibindi"
+    "cityGuidesDescription": "Shakisha mu duce tw'umujyi, ibikorwa n'ibindi",
+    "categories": {
+      "all": "Byose",
+      "lake": "Ireba Ikiyaga",
+      "student": "Abanyeshuri",
+      "furnished": "Ifite ibikoresho",
+      "longTerm": "Igihe kirekire",
+      "villas": "Villas",
+      "apartments": "Appartema",
+      "new": "Gishya"
+    }
   }
-} 
+}

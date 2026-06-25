@@ -16,10 +16,6 @@ import {
   useTheme,
   ActivityIndicator,
   Button,
-  Card,
-  Avatar,
-  Divider,
-  IconButton,
 } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,22 +26,26 @@ import SearchFiltersModal from '../components/SearchFiltersModal';
 import { useSearchStore, SearchFilters } from '../store/search';
 import { useUserStore } from '../store/user';
 import { usePreferences } from '../store/preferences';
+
 import { useTranslation } from 'react-i18next';
 import { useFavoritesStore } from '../store/favorites';
 import Animated, {
   FadeInUp,
   FadeIn,
+  FadeInDown,
   FadeInRight,
+  ZoomIn,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   interpolate,
   Extrapolation,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { colors as themeColors, spacing as themeSpacing, typography as themeTypo, borderRadius as themeBR } from '../theme';
 
 const NUM_COLUMNS_THRESHOLD = 700;
-const SEARCH_BAR_HEIGHT = 60;
 
 // Définition des catégories personnalisées
 const CUSTOM_CATEGORIES = [
@@ -114,6 +114,17 @@ const ExplorerScreen = () => {
   const { currency } = usePreferences();
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   const { width } = useWindowDimensions();
+  const { user } = useUserStore();
+
+  // Initiales de l'avatar (max 2 caractères)
+  const avatarInitials = user.fullName
+    ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : user.email ? user.email[0].toUpperCase() : 'U';
+
+  // Lettres de "LocaMap" pour l'animation staggerée
+  const APP_NAME_LETTERS = 'LocaMap'.split('');
+  const HEADER_MAX_HEIGHT = 72;
+  const HEADER_MIN_HEIGHT = 52;
 
   const {
     listings,
@@ -147,22 +158,55 @@ const ExplorerScreen = () => {
     },
   });
 
-  // Animated style for the sticky search header
-  const searchBarAnimatedStyle = useAnimatedStyle(() => {
-    const elevation = interpolate(
+  // Header compresse au scroll : hauteur + taille du nom + ombre
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const height = interpolate(
       scrollY.value,
-      [0, 10],
-      [0, 4],
+      [0, 60],
+      [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
       Extrapolation.CLAMP
     );
-
+    const shadowOpacity = interpolate(
+      scrollY.value,
+      [0, 30],
+      [0, 0.08],
+      Extrapolation.CLAMP
+    );
     return {
-      zIndex: 1000,
-      elevation: elevation,
-      shadowOpacity: elevation * 0.1,
-      shadowOffset: { width: 0, height: elevation * 0.5 },
+      height,
+      shadowOpacity,
+      shadowColor: themeColors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 8,
+      elevation: interpolate(scrollY.value, [0, 30], [0, 4], Extrapolation.CLAMP),
     };
   });
+
+  const appNameScaleStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scaleX: interpolate(scrollY.value, [0, 60], [1, 0.78], Extrapolation.CLAMP),
+      },
+      {
+        scaleY: interpolate(scrollY.value, [0, 60], [1, 0.78], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  const subtitleOpacityStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [0, 40],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
+    height: interpolate(
+      scrollY.value,
+      [0, 40],
+      [18, 0],
+      Extrapolation.CLAMP
+    ),
+  }));
 
   const handleFetchListings = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -396,38 +440,62 @@ const ExplorerScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={themeColors.surface} />
 
-      {/* Sticky Search Bar */}
-      <Animated.View style={[styles.searchBarContainer, searchBarAnimatedStyle]}>
-        <TouchableOpacity
-          style={styles.searchBar}
-          activeOpacity={0.9}
-          onPress={() => toggleFiltersModal()}
-          accessibilityRole="button"
-          accessibilityLabel={t('explore.searchPlaceholder')}
-          accessibilityHint="Ouvre les filtres de recherche"
-        >
-          <MaterialIcons name="search" size={22} color={themeColors.inkMid} style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>{t('explore.searchPlaceholder')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={toggleFiltersModal}
-          accessibilityRole="button"
-          accessibilityLabel="Filtres"
-          accessibilityHint="Ouvre le panneau de filtres"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <MaterialIcons name="tune" size={22} color={themeColors.inkMid} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => navigation.navigate('MapScreen')}
-          accessibilityRole="button"
-          accessibilityLabel="Voir sur la carte"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <MaterialIcons name="map" size={22} color={themeColors.inkMid} />
-        </TouchableOpacity>
+      {/* ── Header animé : nom de l'app + avatar ── */}
+      <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+        {/* Nom LocaMap lettre par lettre */}
+        <View style={styles.headerLeft}>
+          <Animated.View style={[styles.appNameRow, appNameScaleStyle]}>
+            {APP_NAME_LETTERS.map((letter, i) => (
+              <Animated.View
+                key={i}
+                entering={FadeInDown.delay(i * 45).duration(380).easing(Easing.out(Easing.quad))}
+              >
+                <Text style={styles.appNameLetter}>{letter}</Text>
+              </Animated.View>
+            ))}
+          </Animated.View>
+          <Animated.View style={subtitleOpacityStyle}>
+            <Text style={styles.headerSubtitle}>Gisenyi, Rwanda</Text>
+          </Animated.View>
+        </View>
+
+        {/* Actions droite : filtre + carte + avatar */}
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={toggleFiltersModal}
+            accessibilityRole="button"
+            accessibilityLabel="Filtres"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="tune" size={22} color={themeColors.inkMid} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('MapScreen')}
+            accessibilityRole="button"
+            accessibilityLabel="Carte"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="map" size={22} color={themeColors.inkMid} />
+          </TouchableOpacity>
+          <Animated.View entering={ZoomIn.delay(320).duration(400)} style={styles.avatarWrapper}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Profile' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Mon profil"
+              style={styles.avatarTouchable}
+            >
+              {user.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarInitials}>
+                  <Text style={styles.avatarInitialsText}>{avatarInitials}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </Animated.View>
 
       {/* Main Content */}
@@ -525,41 +593,81 @@ const styles = StyleSheet.create({
     backgroundColor: themeColors.background,
   },
 
-  // ─── Search Bar ───────────────────────────────────────────────────────────
-  searchBarContainer: {
+  // ─── Header animé ────────────────────────────────────────────────────────
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: themeSpacing[4],
-    paddingVertical: themeSpacing[3],
+    justifyContent: 'space-between',
+    paddingHorizontal: themeSpacing[5],
     backgroundColor: themeColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: themeColors.border,
+    zIndex: 100,
+    overflow: 'hidden',
   },
-  searchBar: {
+  headerLeft: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  appNameLetter: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: themeColors.primary,
+    includeFontPadding: false,
+  },
+  appNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    alignSelf: 'flex-start',
+  },
+  headerSubtitle: {
+    color: themeColors.inkSubtle,
+    fontSize: themeTypo.fontSize.xs,
+    fontWeight: '500',
+    marginTop: 1,
+    overflow: 'hidden',
+  },
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
-    backgroundColor: themeColors.surfaceSunken,
-    borderRadius: themeBR.searchBar,
-    paddingHorizontal: themeSpacing[4],
-    borderWidth: 1.5,
-    borderColor: themeColors.border,
+    gap: themeSpacing[1],
   },
-  searchIcon: {
-    marginRight: themeSpacing[2],
-  },
-  searchPlaceholder: {
-    color: themeColors.inkSubtle,
-    fontSize: themeTypo.fontSize.base,
-    flex: 1,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
+  headerIconBtn: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: themeColors.surfaceSunken,
+  },
+  avatarWrapper: {
     marginLeft: themeSpacing[1],
+  },
+  avatarTouchable: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  avatarInitials: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: themeColors.primaryLight,
+    borderWidth: 1.5,
+    borderColor: themeColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitialsText: {
+    fontSize: themeTypo.fontSize.sm,
+    fontWeight: '700',
+    color: themeColors.primary,
   },
 
   // ─── Scroll Container ─────────────────────────────────────────────────────

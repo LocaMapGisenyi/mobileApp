@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { mockConversations, currentUser, getRandomResponse, Conversation, Message } from '../data/mockMessages';
+import { Conversation, Message } from '../types';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -27,8 +27,8 @@ const isISODateString = (value: any): value is string => {
 export const useMessagesStore = create<MessagesState>()(
   persist(
     (set, get) => ({
-      conversations: [...mockConversations],
-      totalUnreadCount: mockConversations.reduce((sum, conv) => sum + conv.unreadCount, 0),
+      conversations: [],
+      totalUnreadCount: 0,
       
       sendMessage: async (conversationId: string, text: string) => {
         return new Promise<void>((resolve) => {
@@ -46,7 +46,7 @@ export const useMessagesStore = create<MessagesState>()(
             id: uuidv4(),
             text,
             createdAt: new Date(),
-            user: { ...currentUser },
+            user: { id: 'me', name: 'Moi', avatar: undefined },
             sent: true,
             received: false,
             read: false,
@@ -105,7 +105,7 @@ export const useMessagesStore = create<MessagesState>()(
                   
                   const ownerResponse: Message = {
                     id: uuidv4(),
-                    text: getRandomResponse(),
+                    text: 'Je vous répondrai bientôt.',
                     createdAt: new Date(),
                     user: {
                       id: conversations[conversationIndex].otherUser.id,

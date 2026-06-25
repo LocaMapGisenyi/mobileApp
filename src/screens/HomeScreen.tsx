@@ -19,11 +19,8 @@ import { RootStackParamList, Property } from '../types';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 import PropertyCard from '../components/PropertyCard';
-import GuideCard from '../components/GuideCard';
 import { useUserStore } from '../store/user';
 import { useSearchStore } from '../store/search';
-import { localGuides } from '../data/localGuides';
-import { mockListings } from '../data/mockListings';
 import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp, FadeIn, SlideInDown } from 'react-native-reanimated';
 
@@ -44,21 +41,15 @@ const HomeScreen = () => {
   const { width } = useWindowDimensions();
   const QUICK_ACCESS_BUTTON_SIZE = width / 4.8;
   const [featuredListings, setFeaturedListings] = useState<Property[]>([]);
-  const [newGuides, setNewGuides] = useState<typeof localGuides>([]);
 
   useEffect(() => {
-    // fetchListings({ limit: 5, featured: true }); // Example: if your store supports this
-    setFeaturedListings(mockListings.slice(0, 5)); // Simulate featured
-    setNewGuides(localGuides.filter(guide => guide.isNew).slice(0, 5)); // Simulate new guides
+    setFeaturedListings([]);
   }, []);
 
   const handleViewProperty = (propertyId: string) => {
     navigation.navigate('PropertyDetails', { propertyId });
   };
 
-  const handleViewGuide = (guideId: string) => {
-    navigation.navigate('GuideDetail', { guideId });
-  };
 
   const QuickAccessButton = useCallback(
     ({
@@ -189,7 +180,6 @@ const HomeScreen = () => {
               delay={500}
             />
             <FlatList
-              listKey="featured-listings"
               horizontal
               data={featuredListings}
               renderItem={({ item, index }) => (
@@ -214,35 +204,6 @@ const HomeScreen = () => {
           </View>
         )}
 
-        {/* ── Nouveautés à Gisenyi Section (Local Guides) ── */}
-        {newGuides.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <SectionHeader
-              title={t('home.newInGisenyi')}
-              onViewAll={() => navigation.navigate('LocalGuide')}
-              delay={700}
-            />
-            <FlatList
-              listKey="new-guides"
-              horizontal
-              data={newGuides}
-              renderItem={({ item, index }) => (
-                <Animated.View
-                  entering={FadeInUp.delay(index * 100 + 800).duration(500)}
-                  style={[
-                    styles.listItemContainer,
-                    index === 0 && styles.listItemFirst,
-                  ]}
-                >
-                  <GuideCard guide={item} onPress={() => handleViewGuide(item.id)} />
-                </Animated.View>
-              )}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalListContent}
-            />
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

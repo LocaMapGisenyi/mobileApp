@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
-import { Conversation } from '../data/mockMessages';
+import { Conversation } from '../types';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 
 interface ConversationListItemProps {

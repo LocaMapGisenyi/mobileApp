@@ -21,7 +21,40 @@
     "view": "Tazama",
     "yes": "Ndio",
     "no": "La",
-    "seeAll": "Ona zote"
+    "seeAll": "Ona zote",
+    "ok": "Sawa",
+    "refreshing": "Inasasisha...",
+    "unknownError": "Hitilafu imetokea",
+    "unknownLocation": "Eneo halijulikani"
+  },
+  "tabs": {
+    "explorer": "Chunguza",
+    "guides": "Miongozo",
+    "favorites": "Vipendwa",
+    "messages": "Ujumbe",
+    "profile": "Wasifu"
+  },
+  "host": {
+    "become": "Kuwa mwenyeji",
+    "dashboard": {
+      "title": "Dashibodi ya Mwenyeji",
+      "today": "Leo",
+      "upcoming": "Ijayo",
+      "noReservations": "Huna uhifadhi wowote",
+      "discoverTools": "Gundua zana mpya kwa wenyeji"
+    }
+  },
+  "home": {
+    "searchPlaceholder": "Tafuta makazi...",
+    "discoverGisenyi": "Gundua Gisenyi, Rwanda",
+    "explore": "Chunguza",
+    "map": "Ramani",
+    "favorites": "Vipendwa",
+    "alerts": "Arifa",
+    "featuredListings": "Orodha zilizoangaziwa",
+    "newInGisenyi": "Mpya katika Gisenyi",
+    "viewAll": "Ona zote",
+    "welcomeUser": "Habari, {{name}}"
   },
   "auth": {
     "login": "Ingia",
@@ -36,7 +69,8 @@
     "alreadyHaveAccount": "Una akaunti tayari?",
     "dontHaveAccount": "Huna akaunti?",
     "resetPassword": "Weka upya nywila",
-    "resetPasswordInstructions": "Ingiza barua pepe yako na tutakutumia kiungo cha kubadilisha nywila"
+    "resetPasswordInstructions": "Ingiza barua pepe yako na tutakutumia kiungo cha kubadilisha nywila",
+    "noAccount": "Bado huna akaunti?"
   },
   "preferences": {
     "title": "Mapendeleo",
@@ -67,21 +101,62 @@
     "price": "Bei",
     "location": "Eneo",
     "bedrooms": "Vyumba vya kulala",
+    "bedroomsSingular": "chumba cha kulala",
+    "bedroomsPlural": "vyumba vya kulala",
     "bathrooms": "Vyumba vya kuoga",
+    "bathroomsSingular": "chumba cha kuoga",
+    "bathroomsPlural": "vyumba vya kuoga",
     "area": "Ukubwa",
+    "surface": "Eneo la uso",
     "amenities": "Vifaa",
     "description": "Maelezo",
+    "noDescription": "Hakuna maelezo yaliyopatikana",
     "contactOwner": "Wasiliana na mmiliki",
+    "contact": "Wasiliana",
+    "call": "Piga simu",
     "seeMore": "Ona zaidi",
     "addToFavorites": "Ongeza kwenye vipendwa",
+    "addedToFavorites": "Imeongezwa kwenye vipendwa",
     "removeFromFavorites": "Ondoa kwenye vipendwa",
+    "removedFromFavorites": "Imeondolewa kwenye vipendwa",
     "share": "Shiriki",
     "perMonth": "kwa mwezi",
     "perNight": "kwa usiku",
+    "month": "mwezi",
     "available": "Inapatikana",
     "unavailable": "Haipatikani",
+    "loading": "Inapakia mali...",
     "noResults": "Hakuna matokeo",
     "type": "Aina ya nyumba",
+    "host": "Mwenyeji",
+    "propertyOwner": "Mmiliki",
+    "reviews": "Maoni",
+    "nearbyServices": "Huduma za karibu",
+    "practicalInfo": "Taarifa za vitendo",
+    "viewOnMap": "Tazama kwenye ramani",
+    "loginToContact": "Ingia ili kuwasiliana na mmiliki",
+    "checkOut": "Angalia",
+    "suitableStudents": "Inafaa kwa wanafunzi",
+    "suitableLongTerm": "Bora kwa kukaa muda mrefu",
+    "nearby": {
+      "university": "Chuo kikuu {{distance}}m",
+      "market": "Soko {{distance}}m",
+      "hospital": "Hospitali {{distance}}m",
+      "restaurants": "Migahawa {{distance}}m"
+    },
+    "availableSince": "Inapatikana tangu {{date}}",
+    "leaseType": "Aina ya kukodisha: inayobadilika",
+    "occupancy": "Idadi ya watu: {{max}}",
+    "contract": {
+      "title": "Masharti ya mkataba",
+      "minDuration": "Muda wa chini",
+      "deposit": "Amana",
+      "notice": "Muda wa notisi",
+      "noticeDetails": "Mwezi 1 unapendekezwa",
+      "utilities": "Huduma zimejumuishwa",
+      "included": "Huduma zimejumuishwa",
+      "oneMonthRecommended": "Mwezi 1 angalau"
+    },
     "types": {
       "apartment": "Flati",
       "house": "Nyumba",
@@ -93,13 +168,35 @@
   "profile": {
     "myProfile": "Wasifu wangu",
     "editProfile": "Hariri wasifu",
+    "personalInfo": "Taarifa za kibinafsi",
+    "fullName": "Jina kamili",
+    "email": "Barua pepe",
+    "phoneNumber": "Simu",
+    "profileUpdated": "Wasifu umesasishwa",
     "settings": "Mipangilio",
     "language": "Lugha",
     "currency": "Sarafu",
     "logout": "Toka",
     "darkMode": "Mandhari ya Giza",
     "help": "Msaada",
-    "about": "Kuhusu"
+    "about": "Kuhusu",
+    "logoutConfirmTitle": "Toka",
+    "logoutConfirmMessage": "Una uhakika unataka kutoka?",
+    "myFavorites": "Vipendwa vyangu",
+    "myAlerts": "Arifa zangu",
+    "myGuides": "Miongozo yangu",
+    "viewHistory": "Historia ya mali zilizotembelewa",
+    "preferencesTitle": "Mapendeleo",
+    "actionsTitle": "Vitendo vyangu",
+    "memberSince": "Mwanachama tangu {{date}}",
+    "appInfoTitle": "Programu & Taarifa",
+    "termsAndConditions": "Masharti na Hali",
+    "support": "Msaada",
+    "aboutLocaMap": "Kuhusu LocaMap",
+    "notifications": "Arifa",
+    "notificationsEnabled": "Zimewashwa",
+    "notificationsDisabled": "Zimezimwa",
+    "avatarAltText": "Picha ya wasifu"
   },
   "search": {
     "title": "Tafuta",
@@ -125,7 +222,8 @@
   "favorites": {
     "title": "Vipendwa",
     "noFavorites": "Bado huna vipendwa",
-    "startBrowsing": "Anza kuvinjari mali ili kuongeza vipendwa"
+    "startBrowsing": "Anza kuvinjari mali ili kuongeza vipendwa",
+    "savedCount": "{{count}} zilizohifadhiwa"
   },
   "alerts": {
     "title": "Unda Arifa",
@@ -195,7 +293,22 @@
     "comment": "Maoni",
     "reviewPlaceholder": "Shiriki uzoefu wako...",
     "submitReview": "Wasilisha maoni",
-    "thankYou": "Asante kwa maoni yako!"
+    "sendReview": "Wasilisha maoni",
+    "thankYou": "Asante kwa maoni yako!",
+    "thankYouMessage": "Maoni yako yamewasilishwa kwa mafanikio.",
+    "yourRating": "Kiwango chako",
+    "yourComment": "Maoni yako",
+    "leaveReviewTitle": "Acha maoni",
+    "reviewingAs": "Unaandika kama",
+    "verifiedTenant": "Mpangaji aliyethibitishwa",
+    "anonymousUser": "Mtumiaji asiyejulikana",
+    "errorRatingRequired": "Tafadhali toa kiwango",
+    "submitting": "Inawasilisha...",
+    "sortBy": "Panga kwa",
+    "sortRecent": "Ya hivi karibuni zaidi",
+    "sortHighest": "Kiwango cha juu",
+    "sortLowest": "Kiwango cha chini",
+    "characters": "herufi"
   },
   "guides": {
     "title": "Miongozo ya Mtaa",
@@ -216,6 +329,7 @@
     "seeAllGuides": "Tazama miongozo yote",
     "refreshing": "Inahuishwa...",
     "categoryAll": "Miongozo yote",
+    "shareError": "Hitilafu ya kushiriki mwongozo",
     "neighborhoods": "Mitaa Inayopendekezwa",
     "neighborhoodsDesc": "Gundua mitaa bora zaidi ya kuishi Gisenyi",
     "transportation": "Kusafiri Gisenyi",
@@ -230,6 +344,35 @@
     "studentLifeDesc": "Kila kitu kujua kwa wanafunzi wa kimataifa",
     "gisenyiCenter": "Mjini Gisenyi",
     "gisenyiCenterSummary": "Moyo hai wa Gisenyi, na maduka na mikahawa kando ya Ziwa Kivu"
+  },
+  "guideDetail": {
+    "backToGuides": "Rudi kwenye miongozo",
+    "guideNotFound": "Mwongozo haujapatikana",
+    "summary": "Muhtasari"
+  },
+  "saved": {
+    "title": "Zilizohifadhiwa",
+    "emptyTitle": "Hakuna orodha zilizohifadhiwa",
+    "empty": "Bado hujahifadhi orodha yoyote",
+    "explore": "Chunguza orodha",
+    "exploreMore": "Tazama orodha zaidi",
+    "footerText": "Pata orodha zako zilizohifadhiwa hapa",
+    "viewOnMap": "Tazama kwenye ramani",
+    "sort": {
+      "date": "Tarehe",
+      "price": "Bei",
+      "type": "Aina"
+    }
+  },
+  "message": {
+    "send": "Tuma",
+    "new": {
+      "title": "Ujumbe mpya",
+      "propertyInfo": "Mali",
+      "placeholder": "Andika ujumbe wako...",
+      "yourMessage": "Ujumbe wako",
+      "tip": "Jianzishe mwenyewe na eleza mahitaji yako"
+    }
   },
   "discover": {
     "title": "Gundua Gisenyi",
@@ -259,7 +402,8 @@
     "invalidEmail": "Barua pepe batili",
     "passwordMismatch": "Nywila hazifanani",
     "weakPassword": "Nywila ni dhaifu mno",
-    "emailExists": "Barua pepe hii tayari inatumika"
+    "emailExists": "Barua pepe hii tayari inatumika",
+    "invalidPhone": "Namba ya simu batili"
   },
   "explore": {
     "findYourHome": "Pata nyumba yako mpya katika Gisenyi",
@@ -275,6 +419,16 @@
     "studentHousing": "Nyumba za wanafunzi",
     "studentHousingDescription": "Chaguzi nafuu karibu na vyuo",
     "discoverGisenyiInfo": "Pata maelezo zaidi kuhusu Gisenyi",
-    "cityGuidesDescription": "Chunguza mitaa, shughuli na zaidi"
+    "cityGuidesDescription": "Chunguza mitaa, shughuli na zaidi",
+    "categories": {
+      "all": "Zote",
+      "lake": "Mtazamo wa Ziwa",
+      "student": "Wanafunzi",
+      "furnished": "Imepambwa",
+      "longTerm": "Muda Mrefu",
+      "villas": "Villa",
+      "apartments": "Flati",
+      "new": "Mpya"
+    }
   }
-} 
+}

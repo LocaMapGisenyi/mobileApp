@@ -29,7 +29,6 @@ import MapScreenHeader from '../components/MapScreenHeader';
 import SearchFiltersModal from '../components/SearchFiltersModal';
 
 // Types and Data
-import { mockListings } from '../data/mockListings';
 import { useSearchStore } from '../store/search';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -54,25 +53,24 @@ const MapScreen: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
-  const { toggleFiltersModal, showFiltersModal } = useSearchStore();
-  
+  const { toggleFiltersModal, showFiltersModal, listings } = useSearchStore();
+
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [region, setRegion] = useState<Region>(INITIAL_REGION);
-  const [visibleListings, setVisibleListings] = useState<Property[]>(mockListings);
+  const [visibleListings, setVisibleListings] = useState<Property[]>(listings);
   const [showList, setShowList] = useState(true);
   
   // Dummy function to simulate when map region changes (for counting visible listings)
   const handleRegionChangeComplete = (newRegion: Region) => {
     setRegion(newRegion);
-    
+
     // This would normally filter listings based on visible map region
-    // For now, we'll just use all mock listings
-    setVisibleListings(mockListings);
+    setVisibleListings(listings);
   };
-  
+
   // Handle marker press
   const handleMarkerPress = (propertyId: string) => {
-    const property = mockListings.find(item => item.id === propertyId);
+    const property = listings.find(item => item.id === propertyId);
     if (property && property.location.coordinates) {
       setSelectedProperty(property);
       
@@ -197,7 +195,7 @@ const MapScreen: React.FC = () => {
         toolbarEnabled={false}
       >
         {/* Price Markers */}
-        {mockListings.map(listing => (
+        {listings.map(listing => (
           listing.location.coordinates && (
             <PriceMarker
               key={listing.id}

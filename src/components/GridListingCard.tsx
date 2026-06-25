@@ -10,17 +10,10 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
-
-// Badge colors anchored to the brand palette
-const BADGE_COLORS = {
-  longTerm: '#4a6da7',
-  student: '#6a7d5e',
-  lake: '#2b87b9',
-} as const;
-import { ExploreListing } from '../data/exploreListings';
+import { Property } from '../types';
 
 interface GridListingCardProps {
-  listing: ExploreListing;
+  listing: Property;
   onPress: (listingId: string) => void;
   index: number;
   displayMode?: 'nightly' | 'monthly';
@@ -51,13 +44,6 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
   const handlePress = useCallback(() => onPress(listing.id), [listing.id, onPress]);
 
   const getBadgeInfo = () => {
-    if (listing.longTerm) {
-      return { icon: 'event', text: 'Long terme', color: BADGE_COLORS.longTerm };
-    } else if (listing.forStudents) {
-      return { icon: 'school', text: 'Étudiants', color: BADGE_COLORS.student };
-    } else if (listing.nearLake) {
-      return { icon: 'water-drop', text: 'Vue lac', color: BADGE_COLORS.lake };
-    }
     return null;
   };
   
@@ -91,12 +77,6 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
             <MaterialIcons name="favorite-border" size={20} color={colors.white} />
           </TouchableOpacity>
           
-          {badgeInfo && (
-            <View style={[styles.badgeContainer, { backgroundColor: badgeInfo.color }]}>
-              <MaterialIcons name={badgeInfo.icon as any} size={12} color={colors.white} />
-              <Text style={styles.badgeText}>{badgeInfo.text}</Text>
-            </View>
-          )}
         </View>
         
         <View style={styles.contentContainer}>
@@ -127,12 +107,6 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
               </Text>
             </Text>
             
-            {listing.furnished && (
-              <View style={styles.tagContainer}>
-                <MaterialIcons name="chair" size={12} color={colors.primary} />
-                <Text style={styles.tagText}>Meublé</Text>
-              </View>
-            )}
           </View>
         </View>
       </TouchableOpacity>

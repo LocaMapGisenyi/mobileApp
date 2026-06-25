@@ -21,7 +21,11 @@
     "view": "Voir",
     "yes": "Oui",
     "no": "Non",
-    "seeAll": "Voir tout"
+    "seeAll": "Voir tout",
+    "ok": "OK",
+    "refreshing": "Actualisation...",
+    "unknownError": "Une erreur est survenue",
+    "unknownLocation": "Emplacement inconnu"
   },
   "tabs": {
     "explorer": "Explorer",
@@ -39,6 +43,18 @@
       "noReservations": "Vous n'avez pas de réservations",
       "discoverTools": "Découvrir de nouveaux outils pour les hôtes"
     }
+  },
+  "home": {
+    "searchPlaceholder": "Rechercher un logement...",
+    "discoverGisenyi": "Découvrez Gisenyi, Rwanda",
+    "explore": "Explorer",
+    "map": "Carte",
+    "favorites": "Favoris",
+    "alerts": "Alertes",
+    "featuredListings": "Logements en vedette",
+    "newInGisenyi": "Nouveautés à Gisenyi",
+    "viewAll": "Voir tout",
+    "welcomeUser": "Bonjour, {{name}}"
   },
   "auth": {
     "login": "Connexion",
@@ -74,7 +90,8 @@
     "fullNamePlaceholder": "Votre nom complet",
     "confirmPasswordPlaceholder": "Retapez votre mot de passe",
     "accountCreated": "Compte créé avec succès!",
-    "loginSuccess": "Connexion réussie!"
+    "loginSuccess": "Connexion réussie!",
+    "noAccount": "Pas encore de compte ?"
   },
   "preferences": {
     "title": "Préférences",
@@ -104,22 +121,63 @@
   "property": {
     "price": "Prix",
     "location": "Emplacement",
-    "bedrooms": "Chambres",
-    "bathrooms": "Salles de bain",
+    "bedrooms": "chambres",
+    "bedroomsSingular": "chambre",
+    "bedroomsPlural": "chambres",
+    "bathrooms": "salles de bain",
+    "bathroomsSingular": "salle de bain",
+    "bathroomsPlural": "salles de bain",
     "area": "Superficie",
+    "surface": "Superficie",
     "amenities": "Équipements",
     "description": "Description",
+    "noDescription": "Aucune description disponible",
     "contactOwner": "Contacter le propriétaire",
+    "contact": "Contacter",
+    "call": "Appeler",
     "seeMore": "Voir plus",
     "addToFavorites": "Ajouter aux favoris",
+    "addedToFavorites": "Ajouté aux favoris",
     "removeFromFavorites": "Retirer des favoris",
+    "removedFromFavorites": "Retiré des favoris",
     "share": "Partager",
     "perMonth": "par mois",
     "perNight": "par nuit",
+    "month": "mois",
     "available": "Disponible",
     "unavailable": "Indisponible",
+    "loading": "Chargement du logement...",
     "noResults": "Aucun résultat",
     "type": "Type de logement",
+    "host": "Hôte",
+    "propertyOwner": "Propriétaire",
+    "reviews": "Avis",
+    "nearbyServices": "Services à proximité",
+    "practicalInfo": "Informations pratiques",
+    "viewOnMap": "Voir sur la carte",
+    "loginToContact": "Connectez-vous pour contacter le propriétaire",
+    "checkOut": "Découvrez",
+    "suitableStudents": "Adapté aux étudiants",
+    "suitableLongTerm": "Idéal pour long séjour",
+    "nearby": {
+      "university": "Université à {{distance}}m",
+      "market": "Marché à {{distance}}m",
+      "hospital": "Hôpital à {{distance}}m",
+      "restaurants": "Restaurants à {{distance}}m"
+    },
+    "availableSince": "Disponible depuis le {{date}}",
+    "leaseType": "Type de bail : flexible",
+    "occupancy": "Capacité max : {{max}} personnes",
+    "contract": {
+      "title": "Conditions du contrat",
+      "minDuration": "Durée minimale",
+      "deposit": "Caution",
+      "notice": "Préavis",
+      "noticeDetails": "1 mois recommandé",
+      "utilities": "Charges incluses",
+      "included": "Charges incluses",
+      "oneMonthRecommended": "1 mois minimum"
+    },
     "types": {
       "apartment": "Appartement",
       "house": "Maison",
@@ -131,6 +189,11 @@
   "profile": {
     "myProfile": "Mon profil",
     "editProfile": "Modifier le profil",
+    "personalInfo": "Informations personnelles",
+    "fullName": "Nom complet",
+    "email": "Email",
+    "phoneNumber": "Téléphone",
+    "profileUpdated": "Profil mis à jour",
     "settings": "Paramètres",
     "language": "Langue",
     "currency": "Devise",
@@ -209,7 +272,8 @@
     "startBrowsing": "Commencez à parcourir les logements pour ajouter des favoris",
     "exploreMore": "Explorer les logements",
     "savedCount_one": "{{count}} favori sauvegardé",
-    "savedCount_other": "{{count}} favoris sauvegardés"
+    "savedCount_other": "{{count}} favoris sauvegardés",
+    "savedCount": "{{count}} sauvegardés"
   },
   "alerts": {
     "title": "Créer une alerte",
@@ -294,11 +358,26 @@
     "comment": "Commentaire",
     "reviewPlaceholder": "Partagez votre expérience...",
     "submitReview": "Soumettre l'avis",
+    "sendReview": "Envoyer l'avis",
     "thankYou": "Merci pour votre avis !",
+    "thankYouMessage": "Votre avis a été soumis avec succès.",
     "you": "Vous",
     "rateProperty": "Comment notez-vous ce logement ?",
+    "yourRating": "Votre note",
+    "yourComment": "Votre commentaire",
     "shareExperience": "Partagez votre expérience",
     "commentPlaceholder": "Qu'avez-vous apprécié ? Qu'est-ce qui pourrait être amélioré ?",
+    "leaveReviewTitle": "Laisser un avis",
+    "reviewingAs": "Vous écrivez en tant que",
+    "verifiedTenant": "Locataire vérifié",
+    "anonymousUser": "Utilisateur anonyme",
+    "errorRatingRequired": "Veuillez attribuer une note",
+    "submitting": "Envoi en cours...",
+    "sortBy": "Trier par",
+    "sortRecent": "Plus récents",
+    "sortHighest": "Meilleures notes",
+    "sortLowest": "Notes les plus basses",
+    "characters": "caractères",
     "stayType": "Type de séjour",
     "stayTypes": {
       "shortTerm": "Court terme",
@@ -424,7 +503,37 @@
     "invalidEmail": "Email invalide",
     "passwordMismatch": "Les mots de passe ne correspondent pas",
     "weakPassword": "Le mot de passe est trop faible",
-    "emailExists": "Cet email est déjà utilisé"
+    "emailExists": "Cet email est déjà utilisé",
+    "invalidPhone": "Numéro de téléphone invalide"
+  },
+  "guideDetail": {
+    "backToGuides": "Retour aux guides",
+    "guideNotFound": "Guide introuvable",
+    "summary": "Résumé"
+  },
+  "saved": {
+    "title": "Enregistrés",
+    "emptyTitle": "Aucun logement enregistré",
+    "empty": "Vous n'avez pas encore enregistré de logements",
+    "explore": "Explorer les logements",
+    "exploreMore": "Voir plus de logements",
+    "footerText": "Retrouvez vos logements favoris ici",
+    "viewOnMap": "Voir sur la carte",
+    "sort": {
+      "date": "Date",
+      "price": "Prix",
+      "type": "Type"
+    }
+  },
+  "message": {
+    "send": "Envoyer",
+    "new": {
+      "title": "Nouveau message",
+      "propertyInfo": "Logement",
+      "placeholder": "Écrivez votre message...",
+      "yourMessage": "Votre message",
+      "tip": "Présentez-vous et précisez vos besoins"
+    }
   },
   "explore": {
     "welcome": "Bienvenue",
@@ -447,7 +556,8 @@
       "furnished": "Meublé",
       "longTerm": "Long Terme",
       "villas": "Villas",
-      "apartments": "Appartements"
+      "apartments": "Appartements",
+      "new": "Nouveau"
     }
   }
 } 

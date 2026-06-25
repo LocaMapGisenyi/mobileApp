@@ -22,73 +22,10 @@ import useReviewsStore from '../store/reviews';
 import ReviewCard from '../components/ReviewCard';
 import RatingStars from '../components/RatingStars';
 
-// Images mockées pour le carousel
-const mockImages = [
-  'https://images.unsplash.com/photo-1574362848149-11496d93a7c7',
-  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750',
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688',
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2',
-];
-
 type LogementDetailRouteProp = RouteProp<RootStackParamList, 'PropertyDetails'>;
 type LogementDetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const screenWidth = Dimensions.get('window').width;
-
-const mockPropertyDetails = {
-  id: '1',
-  title: 'Villa moderne avec vue sur le lac Kivu',
-  description: 'Cette belle villa entièrement rénovée offre une vue imprenable sur le lac Kivu et les montagnes environnantes. Située dans un quartier calme et sécurisé à seulement 5 minutes en voiture du centre-ville de Gisenyi, cette propriété combine parfaitement le confort moderne et la tranquillité.',
-  price: 120000,
-  currency: 'RWF',
-  location: {
-    address: '123 Avenue du Lac, Gisenyi',
-    city: 'Gisenyi',
-    district: 'Rubavu',
-    coordinates: {
-      latitude: -1.7011,
-      longitude: 29.2569,
-    },
-  },
-  details: {
-    bedrooms: 3,
-    bathrooms: 2,
-    size: 150, // en m²
-    furnished: true,
-    yearBuilt: 2019,
-  },
-  amenities: [
-    'wifi',
-    'parking',
-    'garden',
-    'securityGuard',
-    'waterTank',
-    'generator',
-    'ac',
-    'kitchen',
-    'tv',
-  ],
-  images: [
-    'https://a0.muscache.com/im/pictures/miso/Hosting-826494959841460145/original/d0e6368d-bab0-4394-9947-a5662e6fcd81.jpeg',
-    'https://a0.muscache.com/im/pictures/miso/Hosting-826494959841460145/original/e0dc0e2c-8100-4fbf-b860-1d1ead7c687a.jpeg',
-    'https://a0.muscache.com/im/pictures/miso/Hosting-826494959841460145/original/8f0ba3bc-44ec-4388-bbb4-b9b12f073975.jpeg',
-    'https://a0.muscache.com/im/pictures/miso/Hosting-826494959841460145/original/de5eaaf1-ce0b-4703-b67d-9bbdeecb1e7b.jpeg',
-  ],
-  owner: {
-    id: 'owner1',
-    name: 'Jean-Pierre Habimana',
-    photo: 'https://randomuser.me/api/portraits/men/32.jpg',
-    phone: '+250 78 123 4567',
-    email: 'jp.habimana@example.com',
-    responseRate: 95,
-    responseTime: 'En quelques heures',
-    memberSince: '2018',
-  },
-  reviews: {
-    average: 4.8,
-    total: 24,
-  },
-};
 
 // Map des amenités pour les icônes et les traductions
 const amenityIcons: Record<string, { icon: string; label: string }> = {
@@ -311,7 +248,7 @@ const LogementDetailScreen = () => {
         {/* Carousel d'images */}
         <View style={styles.carouselContainer}>
           <ImageCarousel
-            images={listing.images.length > 0 ? mockImages : []}
+            images={listing.images.length > 0 ? listing.images : []}
             height={280}
           />
 
@@ -462,7 +399,7 @@ const LogementDetailScreen = () => {
         >
           <View style={styles.sectionSeparator} />
           <SectionTitle
-            title={t('property.contract')}
+            title={t('property.contract.title')}
             icon="description"
           />
 
@@ -620,7 +557,7 @@ const LogementDetailScreen = () => {
 
             <View style={styles.infoItem}>
               <MaterialIcons name="access-time" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>Type de bail: flexible</Text>
+              <Text style={styles.infoText}>{t('property.leaseType')}</Text>
             </View>
 
             <View style={styles.infoItem}>

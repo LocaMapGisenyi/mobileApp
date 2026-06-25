@@ -1,31 +1,16 @@
 import { create } from 'zustand';
 import { Review, ReviewsState, ReviewSortOrder } from '../types';
-import mockReviews from '../data/mockReviews';
 import { v4 as uuidv4 } from 'uuid';
 
 const useReviewsStore = create<ReviewsState>((set, get) => ({
-  reviews: { ...mockReviews },
+  reviews: {},
   isLoading: false,
   error: null,
 
   // Récupérer les avis pour un logement spécifique
   fetchReviews: async (propertyId: string) => {
     set({ isLoading: true, error: null });
-    
-    try {
-      // Simuler un appel API avec un délai
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      // Les avis sont déjà chargés avec les données mock au démarrage
-      // Dans une vraie app, on ferait un appel API ici
-      
-      set({ isLoading: false });
-    } catch (error) {
-      set({ 
-        isLoading: false, 
-        error: error instanceof Error ? error.message : "Une erreur est survenue lors du chargement des avis" 
-      });
-    }
+    set({ isLoading: false });
   },
 
   // Ajouter un nouvel avis

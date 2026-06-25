@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Message } from '../data/mockMessages';
+import { Message } from '../types';
 import { colors, spacing, typography, borderRadius } from '../theme';
-import { currentUser } from '../data/mockMessages';
+
+const currentUser = { id: 'me' };
 import Animated, { FadeIn, SlideInLeft, SlideInRight } from 'react-native-reanimated';
 
 interface ChatBubbleProps {
