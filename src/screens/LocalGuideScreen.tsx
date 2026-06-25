@@ -6,12 +6,12 @@ import {
   TextInput as RNTextInput, 
   TouchableOpacity, 
   StatusBar, 
-  SafeAreaView,
   RefreshControl,
   Platform,
   Dimensions,
   SectionList
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Searchbar, Divider, useTheme, ActivityIndicator, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

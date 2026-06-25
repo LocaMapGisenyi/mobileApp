@@ -6,9 +6,8 @@ import {
   TouchableOpacity, 
   Image, 
   FlatList, 
-  StatusBar,
-  SafeAreaView,
-} from 'react-native';
+  StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Searchbar, Chip, useTheme, Snackbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

@@ -5,9 +5,9 @@ import {
   ScrollView, 
   TouchableOpacity, 
   StatusBar, 
-  SafeAreaView,
   Share
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Divider, IconButton, useTheme, ActivityIndicator } from 'react-native-paper';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

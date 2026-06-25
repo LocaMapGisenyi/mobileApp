@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, TextInput as PaperTextInput, Divider, Chip, HelperText, Snackbar, useTheme, Avatar, ActivityIndicator } from 'react-native-paper';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';

@@ -2,14 +2,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { 
   StyleSheet, 
   View, 
-  SafeAreaView, 
   FlatList, 
   TouchableOpacity, 
   StatusBar,
   Dimensions,
   RefreshControl,
-  ImageBackground,
-} from 'react-native';
+  ImageBackground } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Text,
   Button,

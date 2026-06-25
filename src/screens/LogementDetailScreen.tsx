@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Linking, Share, Platform, StatusBar, SafeAreaView, Image, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Linking, Share, Platform, StatusBar, Image, FlatList, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';

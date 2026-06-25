@@ -5,12 +5,11 @@ import {
   FlatList,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   useWindowDimensions,
   Platform,
   RefreshControl,
-  Image,
-} from 'react-native';
+  Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
   useTheme,

@@ -6,12 +6,11 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   ScrollView,
   ImageBackground,
   useWindowDimensions,
-  TextInput,
-} from 'react-native';
+  TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, useTheme, Searchbar, Chip, Avatar, Surface } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

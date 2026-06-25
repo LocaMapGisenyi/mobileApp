@@ -4,9 +4,9 @@ import {
   View, 
   FlatList, 
   TouchableOpacity,
-  SafeAreaView,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, useTheme, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

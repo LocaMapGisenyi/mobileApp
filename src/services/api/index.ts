@@ -17,4 +17,9 @@ export { Message, Conversation } from './message.service';
 export { Guide, GuideCategory } from './guides.service';
 export { Alert, Notification } from './alert.service';
 export { Booking, Availability } from './booking.service';
-export { HostStats, PropertyStats, RevenueData, OccupancyData } from './host.service'; 
+export {
+  HostStats, PropertyStats, RevenueData, OccupancyData,
+  CalendarDay, CalendarDayStatus, CalendarBulkPatch, BlockReason,
+  DashboardSummary, PendingRequest, HostListing,
+  ListingCard, ListingStatus, ListingStatusPatch,
+} from './host.service'; 

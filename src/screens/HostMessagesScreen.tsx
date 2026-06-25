@@ -2,12 +2,11 @@ import React from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   StatusBar,
   FlatList,
-  Image,
-} from 'react-native';
+  Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
   useTheme,

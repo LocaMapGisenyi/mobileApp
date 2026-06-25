@@ -37,11 +37,39 @@
   "host": {
     "become": "Devenir hôte",
     "dashboard": {
-      "title": "Tableau de bord d'hôte",
-      "today": "Aujourd'hui",
+      "title": "Tableau de bord",
+      "today": "Accueil",
       "upcoming": "À venir",
       "noReservations": "Vous n'avez pas de réservations",
-      "discoverTools": "Découvrir de nouveaux outils pour les hôtes"
+      "discoverTools": "Découvrir de nouveaux outils pour les hôtes",
+      "actionsRequired": "ACTIONS REQUISES ({{count}})",
+      "noActions": "Tout est tranquille",
+      "noActionsSubtitle": "Aucune action requise pour l'instant",
+      "checkIns": "Arrivées",
+      "checkOuts": "Départs",
+      "occupancyMonth": "Nuits occupées ce mois",
+      "revenue": "REVENUS",
+      "revenueMonth": "Ce mois",
+      "revenuePending": "En attente",
+      "details": "Détails",
+      "reservation": "Demande de réservation",
+      "message": "Message sans réponse",
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "reply": "Répondre →",
+      "slowResponse": "Répond lentement",
+      "urgent": "Urgent",
+      "calendar": "Calendrier",
+      "calendarEmpty": "Lorsque vous aurez publié une annonce, c'est ici que vous pourrez voir et modifier votre calendrier.",
+      "refresh": "Rafraîchir",
+      "notifications": "Notifications",
+      "tabs": {
+        "home": "Accueil",
+        "calendar": "Calendrier",
+        "listings": "Annonces",
+        "messages": "Messages",
+        "profile": "Profil"
+      }
     }
   },
   "home": {

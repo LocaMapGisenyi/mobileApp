@@ -1,926 +1,958 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
   Image,
-  Alert,
+  TextInput,
+  ActivityIndicator,
   StatusBar,
   Dimensions,
-  PermissionsAndroid,
 } from 'react-native';
-import {
-  Text,
-  Button,
-  TextInput,
-  useTheme,
-  HelperText,
-  Checkbox,
-  Divider,
-  SegmentedButtons,
-  ActivityIndicator,
-} from 'react-native-paper';
+import MapView, { Marker, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import Animated, { FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
+import { colors, borderRadius } from '../theme';
+import { RootStackParamList } from '../types';
 import { NewListingFormData, useHostListingsStore } from '../store/hostListings';
-import { useUserStore } from '../store/user';
-import { colors } from '../theme';
 
-type CreateListingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateListing'>;
+type Nav = NativeStackNavigationProp<RootStackParamList, 'CreateListing'>;
 
-// Liste des types de propriétés disponibles
+// ─── Constants ────────────────────────────────────────────────────────────────
 const PROPERTY_TYPES = [
-  { label: 'Appartement', value: 'appartement' },
-  { label: 'Maison', value: 'maison' },
-  { label: 'Chambre', value: 'chambre' },
-  { label: 'Villa', value: 'villa' },
-  { label: 'Studio', value: 'studio' },
+  { label: 'Appartement', value: 'appartement', icon: 'apartment' as const },
+  { label: 'Maison',      value: 'maison',      icon: 'home' as const },
+  { label: 'Studio',      value: 'studio',      icon: 'single-bed' as const },
+  { label: 'Villa',       value: 'villa',        icon: 'villa' as const },
+  { label: 'Chambre',     value: 'chambre',      icon: 'bed' as const },
 ];
 
-// Liste des commodités disponibles
-const AMENITIES = [
-  { label: 'Wi-Fi', value: 'WiFi' },
-  { label: 'Parking', value: 'Parking' },
-  { label: 'Sécurité 24/7', value: 'Sécurité 24/7' },
-  { label: 'Meublé', value: 'Meublé' },
-  { label: 'Jardin', value: 'Jardin' },
-  { label: 'Piscine', value: 'Piscine' },
-  { label: 'Cuisine équipée', value: 'Cuisine équipée' },
-  { label: 'Eau chaude', value: 'Eau chaude' },
-  { label: 'Climatisation', value: 'Climatisation' },
-  { label: 'Balcon', value: 'Balcon' },
-  { label: 'Vue sur le lac', value: 'Vue sur le lac' },
-  { label: 'Laveuse/Sécheuse', value: 'Laveuse/Sécheuse' },
-  { label: 'TV', value: 'TV' },
+const ACCOMMODATION_TYPES = [
+  { label: 'Logement entier',  value: 'entier',  sub: 'Voyageurs ont le logement pour eux seuls' },
+  { label: 'Chambre privée',   value: 'privee',  sub: 'Chambre dédiée, espaces communs partagés' },
+  { label: 'Chambre partagée', value: 'partagee', sub: 'Chambre et espaces communs partagés' },
 ];
 
+const AMENITIES: { label: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
+  { label: 'Wi-Fi',           icon: 'wifi' },
+  { label: 'Eau courante',    icon: 'water-drop' },
+  { label: 'Eau chaude',      icon: 'hot-tub' },
+  { label: 'Électricité',     icon: 'bolt' },
+  { label: 'Groupe électrogène', icon: 'electrical-services' },
+  { label: 'Cuisine équipée', icon: 'kitchen' },
+  { label: 'Réfrigérateur',   icon: 'kitchen' },
+  { label: 'TV',              icon: 'tv' },
+  { label: 'Climatisation',   icon: 'ac-unit' },
+  { label: 'Ventilateur',     icon: 'air' },
+  { label: 'Parking',         icon: 'local-parking' },
+  { label: 'Gardien',         icon: 'security' },
+  { label: 'Balcon',          icon: 'balcony' },
+  { label: 'Vue sur le lac',  icon: 'water' },
+  { label: 'Jardin',          icon: 'grass' },
+  { label: 'Laveuse',         icon: 'local-laundry-service' },
+  { label: 'Meublé',          icon: 'chair' },
+  { label: 'Connexion eau REGIDESO', icon: 'plumbing' },
+];
+
+const MIN_DURATIONS = [
+  { label: '1 mois',  value: 1 },
+  { label: '3 mois',  value: 3 },
+  { label: '6 mois',  value: 6 },
+  { label: '1 an',    value: 12 },
+];
+
+const NOTICE_PERIODS = [
+  { label: '15 jours',  value: 15 },
+  { label: '1 mois',    value: 30 },
+  { label: '2 mois',    value: 60 },
+];
+
+const COMMISSION = 0.12;
+
+const STEPS = [
+  { label: 'Type',        icon: 'home' as const },
+  { label: 'Adresse',     icon: 'location-on' as const },
+  { label: 'Détails',     icon: 'list' as const },
+  { label: 'Finition',    icon: 'photo-library' as const },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const Counter = ({
+  value,
+  onDecrement,
+  onIncrement,
+  min = 1,
+}: {
+  value: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  min?: number;
+}) => (
+  <View style={ct.wrap}>
+    <TouchableOpacity
+      style={[ct.btn, value <= min && ct.btnDisabled]}
+      onPress={onDecrement}
+      disabled={value <= min}
+      activeOpacity={0.7}
+    >
+      <MaterialIcons name="remove" size={16} color={value <= min ? colors.inkDisabled : colors.inkMid} />
+    </TouchableOpacity>
+    <Text style={ct.value}>{value}</Text>
+    <TouchableOpacity style={ct.btn} onPress={onIncrement} activeOpacity={0.7}>
+      <MaterialIcons name="add" size={16} color={colors.inkMid} />
+    </TouchableOpacity>
+  </View>
+);
+const ct = StyleSheet.create({
+  wrap:       { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  btn:        { width: 36, height: 36, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  btnDisabled:{ borderColor: colors.border, backgroundColor: colors.surfaceSunken },
+  value:      { width: 44, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.ink },
+});
+
+const FieldInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  multiline,
+  keyboardType,
+  suffix,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  keyboardType?: 'numeric' | 'default';
+  suffix?: string;
+  error?: string;
+}) => (
+  <View style={fi.wrap}>
+    <Text style={fi.label}>{label}</Text>
+    <View style={[fi.inputRow, !!error && fi.inputRowError]}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.inkDisabled}
+        style={[fi.input, multiline && fi.inputMulti]}
+        multiline={multiline}
+        keyboardType={keyboardType ?? 'default'}
+        textAlignVertical={multiline ? 'top' : 'center'}
+      />
+      {suffix && <Text style={fi.suffix}>{suffix}</Text>}
+    </View>
+    {!!error && <Text style={fi.errorTxt}>{error}</Text>}
+  </View>
+);
+const fi = StyleSheet.create({
+  wrap:           { marginBottom: 16 },
+  label:          { fontSize: 13, fontWeight: '600', color: colors.inkMid, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  inputRow:       { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSunken, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border, paddingHorizontal: 12 },
+  inputRowError:  { borderColor: colors.error },
+  input:          { flex: 1, fontSize: 15, color: colors.ink, paddingVertical: 11 },
+  inputMulti:     { minHeight: 100, paddingTop: 12 },
+  suffix:         { fontSize: 13, fontWeight: '600', color: colors.inkSubtle, marginLeft: 6 },
+  errorTxt:       { fontSize: 11, color: colors.error, marginTop: 4 },
+});
+
+// ─── Progress indicator ────────────────────────────────────────────────────────
+const ProgressRail = ({
+  step,
+  total,
+  labels,
+}: {
+  step: number;
+  total: number;
+  labels: string[];
+}) => (
+  <View style={pr.outer}>
+    {/* Dots + line row */}
+    <View style={pr.rail}>
+      {Array.from({ length: total }).map((_, i) => (
+        <React.Fragment key={i}>
+          <View style={[pr.dot, i < step && pr.dotDone, i === step && pr.dotActive]}>
+            {i < step
+              ? <MaterialIcons name="check" size={11} color={colors.white} />
+              : <Text style={[pr.dotNum, i === step && pr.dotNumActive]}>{i + 1}</Text>
+            }
+          </View>
+          {i < total - 1 && (
+            <View style={[pr.line, i < step && pr.lineDone]} />
+          )}
+        </React.Fragment>
+      ))}
+    </View>
+    {/* Labels row — aligned under each dot */}
+    <View style={pr.labelsRow}>
+      {labels.map((lbl, i) => (
+        <View key={i} style={pr.labelCell}>
+          <Text style={[pr.labelTxt, i === step && pr.labelActive]}>{lbl}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+const pr = StyleSheet.create({
+  outer:       { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  rail:        { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  dot:         { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  dotDone:     { backgroundColor: colors.primary },
+  dotActive:   { backgroundColor: colors.primary, borderWidth: 3, borderColor: colors.primaryLight },
+  dotNum:      { fontSize: 11, fontWeight: '700', color: colors.inkDisabled },
+  dotNumActive:{ color: colors.white },
+  line:        { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 3 },
+  lineDone:    { backgroundColor: colors.primary },
+  labelsRow:   { flexDirection: 'row' },
+  labelCell:   { flex: 1, alignItems: 'center' },
+  labelTxt:    { fontSize: 10, fontWeight: '500', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.4 },
+  labelActive: { color: colors.primary, fontWeight: '700' },
+});
+
+// Gisenyi / Rubavu centre-ville
+const GISENYI_REGION: Region = {
+  latitude: -1.6977,
+  longitude: 29.2558,
+  latitudeDelta: 0.04,
+  longitudeDelta: 0.04,
+};
+
+const MAP_HEIGHT = Dimensions.get('window').width * 0.55;
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 const CreateListingScreen: React.FC = () => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const navigation = useNavigation<CreateListingScreenNavigationProp>();
-  
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<Nav>();
   const { addListing } = useHostListingsStore();
-  
-  // État du formulaire
-  const [formData, setFormData] = useState<NewListingFormData>({
+  const mapRef = useRef<MapView>(null);
+
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [locating, setLocating] = useState(false);
+
+  const [form, setForm] = useState<NewListingFormData & { accommodationType: string }>({
     title: '',
     description: '',
     price: 0,
-    currency: 'RWF', // Devise par défaut
+    currency: 'CDF',
     bedrooms: 1,
     bathrooms: 1,
     size: 0,
     amenities: [],
-    type: 'appartement', // Type par défaut
+    type: 'appartement',
+    accommodationType: 'entier',
     address: '',
-    city: 'Gisenyi', // Ville par défaut
+    city: 'Gisenyi',
     district: '',
-    images: [], // Images à ajouter
+    images: [],
     maxGuests: 2,
     smokingAllowed: false,
     petsAllowed: false,
-  });
+    latitude: GISENYI_REGION.latitude,
+    longitude: GISENYI_REGION.longitude,
+    // Long-term rental specific
+    minDurationMonths: 1,
+    noticePeriodDays: 30,
+    depositMonths: 1,
+    visitorsAllowed: true,
+    noiseAfter22: false,
+  } as any);
 
-  // Indicateurs de chargement
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
-  const [galleryPermissionGranted, setGalleryPermissionGranted] = useState(false);
+  const patch = (key: string, value: unknown) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+    setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+  };
 
-  // Gestion des erreurs de validation
-  const [errors, setErrors] = useState<Partial<Record<keyof NewListingFormData, string>>>({});
-  
-  // Gestion de l'étape actuelle du formulaire (pour un formulaire multi-étapes)
-  const [currentStep, setCurrentStep] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
-  
-  // Demander les permissions au chargement du composant
-  useEffect(() => {
-    requestLocationPermission();
-    requestGalleryPermission();
+  const detectLocation = useCallback(async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrors(prev => ({ ...prev, location: 'Permission de localisation refusée' }));
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = pos.coords;
+      patch('latitude', latitude);
+      patch('longitude', longitude);
+      // Reverse geocoding
+      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geo.length > 0) {
+        const g = geo[0];
+        if (g.street) patch('address', g.street);
+        if (g.subregion || g.district) patch('district', g.subregion ?? g.district ?? '');
+        if (g.city) patch('city', g.city);
+      }
+      mapRef.current?.animateToRegion(
+        { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        600,
+      );
+    } catch {
+      setErrors(prev => ({ ...prev, location: 'Impossible d\'obtenir la position' }));
+    } finally {
+      setLocating(false);
+    }
   }, []);
 
-  // Demander la permission d'accès à la localisation
-  const requestLocationPermission = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Permission de localisation",
-            message: "LocaMap a besoin d'accéder à votre position pour localiser votre annonce.",
-            buttonNeutral: "Demander plus tard",
-            buttonNegative: "Annuler",
-            buttonPositive: "OK"
-          }
-        );
-        
-        setLocationPermissionGranted(granted === PermissionsAndroid.RESULTS.GRANTED);
-      } else {
-        // Sur iOS, on simule que la permission est accordée
-        setLocationPermissionGranted(true);
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
-
-  // Demander la permission d'accès à la galerie
-  const requestGalleryPermission = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          {
-            title: "Permission d'accès aux photos",
-            message: "LocaMap a besoin d'accéder à vos photos pour ajouter des images à votre annonce.",
-            buttonNeutral: "Demander plus tard",
-            buttonNegative: "Annuler",
-            buttonPositive: "OK"
-          }
-        );
-        
-        setGalleryPermissionGranted(granted === PermissionsAndroid.RESULTS.GRANTED);
-      } else {
-        // Sur iOS, on simule que la permission est accordée
-        setGalleryPermissionGranted(true);
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
-
-  // Détecter automatiquement la position actuelle
-  const detectCurrentLocation = () => {
-    if (!locationPermissionGranted) {
-      Alert.alert(
-        "Permission requise",
-        "Vous devez autoriser l'accès à la localisation pour utiliser cette fonctionnalité.",
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Autoriser", onPress: requestLocationPermission }
-        ]
-      );
-      return;
-    }
-
-    setIsLoadingLocation(true);
-
-    // Simuler la géolocalisation (dans une implémentation réelle, nous utiliserions navigator.geolocation)
-    setTimeout(() => {
-      // Coordonnées de Gisenyi (exemple)
-      const latitude = -1.7005;
-      const longitude = 29.2569;
-
-      // Mettre à jour le formulaire avec la position détectée
-      setFormData({
-        ...formData,
-        latitude,
-        longitude,
-        city: "Gisenyi", // Normalement, on ferait un reverse geocoding pour obtenir la ville
-        district: "Centre-ville", // Normalement, on ferait un reverse geocoding pour obtenir le quartier
-        address: "Position actuelle détectée" // Normalement, on ferait un reverse geocoding pour obtenir l'adresse
-      });
-
-      setIsLoadingLocation(false);
-
-      // Nettoyer les erreurs de validation liées à l'adresse
-      if (errors.address || errors.city || errors.district) {
-        setErrors({
-          ...errors,
-          address: undefined,
-          city: undefined,
-          district: undefined
-        });
-      }
-
-      Alert.alert("Position détectée", "Votre position actuelle a été utilisée pour l'adresse.");
-    }, 1500);
-  };
-
-  // Ouvrir la galerie pour sélectionner des images
-  const openGallery = () => {
-    if (!galleryPermissionGranted) {
-      Alert.alert(
-        "Permission requise",
-        "Vous devez autoriser l'accès à la galerie pour utiliser cette fonctionnalité.",
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Autoriser", onPress: requestGalleryPermission }
-        ]
-      );
-      return;
-    }
-
-    // Dans une implémentation réelle, on utiliserait launchImageLibrary de react-native-image-picker
-    // Simuler la sélection d'images depuis la galerie
-    Alert.alert(
-      "Galerie de photos",
-      "Sélectionnez une option",
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Prendre une photo", 
-          onPress: () => {
-            // Simulation d'une photo prise avec l'appareil
-            const randomImage = `https://source.unsplash.com/random/800x600?room&sig=${Math.random()}`;
-            handleAddImage(randomImage);
-          } 
-        },
-        { 
-          text: "Choisir depuis la galerie", 
-          onPress: () => {
-            // Simulation de sélection de plusieurs photos
-            const numImages = Math.floor(Math.random() * 3) + 1; // 1 à 3 images
-            for (let i = 0; i < numImages; i++) {
-              const randomImage = `https://source.unsplash.com/random/800x600?apartment&sig=${Math.random()}`;
-              handleAddImage(randomImage);
-            }
-          }
-        }
-      ]
+  const toggleAmenity = (a: string) => {
+    patch('amenities',
+      form.amenities.includes(a)
+        ? form.amenities.filter(x => x !== a)
+        : [...form.amenities, a],
     );
   };
 
-  // Valider le formulaire avant soumission
-  const validateForm = () => {
-    const newErrors: Partial<Record<keyof NewListingFormData, string>> = {};
-    
-    // Validation du titre
-    if (!formData.title.trim()) {
-      newErrors.title = 'Le titre est requis';
+  // ── Validation per step ────────────────────────────────────────────────────
+  const validateStep = (): boolean => {
+    const e: Record<string, string> = {};
+    if (step === 0) {
+      if (form.title.trim().length < 10) e.title = 'Minimum 10 caractères';
+      if (form.description.trim().length < 50) e.description = 'Minimum 50 caractères';
     }
-    
-    // Validation de la description
-    if (!formData.description.trim()) {
-      newErrors.description = 'La description est requise';
+    if (step === 1) {
+      if (!form.district.trim()) e.district = 'Quartier requis';
+      if (!form.address.trim()) e.address = 'Adresse requise';
     }
-    
-    // Validation du prix
-    if (!formData.price || formData.price <= 0) {
-      newErrors.price = 'Le prix doit être supérieur à zéro';
+    if (step === 2) {
+      if (!form.price || form.price < 20000) e.price = 'Loyer minimum 20 000 RWF/mois';
     }
-    
-    // Validation de l'adresse
-    if (!formData.address.trim()) {
-      newErrors.address = 'L\'adresse est requise';
+    if (step === 3) {
+      if (form.images.length < 1) e.images = 'Au moins 1 photo requise';
     }
-    
-    // Validation du district/quartier
-    if (!formData.district.trim()) {
-      newErrors.district = 'Le quartier est requis';
-    }
-    
-    // Validation de la taille
-    if (!formData.size || formData.size <= 0) {
-      newErrors.size = 'La taille doit être supérieure à zéro';
-    }
-    
-    // Validation des images (au moins une image requise)
-    if (formData.images.length === 0) {
-      newErrors.images = 'Au moins une image est requise';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
-  
-  // Gérer la soumission du formulaire
-  const handleSubmit = () => {
-    if (validateForm()) {
-      try {
-        // Ajouter la nouvelle annonce
-        addListing(formData);
-        
-        // Afficher une confirmation
-        Alert.alert(
-          'Annonce publiée !',
-          'Votre annonce a été publiée avec succès.',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.navigate('HostDashboard')
-            }
-          ]
-        );
-      } catch (error) {
-        Alert.alert(
-          'Erreur',
-          'Une erreur est survenue lors de la publication de l\'annonce.',
-          [{ text: 'OK' }]
-        );
-      }
-    } else {
-      // Faire défiler jusqu'à la première erreur
-      Alert.alert(
-        'Formulaire incomplet',
-        'Veuillez remplir tous les champs obligatoires.',
-        [{ text: 'OK' }]
-      );
-    }
+
+  const goNext = () => {
+    if (!validateStep()) return;
+    if (step < 3) setStep(s => s + 1);
+    else handleSave('draft');
   };
-  
-  // Mettre à jour les valeurs du formulaire
-  const handleChange = (field: keyof NewListingFormData, value: any) => {
-    setFormData({
-      ...formData,
-      [field]: value
-    });
-    
-    // Effacer l'erreur si le champ est complété
-    if (errors[field] && value) {
-      setErrors({
-        ...errors,
-        [field]: undefined
-      });
+
+  const goBack = () => {
+    if (step > 0) setStep(s => s - 1);
+    else navigation.goBack();
+  };
+
+  const handleSave = async (mode: 'draft' | 'publish') => {
+    if (!validateStep()) return;
+    setSaving(true);
+    try {
+      addListing(form);
+      navigation.navigate('HostDashboard');
+    } catch {
+      setErrors({ submit: 'Une erreur est survenue. Réessayez.' });
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Gérer l'ajout d'une image
-  const handleAddImage = (uri: string) => {
-    setFormData({
-      ...formData,
-      images: [...formData.images, uri]
-    });
-    
-    if (errors.images) {
-      setErrors({
-        ...errors,
-        images: undefined
-      });
-    }
-  };
-  
-  // Gérer la suppression d'une image
-  const handleRemoveImage = (index: number) => {
-    const updatedImages = [...formData.images];
-    updatedImages.splice(index, 1);
-    
-    setFormData({
-      ...formData,
-      images: updatedImages
-    });
-    
-    if (updatedImages.length === 0) {
-      setErrors({
-        ...errors,
-        images: 'Au moins une image est requise'
-      });
-    }
-  };
-  
-  // Gérer les commodités
-  const handleToggleAmenity = (amenity: string) => {
-    const updatedAmenities = formData.amenities.includes(amenity)
-      ? formData.amenities.filter(a => a !== amenity)
-      : [...formData.amenities, amenity];
-    
-    setFormData({
-      ...formData,
-      amenities: updatedAmenities
-    });
-  };
-  
-  // Structure de base du composant
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header avec bouton de retour */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#222222" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Créer une annonce</Text>
-        <View style={styles.headerRight} />
+  // ── Step content ───────────────────────────────────────────────────────────
+  const renderStep0 = () => (
+    <Animated.View entering={FadeInDown.duration(320)}>
+      <Text style={s.stepTitle}>Quel type de logement proposez-vous ?</Text>
+      <Text style={s.stepSub}>Choisissez ce qui correspond le mieux à votre bien.</Text>
+
+      <View style={s.typeGrid}>
+        {PROPERTY_TYPES.map(pt => (
+          <TouchableOpacity
+            key={pt.value}
+            style={[s.typeCard, form.type === pt.value && s.typeCardActive]}
+            onPress={() => patch('type', pt.value)}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons
+              name={pt.icon}
+              size={26}
+              color={form.type === pt.value ? colors.primary : colors.inkSubtle}
+            />
+            <Text style={[s.typeLabel, form.type === pt.value && s.typeLabelActive]}>
+              {pt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
-      
-      {/* Contenu principal avec le formulaire */}
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+
+      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>Type de mise à disposition</Text>
+      {ACCOMMODATION_TYPES.map(at => (
+        <TouchableOpacity
+          key={at.value}
+          style={[s.accomRow, form.accommodationType === at.value && s.accomRowActive]}
+          onPress={() => patch('accommodationType', at.value)}
+          activeOpacity={0.8}
         >
-          {/* Section des informations de base */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Informations de base</Text>
-            
-            {/* Type de propriété */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Type de propriété</Text>
-              <SegmentedButtons
-                value={formData.type}
-                onValueChange={(value) => handleChange('type', value)}
-                buttons={PROPERTY_TYPES.map(type => ({
-                  value: type.value,
-                  label: type.label,
-                }))}
-                style={styles.segmentedButtons}
+          <View style={s.accomRadio}>
+            {form.accommodationType === at.value && <View style={s.accomRadioInner} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.accomLabel, form.accommodationType === at.value && s.accomLabelActive]}>
+              {at.label}
+            </Text>
+            <Text style={s.accomSub}>{at.sub}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+
+      <View style={{ marginTop: 24 }}>
+        <FieldInput
+          label="Titre de l'annonce"
+          value={form.title}
+          onChangeText={t => patch('title', t)}
+          placeholder="Ex : Appartement moderne avec vue sur le lac"
+          error={errors.title}
+        />
+        <FieldInput
+          label="Description"
+          value={form.description}
+          onChangeText={t => patch('description', t)}
+          placeholder="Décrivez votre logement, son ambiance, ce qui le rend unique..."
+          multiline
+          error={errors.description}
+        />
+        {form.description.length > 0 && (
+          <Text style={s.charCount}>{form.description.length} / 500 caractères</Text>
+        )}
+      </View>
+    </Animated.View>
+  );
+
+  const renderStep1 = () => (
+    <Animated.View entering={FadeInDown.duration(320)}>
+      <Text style={s.stepTitle}>Où se situe votre logement ?</Text>
+      <Text style={s.stepSub}>
+        Placez le marqueur exactement sur votre bien. L'adresse précise ne sera partagée qu'après réservation.
+      </Text>
+
+      {/* Auto-localisation */}
+      <TouchableOpacity
+        style={[s.locateBtn, locating && s.locateBtnLoading]}
+        onPress={detectLocation}
+        disabled={locating}
+        activeOpacity={0.8}
+      >
+        {locating
+          ? <ActivityIndicator size="small" color={colors.primary} />
+          : <MaterialIcons name="my-location" size={16} color={colors.primary} />
+        }
+        <Text style={s.locateTxt}>
+          {locating ? 'Localisation en cours...' : 'Utiliser ma position actuelle'}
+        </Text>
+      </TouchableOpacity>
+      {errors.location && (
+        <Text style={[s.errorInline, { marginBottom: 10 }]}>{errors.location}</Text>
+      )}
+
+      {/* Carte */}
+      <View style={s.mapWrap}>
+        <MapView
+          ref={mapRef}
+          style={s.map}
+          initialRegion={GISENYI_REGION}
+          showsUserLocation
+          showsMyLocationButton={false}
+          onPress={e => {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            patch('latitude', latitude);
+            patch('longitude', longitude);
+          }}
+        >
+          {form.latitude != null && form.longitude != null && (
+            <Marker
+              coordinate={{ latitude: form.latitude, longitude: form.longitude }}
+              draggable
+              onDragEnd={e => {
+                patch('latitude', e.nativeEvent.coordinate.latitude);
+                patch('longitude', e.nativeEvent.coordinate.longitude);
+              }}
+              pinColor={colors.primary}
+            />
+          )}
+        </MapView>
+        <View style={s.mapHintBadge}>
+          <MaterialIcons name="touch-app" size={13} color={colors.white} />
+          <Text style={s.mapHintTxt}>Touchez ou glissez le marqueur</Text>
+        </View>
+      </View>
+
+      {/* Coordonnées affichées */}
+      {form.latitude != null && (
+        <View style={s.coordsRow}>
+          <MaterialIcons name="gps-fixed" size={12} color={colors.inkSubtle} />
+          <Text style={s.coordsTxt}>
+            {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
+          </Text>
+        </View>
+      )}
+
+      {/* Champs texte */}
+      <View style={{ marginTop: 16 }}>
+        <FieldInput
+          label="Quartier"
+          value={form.district}
+          onChangeText={t => patch('district', t)}
+          placeholder="Ex : Centre-ville, Murara, Bord du lac..."
+          error={errors.district}
+        />
+        <FieldInput
+          label="Adresse"
+          value={form.address}
+          onChangeText={t => patch('address', t)}
+          placeholder="Ex : Avenue du Commerce, N° 45"
+          error={errors.address}
+        />
+        <FieldInput
+          label="Ville"
+          value={form.city}
+          onChangeText={t => patch('city', t)}
+          placeholder="Gisenyi"
+        />
+      </View>
+    </Animated.View>
+  );
+
+  const renderStep2 = () => {
+    const netMonthly = form.price > 0
+      ? Math.round(form.price * (1 - COMMISSION))
+      : 0;
+
+    return (
+      <Animated.View entering={FadeInDown.duration(320)}>
+        <Text style={s.stepTitle}>Détails et tarification</Text>
+        <Text style={s.stepSub}>
+          Location longue durée — le loyer est en francs rwandais par mois.
+        </Text>
+
+        {/* Capacité */}
+        <Text style={s.fieldGroupLabel}>Capacité</Text>
+        <View style={s.counterGrid}>
+          {[
+            { label: 'Chambres',       key: 'bedrooms',  value: form.bedrooms },
+            { label: 'Salles de bain', key: 'bathrooms', value: form.bathrooms },
+          ].map(item => (
+            <View key={item.key} style={[s.counterRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+              <Text style={s.counterLabel}>{item.label}</Text>
+              <Counter
+                value={item.value}
+                onDecrement={() => patch(item.key, Math.max(1, item.value - 1))}
+                onIncrement={() => patch(item.key, item.value + 1)}
               />
             </View>
-            
-            {/* Titre */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Titre de l'annonce</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.title}
-                onChangeText={(text) => handleChange('title', text)}
-                placeholder="Ex: Bel appartement moderne au centre-ville"
-                outlineColor={errors.title ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.title ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-              />
-              {errors.title && <HelperText type="error">{errors.title}</HelperText>}
+          ))}
+        </View>
+
+        {/* Loyer */}
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Loyer mensuel</Text>
+        <FieldInput
+          label="Prix / mois"
+          value={form.price > 0 ? String(form.price) : ''}
+          onChangeText={t => patch('price', parseInt(t.replace(/\D/g, '')) || 0)}
+          placeholder="Ex : 150 000"
+          keyboardType="numeric"
+          suffix="RWF"
+          error={errors.price}
+        />
+        {form.price > 0 && (
+          <View style={s.pricePreview}>
+            <View style={s.pricePreviewRow}>
+              <Text style={s.pricePreviewLbl}>Loyer brut</Text>
+              <Text style={s.pricePreviewVal}>{form.price.toLocaleString('fr-FR')} RWF</Text>
             </View>
-            
-            {/* Description */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.description}
-                onChangeText={(text) => handleChange('description', text)}
-                placeholder="Décrivez votre logement en détail..."
-                multiline
-                numberOfLines={4}
-                outlineColor={errors.description ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.description ? theme.colors.error : theme.colors.primary}
-                style={[styles.input, styles.textArea]}
-              />
-              {errors.description && <HelperText type="error">{errors.description}</HelperText>}
+            <View style={s.pricePreviewRow}>
+              <Text style={s.pricePreviewLbl}>Commission plateforme (12%)</Text>
+              <Text style={[s.pricePreviewVal, { color: colors.inkSubtle }]}>
+                − {Math.round(form.price * COMMISSION).toLocaleString('fr-FR')} RWF
+              </Text>
+            </View>
+            <View style={[s.pricePreviewRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 }]}>
+              <Text style={[s.pricePreviewLbl, { fontWeight: '700', color: colors.ink }]}>Revenu net / mois</Text>
+              <Text style={[s.pricePreviewVal, { color: colors.primary, fontWeight: '700' }]}>
+                {netMonthly.toLocaleString('fr-FR')} RWF
+              </Text>
             </View>
           </View>
-          
-          {/* Section de la localisation */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Localisation</Text>
-            
-            {/* Bouton de détection de position */}
+        )}
+
+        {/* Caution */}
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Caution</Text>
+        <View style={s.counterGrid}>
+          <View style={s.counterRow}>
+            <View>
+              <Text style={s.counterLabel}>Mois de caution</Text>
+              <Text style={s.counterSub}>Versée à l'entrée, restituée au départ</Text>
+            </View>
+            <Counter
+              value={(form as any).depositMonths ?? 1}
+              onDecrement={() => patch('depositMonths', Math.max(1, ((form as any).depositMonths ?? 1) - 1))}
+              onIncrement={() => patch('depositMonths', Math.min(3, ((form as any).depositMonths ?? 1) + 1))}
+              min={1}
+            />
+          </View>
+        </View>
+
+        {/* Durée minimale */}
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Durée minimale de location</Text>
+        <View style={s.chipRow}>
+          {MIN_DURATIONS.map(d => {
+            const active = (form as any).minDurationMonths === d.value;
+            return (
+              <TouchableOpacity
+                key={d.value}
+                style={[s.selectChip, active && s.selectChipActive]}
+                onPress={() => patch('minDurationMonths', d.value)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.selectChipTxt, active && s.selectChipTxtActive]}>{d.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Préavis */}
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Préavis de départ exigé</Text>
+        <View style={s.chipRow}>
+          {NOTICE_PERIODS.map(n => {
+            const active = (form as any).noticePeriodDays === n.value;
+            return (
+              <TouchableOpacity
+                key={n.value}
+                style={[s.selectChip, active && s.selectChipActive]}
+                onPress={() => patch('noticePeriodDays', n.value)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.selectChipTxt, active && s.selectChipTxtActive]}>{n.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const HOUSE_RULES: { key: string; label: string; sub: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
+    { key: 'smokingAllowed',  label: 'Fumeurs acceptés',       sub: 'Autoriser de fumer dans le logement', icon: 'smoking-rooms' },
+    { key: 'petsAllowed',     label: 'Animaux acceptés',       sub: 'Chiens, chats, etc.',                 icon: 'pets' },
+    { key: 'visitorsAllowed', label: 'Visiteurs acceptés',     sub: 'Accueil de proches ponctuels',        icon: 'people' },
+    { key: 'noiseAfter22',    label: 'Bruit après 22h interdit', sub: 'Respect du voisinage exigé',        icon: 'nights-stay' },
+  ];
+
+  const renderStep3 = () => (
+    <Animated.View entering={FadeInDown.duration(320)}>
+      <Text style={s.stepTitle}>Équipements, règles et photos</Text>
+      <Text style={s.stepSub}>Plus votre annonce est complète, plus elle attire de locataires sérieux.</Text>
+
+      {/* Équipements */}
+      <Text style={s.fieldGroupLabel}>Équipements disponibles</Text>
+      <View style={s.amenitiesGrid}>
+        {AMENITIES.map(a => {
+          const active = form.amenities.includes(a.label);
+          return (
             <TouchableOpacity
-              style={styles.locationButton}
-              onPress={detectCurrentLocation}
-              disabled={isLoadingLocation}
+              key={a.label}
+              style={[s.amenityChip, active && s.amenityChipActive]}
+              onPress={() => toggleAmenity(a.label)}
+              activeOpacity={0.8}
             >
-              <MaterialIcons name="my-location" size={18} color="#FF5A5F" />
-              <Text style={styles.locationButtonText}>
-                {isLoadingLocation ? "Détection en cours..." : "Utiliser ma position actuelle"}
-              </Text>
-              {isLoadingLocation && (
-                <ActivityIndicator size="small" color="#FF5A5F" style={{ marginLeft: 8 }} />
+              <MaterialIcons
+                name={a.icon}
+                size={14}
+                color={active ? colors.primary : colors.inkSubtle}
+              />
+              <Text style={[s.amenityTxt, active && s.amenityTxtActive]}>{a.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {form.amenities.length < 5 && (
+        <Text style={s.amenityHint}>Sélectionnez au moins 5 équipements pour un meilleur référencement</Text>
+      )}
+
+      {/* Règles */}
+      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>Règles du logement</Text>
+      <View style={s.rulesCard}>
+        {HOUSE_RULES.map((rule, i) => {
+          const active = (form as any)[rule.key] ?? false;
+          return (
+            <TouchableOpacity
+              key={rule.key}
+              style={[s.ruleRow, i < HOUSE_RULES.length - 1 && s.ruleRowBorder]}
+              onPress={() => patch(rule.key, !active)}
+              activeOpacity={0.8}
+            >
+              <View style={s.ruleIconWrap}>
+                <MaterialIcons name={rule.icon} size={18} color={active ? colors.primary : colors.inkDisabled} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.ruleLabel}>{rule.label}</Text>
+                <Text style={s.ruleSub}>{rule.sub}</Text>
+              </View>
+              <View style={[s.toggle, active && s.toggleOn]}>
+                <View style={[s.toggleThumb, active && s.toggleThumbOn]} />
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Photos */}
+      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>
+        Photos{' '}
+        <Text style={{ color: colors.inkDisabled, textTransform: 'none', letterSpacing: 0 }}>
+          ({form.images.length} / 10)
+        </Text>
+      </Text>
+      {errors.images && <Text style={s.errorInline}>{errors.images}</Text>}
+      <View style={s.photosGrid}>
+        {form.images.map((uri, i) => (
+          <View key={i} style={s.photoThumb}>
+            <Image source={{ uri }} style={s.photoImg} resizeMode="cover" />
+            {i === 0 && (
+              <View style={s.coverBadge}>
+                <Text style={s.coverBadgeTxt}>Couverture</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={s.photoRemove}
+              onPress={() => patch('images', form.images.filter((_, j) => j !== i))}
+            >
+              <MaterialIcons name="close" size={13} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        ))}
+        {form.images.length < 10 && (
+          <TouchableOpacity
+            style={s.photoAdd}
+            onPress={() => {
+              patch('images', [...form.images, `https://picsum.photos/seed/${form.images.length + 1}/800/600`]);
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="add-photo-alternate" size={26} color={colors.inkDisabled} />
+            <Text style={s.photoAddTxt}>Ajouter</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <Text style={s.photoHint}>Min. 5 photos recommandées · Première photo = couverture</Text>
+
+      {errors.submit && (
+        <View style={s.submitError}>
+          <MaterialIcons name="error-outline" size={15} color={colors.error} />
+          <Text style={s.submitErrorTxt}>{errors.submit}</Text>
+        </View>
+      )}
+    </Animated.View>
+  );
+
+  const STEP_RENDERERS = [renderStep0, renderStep1, renderStep2, renderStep3];
+  const isLastStep = step === STEPS.length - 1;
+
+  return (
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      {/* Header */}
+      <View style={s.header}>
+        <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.7}>
+          <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Nouvelle annonce</Text>
+        <TouchableOpacity
+          style={s.draftBtn}
+          onPress={() => handleSave('draft')}
+          activeOpacity={0.8}
+        >
+          <Text style={s.draftTxt}>Brouillon</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Progress + labels */}
+      <ProgressRail
+        step={step}
+        total={STEPS.length}
+        labels={STEPS.map(st => st.label)}
+      />
+
+      {/* Content */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      >
+        {STEP_RENDERERS[step]()}
+        <View style={{ height: 24 }} />
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
+        {isLastStep ? (
+          <View style={s.footerRow}>
+            <TouchableOpacity
+              style={s.secondaryFooterBtn}
+              onPress={() => handleSave('draft')}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              <Text style={s.secondaryFooterTxt}>Enregistrer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.primaryFooterBtn, saving && s.btnDisabled]}
+              onPress={() => handleSave('publish')}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <>
+                  <Text style={s.primaryFooterTxt}>Publier l'annonce</Text>
+                  <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
+                </>
               )}
             </TouchableOpacity>
-            
-            {/* Ville */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Ville</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.city}
-                onChangeText={(text) => handleChange('city', text)}
-                placeholder="Ex: Gisenyi"
-                outlineColor={errors.city ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.city ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-              />
-              {errors.city && <HelperText type="error">{errors.city}</HelperText>}
-            </View>
-            
-            {/* Quartier / District */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Quartier</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.district}
-                onChangeText={(text) => handleChange('district', text)}
-                placeholder="Ex: Centre-ville, Rubavu, etc."
-                outlineColor={errors.district ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.district ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-              />
-              {errors.district && <HelperText type="error">{errors.district}</HelperText>}
-            </View>
-            
-            {/* Adresse */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Adresse</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.address}
-                onChangeText={(text) => handleChange('address', text)}
-                placeholder="Ex: 45 Rue du Commerce"
-                outlineColor={errors.address ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.address ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-              />
-              {errors.address && <HelperText type="error">{errors.address}</HelperText>}
-            </View>
           </View>
-          
-          {/* Section des détails et du prix */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Détails et prix</Text>
-            
-            {/* Nombre de chambres */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Nombre de chambres</Text>
-              <View style={styles.counterContainer}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('bedrooms', Math.max(1, formData.bedrooms - 1))}
-                >
-                  <MaterialIcons name="remove" size={20} color="#222222" />
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{formData.bedrooms}</Text>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('bedrooms', formData.bedrooms + 1)}
-                >
-                  <MaterialIcons name="add" size={20} color="#222222" />
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            {/* Nombre de salles de bains */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Nombre de salles de bain</Text>
-              <View style={styles.counterContainer}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('bathrooms', Math.max(1, formData.bathrooms - 1))}
-                >
-                  <MaterialIcons name="remove" size={20} color="#222222" />
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{formData.bathrooms}</Text>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('bathrooms', formData.bathrooms + 1)}
-                >
-                  <MaterialIcons name="add" size={20} color="#222222" />
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            {/* Superficie */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Superficie (m²)</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.size ? formData.size.toString() : ''}
-                onChangeText={(text) => handleChange('size', parseInt(text) || 0)}
-                placeholder="Ex: 85"
-                keyboardType="numeric"
-                outlineColor={errors.size ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.size ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-                right={<TextInput.Affix text="m²" />}
-              />
-              {errors.size && <HelperText type="error">{errors.size}</HelperText>}
-            </View>
-            
-            {/* Prix */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Prix par mois</Text>
-              <TextInput
-                mode="outlined"
-                value={formData.price ? formData.price.toString() : ''}
-                onChangeText={(text) => handleChange('price', parseInt(text) || 0)}
-                placeholder="Ex: 75000"
-                keyboardType="numeric"
-                outlineColor={errors.price ? theme.colors.error : '#CCCCCC'}
-                activeOutlineColor={errors.price ? theme.colors.error : theme.colors.primary}
-                style={styles.input}
-                right={<TextInput.Affix text="RWF" />}
-              />
-              {errors.price && <HelperText type="error">{errors.price}</HelperText>}
-            </View>
-            
-            {/* Nombre maximal d'invités */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Nombre maximal d'invités</Text>
-              <View style={styles.counterContainer}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('maxGuests', Math.max(1, formData.maxGuests - 1))}
-                >
-                  <MaterialIcons name="remove" size={20} color="#222222" />
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{formData.maxGuests}</Text>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => handleChange('maxGuests', formData.maxGuests + 1)}
-                >
-                  <MaterialIcons name="add" size={20} color="#222222" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-          
-          {/* Section des commodités */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Commodités</Text>
-            <Text style={styles.sectionDescription}>
-              Sélectionnez les commodités disponibles dans votre logement
+        ) : (
+          <TouchableOpacity
+            style={s.primaryFooterBtnFull}
+            onPress={goNext}
+            activeOpacity={0.85}
+          >
+            <Text style={s.primaryFooterTxt}>
+              Continuer — {STEPS[step + 1 < STEPS.length ? step + 1 : step].label}
             </Text>
-            
-            <View style={styles.amenitiesContainer}>
-              {AMENITIES.map((amenity) => (
-                <TouchableOpacity
-                  key={amenity.value}
-                  style={[
-                    styles.amenityItem,
-                    formData.amenities.includes(amenity.value) && styles.amenityItemSelected
-                  ]}
-                  onPress={() => handleToggleAmenity(amenity.value)}
-                >
-                  <Text style={[
-                    styles.amenityText,
-                    formData.amenities.includes(amenity.value) && styles.amenityTextSelected
-                  ]}>
-                    {amenity.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          
-          {/* Section des règles */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Règles du logement</Text>
-            
-            {/* Fumeurs acceptés */}
-            <View style={styles.checkboxContainer}>
-              <Checkbox
-                status={formData.smokingAllowed ? 'checked' : 'unchecked'}
-                onPress={() => handleChange('smokingAllowed', !formData.smokingAllowed)}
-                color="#FF5A5F"
-              />
-              <Text style={styles.checkboxLabel}>Fumeurs acceptés</Text>
-            </View>
-            
-            {/* Animaux acceptés */}
-            <View style={styles.checkboxContainer}>
-              <Checkbox
-                status={formData.petsAllowed ? 'checked' : 'unchecked'}
-                onPress={() => handleChange('petsAllowed', !formData.petsAllowed)}
-                color="#FF5A5F"
-              />
-              <Text style={styles.checkboxLabel}>Animaux acceptés</Text>
-            </View>
-          </View>
-          
-          {/* Section des photos */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Photos</Text>
-            <Text style={styles.sectionDescription}>
-              Ajoutez des photos de votre logement (min. 1 photo)
-            </Text>
-            
-            {errors.images && <HelperText type="error">{errors.images}</HelperText>}
-            
-            <View style={styles.imagesContainer}>
-              {/* Afficher les images téléchargées */}
-              {formData.images.map((image, index) => (
-                <View key={index} style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: image }} style={styles.imagePreview} />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => handleRemoveImage(index)}
-                  >
-                    <MaterialIcons name="close" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              
-              {/* Bouton pour ajouter une image (mise à jour pour utiliser la galerie) */}
-              <TouchableOpacity
-                style={styles.addImageButton}
-                onPress={openGallery}
-              >
-                <MaterialIcons name="photo-library" size={24} color="#555555" />
-                <Text style={styles.addImageText}>Galerie</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      
-      {/* Bouton de soumission en bas de l'écran */}
-      <View style={styles.bottomBar}>
-        <Button
-          mode="contained"
-          style={styles.publishButton}
-          labelStyle={styles.publishButtonLabel}
-          onPress={handleSubmit}
-        >
-          Publier l'annonce
-        </Button>
+            <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
+          </TouchableOpacity>
+        )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#222222',
-  },
-  headerRight: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  bottomBar: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-  },
-  publishButton: {
-    backgroundColor: '#FF5A5F',
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  publishButtonLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#222222',
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-    color: '#222222',
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-  },
-  textArea: {
-    minHeight: 100,
-  },
-  segmentedButtons: {
-    marginBottom: 8,
-  },
-  counterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 8,
-  },
-  counterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F0F0F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  counterValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginHorizontal: 16,
-  },
-  amenitiesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  amenityItem: {
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    borderRadius: 8,
-    margin: 4,
-  },
-  amenityItemSelected: {
-    backgroundColor: '#FF5A5F',
-  },
-  amenityText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#222222',
-  },
-  amenityTextSelected: {
-    color: '#FFFFFF',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
-    color: '#222222',
-  },
-  imagesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  imagePreviewContainer: {
-    width: Dimensions.get('window').width / 3,
-    height: Dimensions.get('window').width / 3,
-    margin: 4,
-  },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    padding: 4,
-    borderRadius: 18,
-    backgroundColor: '#FF5A5F',
-  },
-  addImageButton: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageText: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginTop: 8,
-    color: '#222222',
-  },
-  sectionDescription: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 16,
-    color: '#222222',
-  },
-  locationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F8F8F8',
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  locationButtonText: {
-    marginLeft: 8,
-    color: '#333333',
-    fontWeight: '500',
-  },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const PHOTO_SIZE = 100;
+
+const s = StyleSheet.create({
+  root:         { flex: 1, backgroundColor: colors.background },
+  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  headerTitle:  { fontSize: 16, fontWeight: '700', color: colors.ink },
+  draftBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border },
+  draftTxt:     { fontSize: 12, fontWeight: '600', color: colors.inkMid },
+
+
+
+  scrollContent:  { paddingHorizontal: 20, paddingTop: 8 },
+  stepTitle:      { fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 6, letterSpacing: -0.3 },
+  stepSub:        { fontSize: 13, color: colors.inkSubtle, marginBottom: 24, lineHeight: 18 },
+  fieldGroupLabel:{ fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  charCount:      { fontSize: 11, color: colors.inkDisabled, textAlign: 'right', marginTop: -8, marginBottom: 16 },
+  errorInline:    { fontSize: 12, color: colors.error, marginBottom: 8 },
+
+  // Property type grid
+  typeGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
+  typeCard:     { width: '30%', aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  typeCardActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  typeLabel:    { fontSize: 11, fontWeight: '600', color: colors.inkSubtle, textAlign: 'center' },
+  typeLabelActive: { color: colors.primary },
+
+  // Accommodation type
+  accomRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, marginBottom: 10, backgroundColor: colors.surface },
+  accomRowActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  accomRadio:     { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  accomRadioInner:{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  accomLabel:     { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 2 },
+  accomLabelActive:{ color: colors.primary },
+  accomSub:       { fontSize: 12, color: colors.inkSubtle, lineHeight: 16 },
+
+  // Location
+  locateBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryLight, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1.5, borderColor: colors.primary + '44' },
+  locateBtnLoading: { opacity: 0.7 },
+  locateTxt:      { fontSize: 13, fontWeight: '600', color: colors.primary },
+  mapWrap:        { borderRadius: 14, overflow: 'hidden', height: MAP_HEIGHT, marginBottom: 8, borderWidth: 1.5, borderColor: colors.border, position: 'relative' },
+  map:            { width: '100%', height: '100%' },
+  mapHintBadge:   { position: 'absolute', bottom: 10, left: '50%', transform: [{ translateX: -80 }], flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(15,31,31,0.65)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  mapHintTxt:     { fontSize: 11, color: colors.white, fontWeight: '500' },
+  coordsRow:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  coordsTxt:      { fontSize: 11, color: colors.inkSubtle, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+
+  // Counter grid
+  counterGrid:  { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 8 },
+  counterRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  counterLabel: { fontSize: 14, fontWeight: '500', color: colors.ink },
+
+  // Counter sub-label
+  counterSub:     { fontSize: 11, color: colors.inkSubtle, marginTop: 2 },
+
+  // Chip selector (duration, notice)
+  chipRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  selectChip:     { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  selectChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  selectChipTxt:  { fontSize: 13, fontWeight: '600', color: colors.inkSubtle },
+  selectChipTxtActive: { color: colors.primary },
+
+  // Price preview
+  pricePreview:    { backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginTop: 4, marginBottom: 8 },
+  pricePreviewRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
+  pricePreviewLbl: { fontSize: 12, color: colors.inkSubtle },
+  pricePreviewVal: { fontSize: 13, fontWeight: '600', color: colors.ink },
+
+  // Amenities
+  amenitiesGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  amenityChip:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  amenityChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  amenityTxt:     { fontSize: 12, fontWeight: '500', color: colors.inkMid },
+  amenityTxtActive: { color: colors.primary, fontWeight: '600' },
+  amenityHint:    { fontSize: 11, color: colors.warning, marginTop: 8 },
+
+  // Rules
+  rulesCard:    { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  ruleRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
+  ruleRowBorder:{ borderBottomWidth: 1, borderBottomColor: colors.border },
+  ruleIconWrap: { width: 34, height: 34, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  ruleLabel:    { fontSize: 14, fontWeight: '600', color: colors.ink },
+  ruleSub:      { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
+  toggle:       { width: 44, height: 24, borderRadius: 12, backgroundColor: colors.border, justifyContent: 'center', paddingHorizontal: 2 },
+  toggleOn:     { backgroundColor: colors.primary },
+  toggleThumb:  { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.white },
+  toggleThumbOn:{ transform: [{ translateX: 20 }] },
+
+  // Photos
+  photosGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoThumb:   { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  photoImg:     { width: '100%', height: '100%' },
+  coverBadge:   { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.primary + 'CC', paddingVertical: 3, alignItems: 'center' },
+  coverBadgeTxt:{ fontSize: 9, fontWeight: '700', color: colors.white },
+  photoRemove:  { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.ink + 'BB', alignItems: 'center', justifyContent: 'center' },
+  photoAdd:     { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: colors.surfaceSunken },
+  photoAddTxt:  { fontSize: 11, color: colors.inkDisabled },
+  photoHint:    { fontSize: 11, color: colors.inkSubtle, marginTop: 8, lineHeight: 16 },
+
+  // Submit error
+  submitError:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.error + '12', borderRadius: 8, padding: 10, marginTop: 16 },
+  submitErrorTxt: { fontSize: 13, color: colors.error, fontWeight: '500' },
+
+  // Footer
+  footer:              { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 20, paddingTop: 14 },
+  footerRow:           { flexDirection: 'row', gap: 10 },
+  // Bouton plein dans footerRow (last step)
+  primaryFooterBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14 },
+  // Bouton pleine largeur (steps 1-3)
+  primaryFooterBtnFull:{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 15 },
+  primaryFooterTxt:    { fontSize: 15, fontWeight: '700', color: colors.white },
+  secondaryFooterBtn:  { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  secondaryFooterTxt:  { fontSize: 14, fontWeight: '600', color: colors.inkMid },
+  btnDisabled:         { opacity: 0.45 },
 });
 
-export default CreateListingScreen; 
+export default CreateListingScreen;

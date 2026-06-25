@@ -28,7 +28,13 @@
     "plugins": [
       "expo-font",
       "expo-localization",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "LocaMap utilise votre position pour localiser votre annonce."
+        }
+      ]
     ]
   }
 }

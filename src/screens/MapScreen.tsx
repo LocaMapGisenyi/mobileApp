@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Image,
@@ -10,6 +9,7 @@ import {
   FlatList,
   Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
