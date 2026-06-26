@@ -20,7 +20,7 @@ import { colors } from '../theme';
 import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
 import { hostService } from '../services/api';
-import api from '../services/api/config';
+import { alertService } from '../services/api';
 import HostReferralScreen from './HostReferralScreen';
 import HostResourcesScreen from './HostResourcesScreen';
 import HostSupportScreen from './HostSupportScreen';
@@ -170,7 +170,7 @@ const HostProfileScreen = () => {
       try {
         const [stats, notifs] = await Promise.all([
           hostService.getOverview(),
-          api.get('/host/notifications').catch(() => ({ items: [] })),
+          alertService.getNotifications().catch(() => []),
         ]);
         setProfile({
           isSuperHost:           false,
@@ -181,8 +181,8 @@ const HostProfileScreen = () => {
           avgRating:             stats?.averageRating ?? null,
           cancellationRate:      null,
           accountStatus:         'ok',
-          unreadNotifications:   Array.isArray((notifs as any)?.items)
-                                   ? (notifs as any).items.length
+          unreadNotifications:   Array.isArray(notifs)
+                                   ? notifs.filter((n: any) => !n.read).length
                                    : 0,
         });
       } catch {
@@ -197,7 +197,7 @@ const HostProfileScreen = () => {
   const handleSwitchMode = async () => {
     setSwitchingMode(true);
     try {
-      await api.post('/auth/switch-mode', { mode: 'GUEST' }).catch(() => {});
+      // Switch to guest mode — navigate without backend call
       navigation.navigate('MainTabs');
     } finally {
       setSwitchingMode(false);
@@ -297,7 +297,7 @@ const HostProfileScreen = () => {
           </View>
           <TouchableOpacity
             style={s.editBtn}
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate('HostAccount')}
             activeOpacity={0.8}
           >
             <MaterialIcons name="edit" size={16} color={colors.primary} />
@@ -376,7 +376,7 @@ const HostProfileScreen = () => {
           <MenuItem
             icon="settings"
             label={t('hostProfile.settings')}
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate('HostAccount')}
           />
           <MenuItem
             icon="menu-book"

@@ -155,7 +155,7 @@ const ProfileScreen = () => {
 
   // Navigate to edit profile screen
   const navigateToEditProfile = () => {
-    navigation.navigate('EditProfile');
+    navigation.navigate('GuestAccount');
   };
 
   // Navigate to favorites screen

@@ -29,7 +29,8 @@ import AlertPreferencesScreen from '../screens/AlertPreferencesScreen';
 import LeaveReviewScreen from '../screens/LeaveReviewScreen';
 import LocalGuideScreen from '../screens/LocalGuideScreen';
 import GuideDetailScreen from '../screens/GuideDetailScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
+import HostAccountScreen from '../screens/HostAccountScreen';
+import GuestAccountScreen from '../screens/GuestAccountScreen';
 import HostDashboardScreen from '../screens/HostDashboardScreen';
 import HostOnboardingScreen from '../screens/HostOnboardingScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
@@ -361,12 +362,14 @@ const AppNavigator = () => {
                 }}
               />
               <Stack.Screen
-                name="EditProfile"
-                component={EditProfileScreen}
-                options={{
-                  headerShown: false,
-                  animation: 'slide_from_right',
-                }}
+                name="HostAccount"
+                component={HostAccountScreen}
+                options={{ headerShown: false, animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="GuestAccount"
+                component={GuestAccountScreen}
+                options={{ headerShown: false, animation: 'slide_from_right' }}
               />
               <Stack.Screen
                 name="HostDashboard"

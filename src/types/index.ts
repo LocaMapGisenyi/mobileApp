@@ -50,7 +50,8 @@ export type RootStackParamList = {
 
   // Other missing routes
   AlertPreferences: undefined;
-  EditProfile: undefined;
+  HostAccount: undefined;
+  GuestAccount: undefined;
   Favorites: undefined;
 };
 
