@@ -517,7 +517,7 @@ const HostListingsScreen = () => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root:   { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 20 },
+  scroll: { paddingHorizontal: 20, paddingTop: 20 },
   centered: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     padding: 32, gap: 12,

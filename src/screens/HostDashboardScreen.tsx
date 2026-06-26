@@ -577,6 +577,7 @@ const s = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   centered: {
     flex: 1,
