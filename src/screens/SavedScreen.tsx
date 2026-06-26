@@ -8,7 +8,7 @@ import {
   Dimensions,
   RefreshControl,
   ImageBackground } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   Text,
   Button,
@@ -31,6 +31,7 @@ const { width } = Dimensions.get('window');
 const NUM_COLUMNS_THRESHOLD = 600; // Width threshold to switch to 2 columns
 
 const SavedScreen = () => {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const theme = useTheme();
   const { colors } = theme;
@@ -224,6 +225,7 @@ const SavedScreen = () => {
               onRefresh={handleRefresh}
               colors={[colors.primary]}
               tintColor={colors.primary}
+              progressViewOffset={insets.top}
             />
           }
           ListFooterComponent={

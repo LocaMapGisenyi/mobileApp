@@ -11,7 +11,7 @@ import {
   Dimensions,
   SectionList
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, Searchbar, Divider, useTheme, ActivityIndicator, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,6 +26,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 const { width } = Dimensions.get('window');
 
 const LocalGuideScreen = () => {
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { colors } = theme;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -266,10 +267,11 @@ const LocalGuideScreen = () => {
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.primary]}
-              tintColor={colors.primary}
-              title={refreshing ? t('common.refreshing') : undefined}
-              titleColor={colors.onSurfaceVariant}
-            />
+            tintColor={colors.primary}
+            title={refreshing ? t('common.refreshing') : undefined}
+            titleColor={colors.onSurfaceVariant}
+            progressViewOffset={insets.top}
+          />
           }
           ListFooterComponent={<View style={{height: 20}} />}
         />

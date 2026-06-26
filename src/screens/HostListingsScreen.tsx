@@ -10,7 +10,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -452,9 +452,9 @@ const HostListingsScreen = () => {
   }
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <View style={s.root}>
       <ScrollView
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -462,6 +462,7 @@ const HostListingsScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
+            progressViewOffset={insets.top}
           />
         }
       >
@@ -510,14 +511,14 @@ const HostListingsScreen = () => {
         onConfirm={handleArchiveConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root:   { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 20, paddingTop: 20 },
+  scroll: { paddingHorizontal: 20 },
   centered: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     padding: 32, gap: 12,

@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -225,7 +224,7 @@ const HostDashboardScreen = () => {
     return (
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[s.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -233,6 +232,7 @@ const HostDashboardScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
+            progressViewOffset={insets.top}
           />
         }
       >
@@ -452,7 +452,7 @@ const HostDashboardScreen = () => {
   };
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       {renderContent()}
 
@@ -565,7 +565,7 @@ const HostDashboardScreen = () => {
           </Animated.View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -577,7 +577,6 @@ const s = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
   },
   centered: {
     flex: 1,

@@ -9,7 +9,7 @@ import {
   Platform,
   RefreshControl,
   Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Text,
   useTheme,
@@ -107,6 +107,7 @@ const CUSTOM_CATEGORIES = [
 
 
 const ExplorerScreen = () => {
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
@@ -510,6 +511,7 @@ const ExplorerScreen = () => {
             onRefresh={() => handleFetchListings(true)}
             colors={[themeColors.primary]}
             tintColor={themeColors.primary}
+            progressViewOffset={insets.top}
           />
         }
       >
