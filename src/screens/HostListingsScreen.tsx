@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { RootStackParamList } from '../types';
 import { hostService, ListingCard, ListingStatus } from '../services/api';
@@ -23,16 +24,18 @@ import { hostService, ListingCard, ListingStatus } from '../services/api';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 // ─── Status config ────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<
+// Labels are resolved dynamically via t() inside components — this map only
+// carries the visual tokens (color, bg, icon) and a stable key.
+const STATUS_KEYS: Record<
   ListingStatus,
-  { label: string; color: string; bg: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }
+  { labelKey: string; color: string; bg: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }
 > = {
-  ACTIVE:         { label: 'Actif',           color: colors.success,    bg: colors.success + '18',    icon: 'radio-button-checked' },
-  DRAFT:          { label: 'Brouillon',        color: colors.inkSubtle,  bg: colors.surfaceSunken,     icon: 'edit' },
-  PENDING_REVIEW: { label: 'En vérification',  color: colors.warning,    bg: colors.warning + '18',    icon: 'hourglass-empty' },
-  PAUSED:         { label: 'En pause',         color: colors.inkMid,     bg: colors.border,             icon: 'pause-circle-outline' },
-  SUSPENDED:      { label: 'Suspendue',        color: colors.error,      bg: colors.error + '14',      icon: 'block' },
-  ARCHIVED:       { label: 'Archivée',         color: colors.inkDisabled, bg: colors.surfaceSunken,    icon: 'archive' },
+  ACTIVE:         { labelKey: 'hostListings.active',          color: colors.success,    bg: colors.success + '18',    icon: 'radio-button-checked' },
+  DRAFT:          { labelKey: 'hostListings.draft',           color: colors.inkSubtle,  bg: colors.surfaceSunken,     icon: 'edit' },
+  PENDING_REVIEW: { labelKey: 'hostListings.pendingReview',   color: colors.warning,    bg: colors.warning + '18',    icon: 'hourglass-empty' },
+  PAUSED:         { labelKey: 'hostListings.paused',          color: colors.inkMid,     bg: colors.border,             icon: 'pause-circle-outline' },
+  SUSPENDED:      { labelKey: 'hostListings.suspended',       color: colors.error,      bg: colors.error + '14',      icon: 'block' },
+  ARCHIVED:       { labelKey: 'hostListings.archived',        color: colors.inkDisabled, bg: colors.surfaceSunken,    icon: 'archive' },
 };
 
 const formatFC = (n: number | null | undefined) =>
@@ -60,28 +63,31 @@ const DeleteModal = ({
   title: string;
   onConfirm: () => void;
   onCancel: () => void;
-}) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-    <View style={dm.overlay}>
-      <View style={dm.card}>
-        <MaterialIcons name="warning" size={32} color={colors.error} style={{ marginBottom: 12 }} />
-        <Text style={dm.title}>Archiver cette annonce ?</Text>
-        <Text style={dm.body}>
-          <Text style={{ fontWeight: '700' }}>{title}</Text>
-          {' '}sera retirée de la recherche. Cette action est irréversible.
-        </Text>
-        <View style={dm.actions}>
-          <TouchableOpacity style={dm.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
-            <Text style={dm.cancelTxt}>Annuler</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={dm.confirmBtn} onPress={onConfirm} activeOpacity={0.8}>
-            <Text style={dm.confirmTxt}>Archiver</Text>
-          </TouchableOpacity>
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={dm.overlay}>
+        <View style={dm.card}>
+          <MaterialIcons name="warning" size={32} color={colors.error} style={{ marginBottom: 12 }} />
+          <Text style={dm.title}>{t('hostListings.archiveTitle')}</Text>
+          <Text style={dm.body}>
+            <Text style={{ fontWeight: '700' }}>{title}</Text>
+            {' '}{t('hostListings.archiveBody', { name: '' }).replace(title + ' ', '')}
+          </Text>
+          <View style={dm.actions}>
+            <TouchableOpacity style={dm.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
+              <Text style={dm.cancelTxt}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={dm.confirmBtn} onPress={onConfirm} activeOpacity={0.8}>
+              <Text style={dm.confirmTxt}>{t('hostListings.archive')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 const dm = StyleSheet.create({
   overlay:    { flex: 1, backgroundColor: 'rgba(15,31,31,0.5)', justifyContent: 'center', padding: 24 },
   card:       { backgroundColor: colors.surface, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
@@ -110,7 +116,9 @@ const ListingCardView = ({
   onCalendar: (id: string) => void;
   toggling: boolean;
 }) => {
-  const sc = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.DRAFT;
+  const { t } = useTranslation();
+  const skCfg = STATUS_KEYS[item.status] ?? STATUS_KEYS.DRAFT;
+  const sc = { ...skCfg, label: t(skCfg.labelKey) };
   const isDraft = item.status === 'DRAFT';
   const isActive = item.status === 'ACTIVE';
   const isPaused = item.status === 'PAUSED';
@@ -146,13 +154,13 @@ const ListingCardView = ({
         {isDraft ? (
           <View style={lc.draftSection}>
             <View style={lc.completionRow}>
-              <Text style={lc.completionTxt}>Complétude</Text>
+              <Text style={lc.completionTxt}>{t('hostListings.completion')}</Text>
               <Text style={lc.completionPct}>{item.completionScore}%</Text>
             </View>
             <CompletionBar score={item.completionScore} />
             {item.completionScore < 90 && (
               <Text style={lc.completionHint}>
-                {90 - item.completionScore} pts manquants pour publier
+                {90 - item.completionScore} {t('hostListings.ptsNeeded')}
               </Text>
             )}
           </View>
@@ -162,7 +170,7 @@ const ListingCardView = ({
             {item.pricePerNight != null && (
               <View style={lc.statChip}>
                 <Text style={lc.statValue}>{formatFC(item.pricePerNight)}</Text>
-                <Text style={lc.statUnit}>/nuit</Text>
+                <Text style={lc.statUnit}>{t('hostListings.perNight')}</Text>
               </View>
             )}
             {item.avgRating != null && (
@@ -177,7 +185,7 @@ const ListingCardView = ({
             {item.occupancyRate != null && (
               <View style={lc.statChip}>
                 <Text style={lc.statValue}>{Math.round(item.occupancyRate)}%</Text>
-                <Text style={lc.statUnit}>occupation</Text>
+                <Text style={lc.statUnit}>{t('hostListings.occupation')}</Text>
               </View>
             )}
           </View>
@@ -187,7 +195,7 @@ const ListingCardView = ({
         {isSuspended && (
           <View style={lc.suspendedBanner}>
             <MaterialIcons name="info-outline" size={13} color={colors.error} />
-            <Text style={lc.suspendedTxt}>Contactez le support pour réactiver</Text>
+            <Text style={lc.suspendedTxt}>{t('hostListings.contactSupport')}</Text>
           </View>
         )}
 
@@ -199,7 +207,7 @@ const ListingCardView = ({
               onPress={() => onEdit(item.id)}
               activeOpacity={0.8}
             >
-              <Text style={lc.ctaTxt}>Continuer la configuration</Text>
+              <Text style={lc.ctaTxt}>{t('hostListings.continueSetup')}</Text>
               <MaterialIcons name="arrow-forward" size={14} color={colors.white} />
             </TouchableOpacity>
           ) : (
@@ -210,7 +218,7 @@ const ListingCardView = ({
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="edit" size={14} color={colors.inkMid} />
-                <Text style={lc.outlineTxt}>Modifier</Text>
+                <Text style={lc.outlineTxt}>{t('hostListings.edit')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={lc.outlineBtn}
@@ -218,7 +226,7 @@ const ListingCardView = ({
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="calendar-today" size={14} color={colors.inkMid} />
-                <Text style={lc.outlineTxt}>Calendrier</Text>
+                <Text style={lc.outlineTxt}>{t('hostCalendar.title')}</Text>
               </TouchableOpacity>
               {canToggle && (
                 <TouchableOpacity
@@ -236,7 +244,9 @@ const ListingCardView = ({
                         size={14}
                         color={colors.white}
                       />
-                      <Text style={lc.toggleTxt}>{isActive ? 'Pause' : 'Activer'}</Text>
+                      <Text style={lc.toggleTxt}>
+                        {isActive ? t('hostListings.pause') : t('hostListings.activate')}
+                      </Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -336,6 +346,7 @@ const lc = StyleSheet.create({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const HostListingsScreen = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
 
@@ -352,11 +363,11 @@ const HostListingsScreen = () => {
       const data = await hostService.getListings();
       setListings(Array.isArray(data) ? data : []);
     } catch {
-      setError('Impossible de charger vos annonces');
+      setError(t('hostListings.error'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -412,7 +423,7 @@ const HostListingsScreen = () => {
         <MaterialIcons name="cloud-off" size={40} color={colors.inkDisabled} />
         <Text style={s.errorTxt}>{error}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={load} activeOpacity={0.8}>
-          <Text style={s.retryTxt}>Réessayer</Text>
+          <Text style={s.retryTxt}>{t('hostListings.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -424,9 +435,9 @@ const HostListingsScreen = () => {
         <View style={s.emptyIcon}>
           <MaterialIcons name="home-work" size={40} color={colors.primary} />
         </View>
-        <Text style={s.emptyTitle}>Aucune annonce</Text>
+        <Text style={s.emptyTitle}>{t('hostListings.empty')}</Text>
         <Text style={s.emptySubtitle}>
-          Créez votre première annonce pour commencer à recevoir des voyageurs.
+          {t('hostListings.emptySubtitle')}
         </Text>
         <TouchableOpacity
           style={s.createBtn}
@@ -434,7 +445,7 @@ const HostListingsScreen = () => {
           activeOpacity={0.85}
         >
           <MaterialIcons name="add" size={18} color={colors.white} />
-          <Text style={s.createBtnTxt}>Créer une annonce</Text>
+          <Text style={s.createBtnTxt}>{t('hostListings.create')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -457,8 +468,10 @@ const HostListingsScreen = () => {
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(340)} style={s.header}>
           <View>
-            <Text style={s.headerTitle}>Mes annonces</Text>
-            <Text style={s.headerCount}>{listings.length} logement{listings.length > 1 ? 's' : ''}</Text>
+            <Text style={s.headerTitle}>{t('hostListings.title')}</Text>
+            <Text style={s.headerCount}>
+              {t('hostListings.count', { count: listings.length })}
+            </Text>
           </View>
           <TouchableOpacity
             style={s.newBtn}
@@ -466,7 +479,7 @@ const HostListingsScreen = () => {
             activeOpacity={0.85}
           >
             <MaterialIcons name="add" size={18} color={colors.white} />
-            <Text style={s.newBtnTxt}>Nouvelle</Text>
+            <Text style={s.newBtnTxt}>{t('hostListings.newListing')}</Text>
           </TouchableOpacity>
         </Animated.View>
 

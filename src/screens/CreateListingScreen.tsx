@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,68 +19,69 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { RootStackParamList } from '../types';
 import { NewListingFormData, useHostListingsStore } from '../store/hostListings';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CreateListing'>;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const PROPERTY_TYPES = [
-  { label: 'Appartement', value: 'appartement', icon: 'apartment' as const },
-  { label: 'Maison',      value: 'maison',      icon: 'home' as const },
-  { label: 'Studio',      value: 'studio',      icon: 'single-bed' as const },
-  { label: 'Villa',       value: 'villa',        icon: 'villa' as const },
-  { label: 'Chambre',     value: 'chambre',      icon: 'bed' as const },
+// ─── Static constants (no i18n needed) ────────────────────────────────────────
+const PROPERTY_TYPE_VALUES = [
+  { value: 'appartement', icon: 'apartment' as const },
+  { value: 'maison',      icon: 'home' as const },
+  { value: 'studio',      icon: 'single-bed' as const },
+  { value: 'villa',       icon: 'villa' as const },
+  { value: 'chambre',     icon: 'bed' as const },
 ];
 
-const ACCOMMODATION_TYPES = [
-  { label: 'Logement entier',  value: 'entier',  sub: 'Voyageurs ont le logement pour eux seuls' },
-  { label: 'Chambre privée',   value: 'privee',  sub: 'Chambre dédiée, espaces communs partagés' },
-  { label: 'Chambre partagée', value: 'partagee', sub: 'Chambre et espaces communs partagés' },
+const ACCOMMODATION_TYPE_VALUES = [
+  { value: 'entier' },
+  { value: 'privee' },
+  { value: 'partagee' },
 ];
 
-const AMENITIES: { label: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
-  { label: 'Wi-Fi',           icon: 'wifi' },
-  { label: 'Eau courante',    icon: 'water-drop' },
-  { label: 'Eau chaude',      icon: 'hot-tub' },
-  { label: 'Électricité',     icon: 'bolt' },
-  { label: 'Groupe électrogène', icon: 'electrical-services' },
-  { label: 'Cuisine équipée', icon: 'kitchen' },
-  { label: 'Réfrigérateur',   icon: 'kitchen' },
-  { label: 'TV',              icon: 'tv' },
-  { label: 'Climatisation',   icon: 'ac-unit' },
-  { label: 'Ventilateur',     icon: 'air' },
-  { label: 'Parking',         icon: 'local-parking' },
-  { label: 'Gardien',         icon: 'security' },
-  { label: 'Balcon',          icon: 'balcony' },
-  { label: 'Vue sur le lac',  icon: 'water' },
-  { label: 'Jardin',          icon: 'grass' },
-  { label: 'Laveuse',         icon: 'local-laundry-service' },
-  { label: 'Meublé',          icon: 'chair' },
-  { label: 'Connexion eau REGIDESO', icon: 'plumbing' },
+const AMENITY_ICONS: { key: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
+  { key: 'wifi',              icon: 'wifi' },
+  { key: 'water',             icon: 'water-drop' },
+  { key: 'hotWater',          icon: 'hot-tub' },
+  { key: 'electricity',       icon: 'bolt' },
+  { key: 'generator',         icon: 'electrical-services' },
+  { key: 'kitchen',           icon: 'kitchen' },
+  { key: 'fridge',            icon: 'kitchen' },
+  { key: 'tv',                icon: 'tv' },
+  { key: 'ac',                icon: 'ac-unit' },
+  { key: 'fan',               icon: 'air' },
+  { key: 'parking',           icon: 'local-parking' },
+  { key: 'security',          icon: 'security' },
+  { key: 'balcony',           icon: 'balcony' },
+  { key: 'lakeView',          icon: 'water' },
+  { key: 'garden',            icon: 'grass' },
+  { key: 'washer',            icon: 'local-laundry-service' },
+  { key: 'furnished',         icon: 'chair' },
+  { key: 'regideso',          icon: 'plumbing' },
 ];
 
-const MIN_DURATIONS = [
-  { label: '1 mois',  value: 1 },
-  { label: '3 mois',  value: 3 },
-  { label: '6 mois',  value: 6 },
-  { label: '1 an',    value: 12 },
+const MIN_DURATION_VALUES = [
+  { value: 1 },
+  { value: 3 },
+  { value: 6 },
+  { value: 12 },
 ];
 
-const NOTICE_PERIODS = [
-  { label: '15 jours',  value: 15 },
-  { label: '1 mois',    value: 30 },
-  { label: '2 mois',    value: 60 },
+const NOTICE_PERIOD_VALUES = [
+  { value: 15 },
+  { value: 30 },
+  { value: 60 },
 ];
 
 const COMMISSION = 0.12;
 
-const STEPS = [
-  { label: 'Type',        icon: 'home' as const },
-  { label: 'Adresse',     icon: 'location-on' as const },
-  { label: 'Détails',     icon: 'list' as const },
-  { label: 'Finition',    icon: 'photo-library' as const },
+const HOUSE_RULE_KEYS: { key: string; ruleKey: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
+  { key: 'smoking',   ruleKey: 'smokingAllowed',  icon: 'smoking-rooms' },
+  { key: 'pets',      ruleKey: 'petsAllowed',     icon: 'pets' },
+  { key: 'visitors',  ruleKey: 'visitorsAllowed', icon: 'people' },
+  { key: 'noise',     ruleKey: 'noiseAfter22',    icon: 'nights-stay' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -234,6 +235,70 @@ const CreateListingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { addListing } = useHostListingsStore();
   const mapRef = useRef<MapView>(null);
+  const { t } = useTranslation();
+
+  // ── Translated dynamic data (computed inside component) ───────────────────
+  const STEPS = useMemo(() => [
+    { label: t('createListing.stepType'),    icon: 'home' as const },
+    { label: t('createListing.stepAddress'), icon: 'location-on' as const },
+    { label: t('createListing.stepDetails'), icon: 'list' as const },
+    { label: t('createListing.stepFinish'),  icon: 'photo-library' as const },
+  ], [t]);
+
+  const PROPERTY_TYPES = useMemo(() => [
+    { label: t('createListing.propAppartement'), value: 'appartement', icon: 'apartment' as const },
+    { label: t('createListing.propMaison'),      value: 'maison',      icon: 'home' as const },
+    { label: t('createListing.propStudio'),      value: 'studio',      icon: 'single-bed' as const },
+    { label: t('createListing.propVilla'),       value: 'villa',       icon: 'villa' as const },
+    { label: t('createListing.propChambre'),     value: 'chambre',     icon: 'bed' as const },
+  ], [t]);
+
+  const ACCOMMODATION_TYPES = useMemo(() => [
+    { label: t('createListing.accomEntire'),  value: 'entier',   sub: t('createListing.accomEntireSub') },
+    { label: t('createListing.accomPrivate'), value: 'privee',   sub: t('createListing.accomPrivateSub') },
+    { label: t('createListing.accomShared'),  value: 'partagee', sub: t('createListing.accomSharedSub') },
+  ], [t]);
+
+  const AMENITIES = useMemo<{ label: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[]>(() => [
+    { label: t('createListing.amenityWifi'),       icon: 'wifi' },
+    { label: t('createListing.amenityWater'),      icon: 'water-drop' },
+    { label: t('createListing.amenityHotWater'),   icon: 'hot-tub' },
+    { label: t('createListing.amenityElec'),       icon: 'bolt' },
+    { label: t('createListing.amenityGenerator'),  icon: 'electrical-services' },
+    { label: t('createListing.amenityKitchen'),    icon: 'kitchen' },
+    { label: t('createListing.amenityFridge'),     icon: 'kitchen' },
+    { label: t('createListing.amenityTV'),         icon: 'tv' },
+    { label: t('createListing.amenityAC'),         icon: 'ac-unit' },
+    { label: t('createListing.amenityFan'),        icon: 'air' },
+    { label: t('createListing.amenityParking'),    icon: 'local-parking' },
+    { label: t('createListing.amenitySecurity'),   icon: 'security' },
+    { label: t('createListing.amenityBalcony'),    icon: 'balcony' },
+    { label: t('createListing.amenityLakeView'),   icon: 'water' },
+    { label: t('createListing.amenityGarden'),     icon: 'grass' },
+    { label: t('createListing.amenityWasher'),     icon: 'local-laundry-service' },
+    { label: t('createListing.amenityFurnished'),  icon: 'chair' },
+    { label: t('createListing.amenityRegideso'),   icon: 'plumbing' },
+  ], [t]);
+
+  const MIN_DURATIONS = useMemo(() => [
+    { label: t('createListing.duration1m'),  value: 1 },
+    { label: t('createListing.duration3m'),  value: 3 },
+    { label: t('createListing.duration6m'),  value: 6 },
+    { label: t('createListing.duration1y'),  value: 12 },
+  ], [t]);
+
+  const NOTICE_PERIODS = useMemo(() => [
+    { label: t('createListing.notice15d'), value: 15 },
+    { label: t('createListing.notice1m'),  value: 30 },
+    { label: t('createListing.notice2m'),  value: 60 },
+  ], [t]);
+
+  const HOUSE_RULES = useMemo<{ key: string; label: string; sub: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[]>(() => [
+    { key: 'smokingAllowed',  label: t('createListing.ruleSmoking'),   sub: t('createListing.ruleSmokingSub'),   icon: 'smoking-rooms' },
+    { key: 'petsAllowed',     label: t('createListing.rulePets'),      sub: t('createListing.rulePetsSub'),      icon: 'pets' },
+    { key: 'visitorsAllowed', label: t('createListing.ruleVisitors'),  sub: t('createListing.ruleVisitorsSub'), icon: 'people' },
+    { key: 'noiseAfter22',    label: t('createListing.ruleNoise'),     sub: t('createListing.ruleNoiseSub'),    icon: 'nights-stay' },
+  ], [t]);
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -278,7 +343,7 @@ const CreateListingScreen: React.FC = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrors(prev => ({ ...prev, location: 'Permission de localisation refusée' }));
+        setErrors(prev => ({ ...prev, location: t('createListing.permissionDenied') }));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -298,11 +363,11 @@ const CreateListingScreen: React.FC = () => {
         600,
       );
     } catch {
-      setErrors(prev => ({ ...prev, location: 'Impossible d\'obtenir la position' }));
+      setErrors(prev => ({ ...prev, location: t('createListing.locationError') }));
     } finally {
       setLocating(false);
     }
-  }, []);
+  }, [t]);
 
   const toggleAmenity = (a: string) => {
     patch('amenities',
@@ -316,18 +381,18 @@ const CreateListingScreen: React.FC = () => {
   const validateStep = (): boolean => {
     const e: Record<string, string> = {};
     if (step === 0) {
-      if (form.title.trim().length < 10) e.title = 'Minimum 10 caractères';
-      if (form.description.trim().length < 50) e.description = 'Minimum 50 caractères';
+      if (form.title.trim().length < 10) e.title = t('createListing.validTitle');
+      if (form.description.trim().length < 50) e.description = t('createListing.validDesc');
     }
     if (step === 1) {
-      if (!form.district.trim()) e.district = 'Quartier requis';
-      if (!form.address.trim()) e.address = 'Adresse requise';
+      if (!form.district.trim()) e.district = t('createListing.validDistrict');
+      if (!form.address.trim()) e.address = t('createListing.validAddress');
     }
     if (step === 2) {
-      if (!form.price || form.price < 20000) e.price = 'Loyer minimum 20 000 RWF/mois';
+      if (!form.price || form.price < 20000) e.price = t('createListing.validPrice');
     }
     if (step === 3) {
-      if (form.images.length < 1) e.images = 'Au moins 1 photo requise';
+      if (form.images.length < 1) e.images = t('createListing.validImages');
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -351,7 +416,7 @@ const CreateListingScreen: React.FC = () => {
       addListing(form);
       navigation.navigate('HostDashboard');
     } catch {
-      setErrors({ submit: 'Une erreur est survenue. Réessayez.' });
+      setErrors({ submit: t('createListing.submitError') });
     } finally {
       setSaving(false);
     }
@@ -360,8 +425,8 @@ const CreateListingScreen: React.FC = () => {
   // ── Step content ───────────────────────────────────────────────────────────
   const renderStep0 = () => (
     <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>Quel type de logement proposez-vous ?</Text>
-      <Text style={s.stepSub}>Choisissez ce qui correspond le mieux à votre bien.</Text>
+      <Text style={s.stepTitle}>{t('createListing.step0Title')}</Text>
+      <Text style={s.stepSub}>{t('createListing.step0Sub')}</Text>
 
       <View style={s.typeGrid}>
         {PROPERTY_TYPES.map(pt => (
@@ -383,7 +448,7 @@ const CreateListingScreen: React.FC = () => {
         ))}
       </View>
 
-      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>Type de mise à disposition</Text>
+      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>{t('createListing.accomTypeLabel')}</Text>
       {ACCOMMODATION_TYPES.map(at => (
         <TouchableOpacity
           key={at.value}
@@ -405,22 +470,22 @@ const CreateListingScreen: React.FC = () => {
 
       <View style={{ marginTop: 24 }}>
         <FieldInput
-          label="Titre de l'annonce"
+          label={t('createListing.titleLabel')}
           value={form.title}
-          onChangeText={t => patch('title', t)}
-          placeholder="Ex : Appartement moderne avec vue sur le lac"
+          onChangeText={v => patch('title', v)}
+          placeholder={t('createListing.titlePlaceholder')}
           error={errors.title}
         />
         <FieldInput
-          label="Description"
+          label={t('createListing.descriptionLabel')}
           value={form.description}
-          onChangeText={t => patch('description', t)}
-          placeholder="Décrivez votre logement, son ambiance, ce qui le rend unique..."
+          onChangeText={v => patch('description', v)}
+          placeholder={t('createListing.descriptionPlaceholder')}
           multiline
           error={errors.description}
         />
         {form.description.length > 0 && (
-          <Text style={s.charCount}>{form.description.length} / 500 caractères</Text>
+          <Text style={s.charCount}>{form.description.length} / 500 {t('createListing.chars')}</Text>
         )}
       </View>
     </Animated.View>
@@ -428,10 +493,8 @@ const CreateListingScreen: React.FC = () => {
 
   const renderStep1 = () => (
     <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>Où se situe votre logement ?</Text>
-      <Text style={s.stepSub}>
-        Placez le marqueur exactement sur votre bien. L'adresse précise ne sera partagée qu'après réservation.
-      </Text>
+      <Text style={s.stepTitle}>{t('createListing.step1Title')}</Text>
+      <Text style={s.stepSub}>{t('createListing.step1Sub')}</Text>
 
       {/* Auto-localisation */}
       <TouchableOpacity
@@ -445,7 +508,7 @@ const CreateListingScreen: React.FC = () => {
           : <MaterialIcons name="my-location" size={16} color={colors.primary} />
         }
         <Text style={s.locateTxt}>
-          {locating ? 'Localisation en cours...' : 'Utiliser ma position actuelle'}
+          {locating ? t('createListing.locating') : t('createListing.locateBtn')}
         </Text>
       </TouchableOpacity>
       {errors.location && (
@@ -480,7 +543,7 @@ const CreateListingScreen: React.FC = () => {
         </MapView>
         <View style={s.mapHintBadge}>
           <MaterialIcons name="touch-app" size={13} color={colors.white} />
-          <Text style={s.mapHintTxt}>Touchez ou glissez le marqueur</Text>
+          <Text style={s.mapHintTxt}>{t('createListing.mapHint')}</Text>
         </View>
       </View>
 
@@ -497,23 +560,23 @@ const CreateListingScreen: React.FC = () => {
       {/* Champs texte */}
       <View style={{ marginTop: 16 }}>
         <FieldInput
-          label="Quartier"
+          label={t('createListing.quarterLabel')}
           value={form.district}
-          onChangeText={t => patch('district', t)}
-          placeholder="Ex : Centre-ville, Murara, Bord du lac..."
+          onChangeText={v => patch('district', v)}
+          placeholder={t('createListing.quarterPlaceholder')}
           error={errors.district}
         />
         <FieldInput
-          label="Adresse"
+          label={t('createListing.addressLabel')}
           value={form.address}
-          onChangeText={t => patch('address', t)}
-          placeholder="Ex : Avenue du Commerce, N° 45"
+          onChangeText={v => patch('address', v)}
+          placeholder={t('createListing.addressPlaceholder')}
           error={errors.address}
         />
         <FieldInput
-          label="Ville"
+          label={t('createListing.cityLabel')}
           value={form.city}
-          onChangeText={t => patch('city', t)}
+          onChangeText={v => patch('city', v)}
           placeholder="Gisenyi"
         />
       </View>
@@ -527,17 +590,15 @@ const CreateListingScreen: React.FC = () => {
 
     return (
       <Animated.View entering={FadeInDown.duration(320)}>
-        <Text style={s.stepTitle}>Détails et tarification</Text>
-        <Text style={s.stepSub}>
-          Location longue durée — le loyer est en francs rwandais par mois.
-        </Text>
+        <Text style={s.stepTitle}>{t('createListing.step2Title')}</Text>
+        <Text style={s.stepSub}>{t('createListing.step2Sub')}</Text>
 
         {/* Capacité */}
-        <Text style={s.fieldGroupLabel}>Capacité</Text>
+        <Text style={s.fieldGroupLabel}>{t('createListing.capacityLabel')}</Text>
         <View style={s.counterGrid}>
           {[
-            { label: 'Chambres',       key: 'bedrooms',  value: form.bedrooms },
-            { label: 'Salles de bain', key: 'bathrooms', value: form.bathrooms },
+            { label: t('createListing.bedroomsLabel'),   key: 'bedrooms',  value: form.bedrooms },
+            { label: t('createListing.bathroomsLabel'),  key: 'bathrooms', value: form.bathrooms },
           ].map(item => (
             <View key={item.key} style={[s.counterRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
               <Text style={s.counterLabel}>{item.label}</Text>
@@ -551,12 +612,12 @@ const CreateListingScreen: React.FC = () => {
         </View>
 
         {/* Loyer */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Loyer mensuel</Text>
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.rentLabel')}</Text>
         <FieldInput
-          label="Prix / mois"
+          label={t('createListing.priceLabel')}
           value={form.price > 0 ? String(form.price) : ''}
-          onChangeText={t => patch('price', parseInt(t.replace(/\D/g, '')) || 0)}
-          placeholder="Ex : 150 000"
+          onChangeText={v => patch('price', parseInt(v.replace(/\D/g, '')) || 0)}
+          placeholder={t('createListing.pricePlaceholder')}
           keyboardType="numeric"
           suffix="RWF"
           error={errors.price}
@@ -564,17 +625,17 @@ const CreateListingScreen: React.FC = () => {
         {form.price > 0 && (
           <View style={s.pricePreview}>
             <View style={s.pricePreviewRow}>
-              <Text style={s.pricePreviewLbl}>Loyer brut</Text>
+              <Text style={s.pricePreviewLbl}>{t('createListing.grossRent')}</Text>
               <Text style={s.pricePreviewVal}>{form.price.toLocaleString('fr-FR')} RWF</Text>
             </View>
             <View style={s.pricePreviewRow}>
-              <Text style={s.pricePreviewLbl}>Commission plateforme (12%)</Text>
+              <Text style={s.pricePreviewLbl}>{t('createListing.commission')}</Text>
               <Text style={[s.pricePreviewVal, { color: colors.inkSubtle }]}>
                 − {Math.round(form.price * COMMISSION).toLocaleString('fr-FR')} RWF
               </Text>
             </View>
             <View style={[s.pricePreviewRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 }]}>
-              <Text style={[s.pricePreviewLbl, { fontWeight: '700', color: colors.ink }]}>Revenu net / mois</Text>
+              <Text style={[s.pricePreviewLbl, { fontWeight: '700', color: colors.ink }]}>{t('createListing.netRent')}</Text>
               <Text style={[s.pricePreviewVal, { color: colors.primary, fontWeight: '700' }]}>
                 {netMonthly.toLocaleString('fr-FR')} RWF
               </Text>
@@ -583,12 +644,12 @@ const CreateListingScreen: React.FC = () => {
         )}
 
         {/* Caution */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Caution</Text>
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.depositLabel')}</Text>
         <View style={s.counterGrid}>
           <View style={s.counterRow}>
             <View>
-              <Text style={s.counterLabel}>Mois de caution</Text>
-              <Text style={s.counterSub}>Versée à l'entrée, restituée au départ</Text>
+              <Text style={s.counterLabel}>{t('createListing.depositMonths')}</Text>
+              <Text style={s.counterSub}>{t('createListing.depositNote')}</Text>
             </View>
             <Counter
               value={(form as any).depositMonths ?? 1}
@@ -600,7 +661,7 @@ const CreateListingScreen: React.FC = () => {
         </View>
 
         {/* Durée minimale */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Durée minimale de location</Text>
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.minDurationLabel')}</Text>
         <View style={s.chipRow}>
           {MIN_DURATIONS.map(d => {
             const active = (form as any).minDurationMonths === d.value;
@@ -618,7 +679,7 @@ const CreateListingScreen: React.FC = () => {
         </View>
 
         {/* Préavis */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>Préavis de départ exigé</Text>
+        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.noticeLabel')}</Text>
         <View style={s.chipRow}>
           {NOTICE_PERIODS.map(n => {
             const active = (form as any).noticePeriodDays === n.value;
@@ -638,20 +699,13 @@ const CreateListingScreen: React.FC = () => {
     );
   };
 
-  const HOUSE_RULES: { key: string; label: string; sub: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
-    { key: 'smokingAllowed',  label: 'Fumeurs acceptés',       sub: 'Autoriser de fumer dans le logement', icon: 'smoking-rooms' },
-    { key: 'petsAllowed',     label: 'Animaux acceptés',       sub: 'Chiens, chats, etc.',                 icon: 'pets' },
-    { key: 'visitorsAllowed', label: 'Visiteurs acceptés',     sub: 'Accueil de proches ponctuels',        icon: 'people' },
-    { key: 'noiseAfter22',    label: 'Bruit après 22h interdit', sub: 'Respect du voisinage exigé',        icon: 'nights-stay' },
-  ];
-
   const renderStep3 = () => (
     <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>Équipements, règles et photos</Text>
-      <Text style={s.stepSub}>Plus votre annonce est complète, plus elle attire de locataires sérieux.</Text>
+      <Text style={s.stepTitle}>{t('createListing.step3Title')}</Text>
+      <Text style={s.stepSub}>{t('createListing.step3Sub')}</Text>
 
       {/* Équipements */}
-      <Text style={s.fieldGroupLabel}>Équipements disponibles</Text>
+      <Text style={s.fieldGroupLabel}>{t('createListing.amenitiesLabel')}</Text>
       <View style={s.amenitiesGrid}>
         {AMENITIES.map(a => {
           const active = form.amenities.includes(a.label);
@@ -673,11 +727,11 @@ const CreateListingScreen: React.FC = () => {
         })}
       </View>
       {form.amenities.length < 5 && (
-        <Text style={s.amenityHint}>Sélectionnez au moins 5 équipements pour un meilleur référencement</Text>
+        <Text style={s.amenityHint}>{t('createListing.amenitiesHint')}</Text>
       )}
 
       {/* Règles */}
-      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>Règles du logement</Text>
+      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>{t('createListing.rulesLabel')}</Text>
       <View style={s.rulesCard}>
         {HOUSE_RULES.map((rule, i) => {
           const active = (form as any)[rule.key] ?? false;
@@ -705,7 +759,7 @@ const CreateListingScreen: React.FC = () => {
 
       {/* Photos */}
       <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>
-        Photos{' '}
+        {t('createListing.photosLabel')}{' '}
         <Text style={{ color: colors.inkDisabled, textTransform: 'none', letterSpacing: 0 }}>
           ({form.images.length} / 10)
         </Text>
@@ -717,7 +771,7 @@ const CreateListingScreen: React.FC = () => {
             <Image source={{ uri }} style={s.photoImg} resizeMode="cover" />
             {i === 0 && (
               <View style={s.coverBadge}>
-                <Text style={s.coverBadgeTxt}>Couverture</Text>
+                <Text style={s.coverBadgeTxt}>{t('createListing.photoCover')}</Text>
               </View>
             )}
             <TouchableOpacity
@@ -737,11 +791,11 @@ const CreateListingScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <MaterialIcons name="add-photo-alternate" size={26} color={colors.inkDisabled} />
-            <Text style={s.photoAddTxt}>Ajouter</Text>
+            <Text style={s.photoAddTxt}>{t('createListing.photoAdd')}</Text>
           </TouchableOpacity>
         )}
       </View>
-      <Text style={s.photoHint}>Min. 5 photos recommandées · Première photo = couverture</Text>
+      <Text style={s.photoHint}>{t('createListing.photoHint')}</Text>
 
       {errors.submit && (
         <View style={s.submitError}>
@@ -764,13 +818,13 @@ const CreateListingScreen: React.FC = () => {
         <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.7}>
           <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Nouvelle annonce</Text>
+        <Text style={s.headerTitle}>{t('createListing.headerTitle')}</Text>
         <TouchableOpacity
           style={s.draftBtn}
           onPress={() => handleSave('draft')}
           activeOpacity={0.8}
         >
-          <Text style={s.draftTxt}>Brouillon</Text>
+          <Text style={s.draftTxt}>{t('createListing.draftBtn')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -804,7 +858,7 @@ const CreateListingScreen: React.FC = () => {
               disabled={saving}
               activeOpacity={0.8}
             >
-              <Text style={s.secondaryFooterTxt}>Enregistrer</Text>
+              <Text style={s.secondaryFooterTxt}>{t('createListing.save')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.primaryFooterBtn, saving && s.btnDisabled]}
@@ -816,7 +870,7 @@ const CreateListingScreen: React.FC = () => {
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <>
-                  <Text style={s.primaryFooterTxt}>Publier l'annonce</Text>
+                  <Text style={s.primaryFooterTxt}>{t('createListing.publish')}</Text>
                   <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
                 </>
               )}
@@ -829,7 +883,7 @@ const CreateListingScreen: React.FC = () => {
             activeOpacity={0.85}
           >
             <Text style={s.primaryFooterTxt}>
-              Continuer — {STEPS[step + 1 < STEPS.length ? step + 1 : step].label}
+              {t('createListing.continueStep', { stepName: STEPS[step + 1 < STEPS.length ? step + 1 : step].label })}
             </Text>
             <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
           </TouchableOpacity>

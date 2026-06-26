@@ -21,6 +21,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import {
   hostService,
@@ -88,6 +89,7 @@ const formatSelectionLabel = (dates: string[]): string => {
 // ─── Component ────────────────────────────────────────────────────────────────
 const HostCalendarScreen = () => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   // ── View state ─────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(() => {
@@ -141,7 +143,7 @@ const HostCalendarScreen = () => {
         setListings(Array.isArray(data) ? data : []);
         if (data.length > 0) setSelectedListing(data[0]);
       } catch {
-        setListingsError('Impossible de charger vos annonces');
+        setListingsError(t('hostCalendar.errorListings'));
       } finally {
         setLoadingListings(false);
       }
@@ -224,7 +226,7 @@ const HostCalendarScreen = () => {
       setApplySuccess(true);
       setTimeout(() => setApplySuccess(false), 2200);
     } catch {
-      setApplyError('Erreur lors de l\'enregistrement');
+      setApplyError(t('hostCalendar.saveError'));
       // Rollback: refetch
       const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
       hostService.getCalendar(selectedListing.id, monthStr)
@@ -282,7 +284,7 @@ const HostCalendarScreen = () => {
       <View style={s.centered}>
         <MaterialIcons name="home-work" size={40} color={colors.inkDisabled} />
         <Text style={s.emptyText}>
-          {listingsError ?? 'Publiez une annonce pour gérer votre calendrier.'}
+          {listingsError ?? t('hostCalendar.publishFirst')}
         </Text>
       </View>
     );
@@ -304,7 +306,7 @@ const HostCalendarScreen = () => {
         >
           {/* ── Header ── */}
           <Animated.View entering={FadeInDown.duration(340)} style={s.header}>
-            <Text style={s.headerTitle}>Calendrier</Text>
+            <Text style={s.headerTitle}>{t('hostCalendar.title')}</Text>
             <TouchableOpacity
               style={s.listingPicker}
               onPress={() => setDropdownOpen(true)}
@@ -321,18 +323,18 @@ const HostCalendarScreen = () => {
           <Animated.View entering={FadeInDown.delay(60).duration(320)} style={s.statsStrip}>
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.primary }]} />
-              <Text style={s.statText}>{monthStats.booked} réservées</Text>
+              <Text style={s.statText}>{monthStats.booked} {t('hostCalendar.booked')}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.inkDisabled }]} />
-              <Text style={s.statText}>{monthStats.blocked} bloquées</Text>
+              <Text style={s.statText}>{monthStats.blocked} {t('hostCalendar.blocked')}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.success }]} />
               <Text style={s.statText}>
-                {monthStats.total - monthStats.booked - monthStats.blocked} libres
+                {monthStats.total - monthStats.booked - monthStats.blocked} {t('hostCalendar.free')}
               </Text>
             </View>
           </Animated.View>
@@ -404,7 +406,7 @@ const HostCalendarScreen = () => {
             <Animated.View entering={FadeInDown.duration(240)} style={s.tooltip}>
               <View style={s.tooltipHeader}>
                 <MaterialIcons name="event" size={14} color={colors.primary} />
-                <Text style={s.tooltipTitle}>Réservation confirmée</Text>
+                <Text style={s.tooltipTitle}>{t('hostCalendar.confirmedBooking')}</Text>
               </View>
               <Text style={s.tooltipGuest}>{dayMap[tooltipKey]!.guestName}</Text>
               {dayMap[tooltipKey]!.nights != null && (
@@ -423,35 +425,35 @@ const HostCalendarScreen = () => {
 
           {/* ── Legend ── */}
           <Animated.View entering={FadeInDown.delay(200).duration(320)} style={s.legend}>
-            <Text style={s.legendTitle}>LÉGENDE</Text>
+            <Text style={s.legendTitle}>{t('hostCalendar.legend')}</Text>
             <View style={s.legendRow}>
               <View style={s.legendItem}>
                 <View style={[s.legendSwatch, s.swatchAvailable]} />
-                <Text style={s.legendLabel}>Libre</Text>
+                <Text style={s.legendLabel}>{t('hostCalendar.legendFree')}</Text>
               </View>
               <View style={s.legendItem}>
                 <View style={[s.legendSwatch, s.swatchBooked]} />
-                <Text style={s.legendLabel}>Réservé</Text>
+                <Text style={s.legendLabel}>{t('hostCalendar.legendBooked')}</Text>
               </View>
               <View style={s.legendItem}>
                 <View style={[s.legendSwatch, s.swatchBlocked]} />
-                <Text style={s.legendLabel}>Bloqué</Text>
+                <Text style={s.legendLabel}>{t('hostCalendar.legendBlocked')}</Text>
               </View>
               <View style={s.legendItem}>
                 <View style={[s.legendSwatch, s.swatchSelected]} />
-                <Text style={s.legendLabel}>Sélectionné</Text>
+                <Text style={s.legendLabel}>{t('hostCalendar.legendSelected')}</Text>
               </View>
             </View>
           </Animated.View>
 
           {selectedDates.length === 0 && !tooltipKey && (
-            <Text style={s.hint}>Touchez des dates libres ou bloquées pour les modifier</Text>
+            <Text style={s.hint}>{t('hostCalendar.tapHint')}</Text>
           )}
 
           {applySuccess && (
             <Animated.View entering={FadeIn.duration(200)} style={s.toast}>
               <MaterialIcons name="check-circle" size={15} color={colors.success} />
-              <Text style={s.toastText}>Modifications enregistrées</Text>
+              <Text style={s.toastText}>{t('hostCalendar.saved')}</Text>
             </Animated.View>
           )}
           {applyError && (
@@ -468,7 +470,7 @@ const HostCalendarScreen = () => {
 
           <View style={s.actionHeaderRow}>
             <View>
-              <Text style={s.actionLabel}>SÉLECTION</Text>
+              <Text style={s.actionLabel}>{t('hostCalendar.selection')}</Text>
               <Text style={s.actionSelection}>{formatSelectionLabel(selectedDates)}</Text>
             </View>
             <TouchableOpacity onPress={() => setSelectedDates([])} style={s.clearBtn}>
@@ -489,7 +491,7 @@ const HostCalendarScreen = () => {
                 color={actionMode === 'available' ? colors.primary : colors.inkDisabled}
               />
               <Text style={[s.modeBtnText, actionMode === 'available' && s.modeBtnTextActive]}>
-                Disponible
+                {t('hostCalendar.available')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -505,7 +507,7 @@ const HostCalendarScreen = () => {
               <Text
                 style={[s.modeBtnText, actionMode === 'blocked' && s.modeBtnTextBlock]}
               >
-                Bloquer
+                {t('hostCalendar.block')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -514,7 +516,7 @@ const HostCalendarScreen = () => {
           {actionMode === 'available' && (
             <View style={s.fieldsRow}>
               <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Prix / nuit</Text>
+                <Text style={s.fieldLabel}>{t('hostCalendar.priceNight')}</Text>
                 <View style={s.priceInputWrap}>
                   <TextInput
                     style={s.priceInput}
@@ -527,11 +529,11 @@ const HostCalendarScreen = () => {
                   <Text style={s.priceSuffix}>FC</Text>
                 </View>
                 {priceInput !== '' && parseInt(priceInput) < MIN_PRICE && (
-                  <Text style={s.priceWarning}>Min. {formatFC(MIN_PRICE)}</Text>
+                  <Text style={s.priceWarning}>{t('hostCalendar.minPrice')} {formatFC(MIN_PRICE)}</Text>
                 )}
               </View>
               <View style={[s.fieldGroup, { marginLeft: 12 }]}>
-                <Text style={s.fieldLabel}>Séjour min.</Text>
+                <Text style={s.fieldLabel}>{t('hostCalendar.minStay')}</Text>
                 <View style={s.stepper}>
                   <TouchableOpacity
                     style={s.stepperBtn}
@@ -547,7 +549,7 @@ const HostCalendarScreen = () => {
                     <MaterialIcons name="add" size={15} color={colors.inkMid} />
                   </TouchableOpacity>
                 </View>
-                <Text style={s.stepperUnit}>nuit{minNights > 1 ? 's' : ''}</Text>
+                <Text style={s.stepperUnit}>{minNights > 1 ? t('hostCalendar.nights') : t('hostCalendar.night')}</Text>
               </View>
             </View>
           )}
@@ -557,9 +559,9 @@ const HostCalendarScreen = () => {
             <View style={s.blockReasonRow}>
               {(
                 [
-                  { key: 'personal' as BlockReason, label: 'Usage personnel' },
-                  { key: 'maintenance' as BlockReason, label: 'Travaux' },
-                  { key: 'other' as BlockReason, label: 'Autre' },
+                  { key: 'personal' as BlockReason, label: t('hostCalendar.personal') },
+                  { key: 'maintenance' as BlockReason, label: t('hostCalendar.maintenance') },
+                  { key: 'other' as BlockReason, label: t('hostCalendar.other') },
                 ]
               ).map(r => (
                 <TouchableOpacity
@@ -599,7 +601,9 @@ const HostCalendarScreen = () => {
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={s.applyBtnText}>
-                Appliquer à {selectedDates.length} date{selectedDates.length > 1 ? 's' : ''}
+                {selectedDates.length > 1
+                  ? t('hostCalendar.applyToPlural', { count: selectedDates.length })
+                  : t('hostCalendar.applyTo', { count: selectedDates.length })}
               </Text>
             )}
           </TouchableOpacity>
@@ -618,7 +622,7 @@ const HostCalendarScreen = () => {
             onPress={() => setDropdownOpen(false)}
           >
             <Animated.View entering={FadeInDown.duration(220)} style={s.dropdownCard}>
-              <Text style={s.dropdownTitle}>Choisir une annonce</Text>
+              <Text style={s.dropdownTitle}>{t('hostCalendar.chooseListing')}</Text>
               {listings.map(l => (
                 <TouchableOpacity
                   key={l.id}

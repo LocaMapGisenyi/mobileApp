@@ -3,10 +3,12 @@ import {
   View,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   StatusBar,
   RefreshControl,
   ActivityIndicator,
+  Modal,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,14 +24,17 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing } from '../theme';
 import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
-import { hostService, DashboardSummary, PendingRequest } from '../services/api';
+import { hostService, DashboardSummary, PendingRequest, alertService } from '../services/api';
+import type { Notification } from '../services/api';
 import HostListingsScreen from './HostListingsScreen';
 import HostMessagesScreen from './HostMessagesScreen';
 import HostProfileScreen from './HostProfileScreen';
 import HostCalendarScreen from './HostCalendarScreen';
+import HostCoHostScreen from './HostCoHostScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'HostDashboard'>;
 
@@ -90,6 +95,7 @@ const getFormattedDate = () => {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const HostDashboardScreen = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const fullName = useUserStore(s => s.user.fullName);
@@ -102,6 +108,12 @@ const HostDashboardScreen = () => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Notifications panel
+  const [notifVisible, setNotifVisible] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -123,11 +135,11 @@ const HostDashboardScreen = () => {
       });
       setPendingRequests(Array.isArray(requests) ? requests : []);
     } catch {
-      setError('Impossible de charger le tableau de bord');
+      setError(t('hostDashboard.error'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
@@ -136,6 +148,39 @@ const HostDashboardScreen = () => {
     await loadDashboard();
     setRefreshing(false);
   }, [loadDashboard]);
+
+  const openNotifications = useCallback(async () => {
+    setNotifVisible(true);
+    setLoadingNotifs(true);
+    try {
+      const data = await alertService.getNotifications();
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {/* silent */} finally {
+      setLoadingNotifs(false);
+    }
+  }, []);
+
+  const handleMarkRead = async (id: string) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read: true } : n),
+    );
+    await alertService.markAsRead(id).catch(() => {});
+    // Update badge count in summary
+    setSummary(prev =>
+      prev ? { ...prev, unreadNotifications: Math.max(0, prev.unreadNotifications - 1) } : prev,
+    );
+  };
+
+  const handleMarkAllRead = async () => {
+    setMarkingAll(true);
+    try {
+      await alertService.markAllRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setSummary(prev => prev ? { ...prev, unreadNotifications: 0 } : prev);
+    } catch {/* silent */} finally {
+      setMarkingAll(false);
+    }
+  };
 
   const handleAccept = async (id: string) => {
     setPendingRequests(prev => prev.filter(r => r.id !== id));
@@ -148,11 +193,10 @@ const HostDashboardScreen = () => {
   };
 
   const HOST_TABS = [
-    { id: 'today',    icon: 'home' as const,               label: 'Accueil' },
-    { id: 'calendar', icon: 'calendar-today' as const,     label: 'Calendrier' },
-    { id: 'listings', icon: 'featured-play-list' as const, label: 'Annonces' },
-    { id: 'messages', icon: 'chat-bubble-outline' as const, label: 'Messages' },
-    { id: 'profile',  icon: 'person-outline' as const,     label: 'Profil' },
+    { id: 'today',    icon: 'home' as const,               label: t('hostDashboard.tabHome') },
+    { id: 'calendar', icon: 'calendar-today' as const,     label: t('hostCalendar.title') },
+    { id: 'listings', icon: 'featured-play-list' as const, label: t('hostListings.title') },
+    { id: 'messages', icon: 'chat-bubble-outline' as const, label: t('hostMessages.title') },
   ] as const;
 
   // ── Today tab ──────────────────────────────────────────────────────────────
@@ -171,7 +215,7 @@ const HostDashboardScreen = () => {
           <MaterialIcons name="cloud-off" size={40} color={colors.inkDisabled} />
           <Text style={s.errorText}>{error}</Text>
           <TouchableOpacity style={s.retryBtn} onPress={loadDashboard} activeOpacity={0.8}>
-            <Text style={s.retryTxt}>Réessayer</Text>
+            <Text style={s.retryTxt}>{t('hostDashboard.retry')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -198,22 +242,36 @@ const HostDashboardScreen = () => {
               <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
             </View>
             <View>
-              <Text style={s.greetingName}>Bonjour, {firstName}</Text>
+              <Text style={s.greetingName}>{t('hostDashboard.greeting', { name: firstName })}</Text>
               <Text style={s.greetingDate}>{getFormattedDate()}</Text>
             </View>
           </View>
-          <TouchableOpacity style={s.bell} activeOpacity={0.7}>
-            <MaterialIcons name="notifications-none" size={24} color={colors.ink} />
-            {(summary?.unreadNotifications ?? 0) > 0 && (
-              <View style={s.bellBadge}>
-                <Text style={s.bellBadgeTxt}>
-                  {(summary!.unreadNotifications > 5)
-                    ? '5+'
-                    : String(summary!.unreadNotifications)}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+
+          {/* Right actions */}
+          <View style={s.headerRight}>
+            {/* Profil */}
+            <TouchableOpacity
+              style={s.headerIconBtn}
+              onPress={() => setActiveTab('profile')}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="person-outline" size={22} color={colors.inkMid} />
+            </TouchableOpacity>
+
+            {/* Notifications */}
+            <TouchableOpacity style={s.bell} onPress={openNotifications} activeOpacity={0.7}>
+              <MaterialIcons name="notifications-none" size={24} color={colors.ink} />
+              {(summary?.unreadNotifications ?? 0) > 0 && (
+                <View style={s.bellBadge}>
+                  <Text style={s.bellBadgeTxt}>
+                    {(summary!.unreadNotifications > 5)
+                      ? '5+'
+                      : String(summary!.unreadNotifications)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
         {/* ── Actions requises ── */}
@@ -223,7 +281,7 @@ const HostDashboardScreen = () => {
               <View style={s.sectionHeaderRow}>
                 <MaterialIcons name="warning" size={13} color={colors.warning} />
                 <Text style={[s.sectionLabel, { color: colors.warning, marginLeft: 5 }]}>
-                  ACTIONS REQUISES ({pendingRequests.length})
+                  {t('hostDashboard.actionsRequired', { count: pendingRequests.length })}
                 </Text>
               </View>
 
@@ -236,10 +294,10 @@ const HostDashboardScreen = () => {
                     <View style={s.card}>
                       <View style={s.cardHeader}>
                         <MaterialIcons name="event-note" size={14} color={colors.primary} />
-                        <Text style={s.cardTitle}>Demande de réservation</Text>
+                        <Text style={s.cardTitle}>{t('hostDashboard.requestReservation')}</Text>
                         {req.hoursAgo >= 12 && (
                           <View style={s.slaBadge}>
-                            <Text style={s.slaTxt}>Répond lentement</Text>
+                            <Text style={s.slaTxt}>{t('hostDashboard.slowResponse')}</Text>
                           </View>
                         )}
                       </View>
@@ -259,14 +317,14 @@ const HostDashboardScreen = () => {
                           onPress={() => handleDecline(req.id)}
                           activeOpacity={0.8}
                         >
-                          <Text style={s.declineTxt}>Refuser</Text>
+                          <Text style={s.declineTxt}>{t('hostDashboard.decline')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={s.acceptBtn}
                           onPress={() => handleAccept(req.id)}
                           activeOpacity={0.8}
                         >
-                          <Text style={s.acceptTxt}>Accepter</Text>
+                          <Text style={s.acceptTxt}>{t('hostDashboard.accept')}</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -279,10 +337,10 @@ const HostDashboardScreen = () => {
                     <View style={s.card}>
                       <View style={s.cardHeader}>
                         <MaterialIcons name="chat-bubble-outline" size={14} color={colors.primary} />
-                        <Text style={s.cardTitle}>Message sans réponse</Text>
+                        <Text style={s.cardTitle}>{t('hostDashboard.messageNoReply')}</Text>
                         {req.hoursAgo >= 12 && (
                           <View style={[s.slaBadge, { backgroundColor: colors.error + '18' }]}>
-                            <Text style={[s.slaTxt, { color: colors.error }]}>Urgent</Text>
+                            <Text style={[s.slaTxt, { color: colors.error }]}>{t('hostDashboard.urgent')}</Text>
                           </View>
                         )}
                       </View>
@@ -297,7 +355,7 @@ const HostDashboardScreen = () => {
                         onPress={() => handleDecline(req.id)}
                         activeOpacity={0.8}
                       >
-                        <Text style={s.replyTxt}>Répondre</Text>
+                        <Text style={s.replyTxt}>{t('hostDashboard.reply')}</Text>
                         <MaterialIcons name="arrow-forward" size={13} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
@@ -308,8 +366,8 @@ const HostDashboardScreen = () => {
           ) : (
             <View style={s.emptyActions}>
               <MaterialIcons name="check-circle-outline" size={28} color={colors.success} />
-              <Text style={s.emptyTitle}>Tout est tranquille</Text>
-              <Text style={s.emptySubtitle}>Aucune action requise pour l'instant</Text>
+              <Text style={s.emptyTitle}>{t('hostDashboard.noActions')}</Text>
+              <Text style={s.emptySubtitle}>{t('hostDashboard.noActionsSubtitle')}</Text>
             </View>
           )}
         </Animated.View>
@@ -323,18 +381,18 @@ const HostDashboardScreen = () => {
               <View style={s.kpiChip}>
                 <MaterialIcons name="login" size={18} color={colors.primary} />
                 <Text style={s.kpiValue}>{summary.checkInsToday}</Text>
-                <Text style={s.kpiLabel}>Arrivées</Text>
+                <Text style={s.kpiLabel}>{t('hostDashboard.checkIns')}</Text>
               </View>
               <View style={[s.kpiChip, { marginLeft: 12 }]}>
                 <MaterialIcons name="logout" size={18} color={colors.inkSubtle} />
                 <Text style={s.kpiValue}>{summary.checkOutsToday}</Text>
-                <Text style={s.kpiLabel}>Départs</Text>
+                <Text style={s.kpiLabel}>{t('hostDashboard.checkOuts')}</Text>
               </View>
             </View>
 
             <View style={s.occupancyCard}>
               <View style={s.occupancyLabelRow}>
-                <Text style={s.occupancyLabel}>Nuits occupées ce mois</Text>
+                <Text style={s.occupancyLabel}>{t('hostDashboard.occupancyMonth')}</Text>
                 <Text style={s.occupancyCount}>
                   {summary.occupancyNights}/{summary.occupancyTotal}
                   {'  '}
@@ -354,22 +412,22 @@ const HostDashboardScreen = () => {
         {/* ── Revenus ── */}
         {summary && (
           <Animated.View entering={FadeInDown.delay(300).duration(360)} style={s.section}>
-            <Text style={s.sectionLabel}>REVENUS</Text>
+            <Text style={s.sectionLabel}>{t('hostDashboard.revenue')}</Text>
             <View style={s.revenueCard}>
               <View style={s.revenueRow}>
-                <Text style={s.revenueLbl}>Ce mois</Text>
+                <Text style={s.revenueLbl}>{t('hostDashboard.revenueMonth')}</Text>
                 <Text style={s.revenueAmt}>{formatFC(summary.revenueMonth)}</Text>
               </View>
               <View style={s.revenueDivider} />
               <View style={s.revenueRow}>
                 <View>
-                  <Text style={s.revenueLbl}>En attente</Text>
+                  <Text style={s.revenueLbl}>{t('hostDashboard.revenuePending')}</Text>
                   <Text style={[s.revenueAmt, s.revenueAmtPending]}>
                     {formatFC(summary.revenuePending)}
                   </Text>
                 </View>
                 <TouchableOpacity style={s.detailsBtn} activeOpacity={0.8}>
-                  <Text style={s.detailsTxt}>Détails</Text>
+                  <Text style={s.detailsTxt}>{t('hostDashboard.details')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -387,6 +445,7 @@ const HostDashboardScreen = () => {
       case 'messages':  return <HostMessagesScreen />;
       case 'profile':   return <HostProfileScreen />;
       case 'calendar':  return <HostCalendarScreen />;
+      case 'cohost':    return <HostCoHostScreen />;
       default:          return renderToday();
     }
   };
@@ -412,7 +471,7 @@ const HostDashboardScreen = () => {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                accessibilityLabel={tab.label}
+                accessibilityLabel={tab.label as string}
               >
                 <MaterialIcons
                   name={tab.icon}
@@ -428,6 +487,83 @@ const HostDashboardScreen = () => {
           })}
         </View>
       </View>
+
+      {/* ── Notifications panel ── */}
+      <Modal
+        visible={notifVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotifVisible(false)}
+      >
+        <TouchableOpacity
+          style={ns.overlay}
+          activeOpacity={1}
+          onPress={() => setNotifVisible(false)}
+        >
+          <Animated.View
+            entering={FadeInDown.duration(240)}
+            style={[ns.panel, { top: insets.top + 60 }]}
+            onStartShouldSetResponder={() => true}
+          >
+            {/* Header */}
+            <View style={ns.header}>
+              <Text style={ns.title}>{t('hostDashboard.notifications')}</Text>
+              {notifications.some(n => !n.read) && (
+                <TouchableOpacity
+                  onPress={handleMarkAllRead}
+                  disabled={markingAll}
+                  activeOpacity={0.7}
+                >
+                  {markingAll
+                    ? <ActivityIndicator size="small" color={colors.primary} />
+                    : <Text style={ns.markAll}>{t('hostDashboard.markAllRead')}</Text>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Content */}
+            {loadingNotifs ? (
+              <View style={ns.centered}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : notifications.length === 0 ? (
+              <View style={ns.centered}>
+                <MaterialIcons name="notifications-none" size={36} color={colors.inkDisabled} />
+                <Text style={ns.emptyTxt}>{t('hostDashboard.noNotifications')}</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={notifications}
+                keyExtractor={n => n.id}
+                style={{ maxHeight: 420 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[ns.item, !item.read && ns.itemUnread]}
+                    onPress={() => handleMarkRead(item.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[ns.dot, !item.read && ns.dotUnread]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[ns.itemTitle, !item.read && ns.itemTitleUnread]}>
+                        {item.title}
+                      </Text>
+                      <Text style={ns.itemMsg} numberOfLines={2}>{item.message}</Text>
+                      <Text style={ns.itemDate}>
+                        {new Date(item.createdAt).toLocaleString('fr-RW', {
+                          day: 'numeric', month: 'short',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={ns.sep} />}
+              />
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -477,6 +613,20 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarCircle: {
     width: 44,
@@ -829,6 +979,50 @@ const s = StyleSheet.create({
     backgroundColor: colors.primary,
     marginTop: 1,
   },
+});
+
+// ─── Notification panel styles ────────────────────────────────────────────────
+const ns = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,31,31,0.35)',
+  },
+  panel: {
+    position: 'absolute',
+    right: 16,
+    width: 320,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios:     { shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 20 },
+      android: { elevation: 12 },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title:   { fontSize: 15, fontWeight: '700', color: colors.ink },
+  markAll: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  centered:{ paddingVertical: 32, alignItems: 'center', gap: 8 },
+  emptyTxt:{ fontSize: 13, color: colors.inkSubtle },
+  item:    { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12, paddingHorizontal: 16 },
+  itemUnread: { backgroundColor: colors.primaryLight + '55' },
+  dot:     { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border, marginTop: 5, flexShrink: 0 },
+  dotUnread: { backgroundColor: colors.primary },
+  itemTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 2 },
+  itemTitleUnread: { fontWeight: '700' },
+  itemMsg: { fontSize: 12, color: colors.inkSubtle, lineHeight: 16 },
+  itemDate:{ fontSize: 10, color: colors.inkDisabled, marginTop: 4 },
+  sep:     { height: 1, backgroundColor: colors.border },
 });
 
 export default HostDashboardScreen;

@@ -28,6 +28,7 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../types';
 import {
   useHostOnboardingStore,
@@ -53,12 +54,13 @@ const LottieAnim = ({ name, size = 180 }: { name: string; size?: number }) => (
 );
 
 // ─── Progress path indicator ──────────────────────────────────────────────────
-const STEPS = ['Bienvenue', 'Identité', 'Logement', 'Paiement', 'Confirmé'];
+// Step labels are now resolved inside the component via t()
+const STEP_COUNT = 5;
 
-const ProgressPath = ({ current }: { current: number }) => {
+const ProgressPath = ({ current, labels }: { current: number; labels: string[] }) => {
   return (
     <View style={prog.row}>
-      {STEPS.map((label, i) => {
+      {labels.map((label, i) => {
         const done = i + 1 < current;
         const active = i + 1 === current;
         return (
@@ -135,20 +137,11 @@ const prog = StyleSheet.create({
   },
 });
 
-// ─── Property type card ───────────────────────────────────────────────────────
-const PROPERTY_TYPES: { id: PropertyType; label: string; icon: string; desc: string }[] = [
-  { id: 'villa',     label: 'Villa',        icon: 'villa',       desc: 'Maison de luxe' },
-  { id: 'house',     label: 'Maison',       icon: 'home',        desc: 'Logement entier' },
-  { id: 'apartment', label: 'Appartement',  icon: 'apartment',   desc: 'Dans un immeuble' },
-  { id: 'studio',    label: 'Studio',       icon: 'single-bed',  desc: 'Tout en un' },
-  { id: 'room',      label: 'Chambre',      icon: 'bed',         desc: 'Chambre privée' },
-];
-
-// ─── Payment card ─────────────────────────────────────────────────────────────
-const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; color: string; icon: string; sub: string }[] = [
-  { id: 'mtn_momo',    label: 'MTN MoMo',      color: '#FFCC00', icon: 'smartphone', sub: 'Mobile Money Rwanda' },
-  { id: 'airtel_money',label: 'Airtel Money',  color: '#E4002B', icon: 'smartphone', sub: 'Mobile Money Airtel' },
-  { id: 'bank',        label: 'Virement bancaire', color: colors.primary, icon: 'account-balance', sub: 'Banque rwandaise' },
+// ─── Static payment options (label/sub resolved inside component) ─────────────
+const PAYMENT_OPTION_DEFS: { id: PaymentMethod; color: string; icon: string }[] = [
+  { id: 'mtn_momo',     color: '#FFCC00', icon: 'smartphone' },
+  { id: 'airtel_money', color: '#E4002B', icon: 'smartphone' },
+  { id: 'bank',         color: colors.primary, icon: 'account-balance' },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -156,9 +149,35 @@ export default function HostOnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { step, data, nextStep, prevStep, updateData, togglePropertyType, togglePaymentMethod, complete } =
     useHostOnboardingStore();
+  const { t } = useTranslation();
 
   const { width } = useWindowDimensions();
   const dirRef = useRef<'forward' | 'back'>('forward');
+
+  // Translated step labels
+  const STEP_LABELS = [
+    t('hostOnboarding.stepWelcome'),
+    t('hostOnboarding.stepIdentity'),
+    t('hostOnboarding.stepProperty'),
+    t('hostOnboarding.stepPayment'),
+    t('hostOnboarding.stepConfirmed'),
+  ];
+
+  // Translated property types
+  const PROPERTY_TYPES: { id: PropertyType; label: string; icon: string; desc: string }[] = [
+    { id: 'villa',     label: t('hostOnboarding.typeVilla'),        icon: 'villa',      desc: t('hostOnboarding.typeVillaDesc') },
+    { id: 'house',     label: t('hostOnboarding.typeMaison'),       icon: 'home',       desc: t('hostOnboarding.typeMaisonDesc') },
+    { id: 'apartment', label: t('hostOnboarding.typeAppartement'),  icon: 'apartment',  desc: t('hostOnboarding.typeAppartementDesc') },
+    { id: 'studio',    label: t('hostOnboarding.typeStudio'),       icon: 'single-bed', desc: t('hostOnboarding.typeStudioDesc') },
+    { id: 'room',      label: t('hostOnboarding.typeChambre'),      icon: 'bed',        desc: t('hostOnboarding.typeChambreDesc') },
+  ];
+
+  // Translated payment options
+  const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; color: string; icon: string; sub: string }[] = [
+    { id: 'mtn_momo',     label: 'MTN MoMo',                  color: '#FFCC00',      icon: 'smartphone',      sub: t('hostOnboarding.mtnSub') },
+    { id: 'airtel_money', label: 'Airtel Money',              color: '#E4002B',      icon: 'smartphone',      sub: t('hostOnboarding.airtelSub') },
+    { id: 'bank',         label: t('hostOnboarding.bankName'),     color: colors.primary, icon: 'account-balance', sub: t('hostOnboarding.bankSub') },
+  ];
 
   const handleNext = useCallback(() => {
     dirRef.current = 'forward';
@@ -207,15 +226,15 @@ export default function HostOnboardingScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={handleBack} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Retour">
+        <TouchableOpacity onPress={handleBack} style={s.backBtn} accessibilityRole="button" accessibilityLabel={t('hostOnboarding.back')}>
           <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Devenir hôte</Text>
+        <Text style={s.headerTitle}>{t('hostOnboarding.headerTitle')}</Text>
         <View style={{ width: 38 }} />
       </View>
 
       {/* Progress */}
-      <ProgressPath current={step} />
+      <ProgressPath current={step} labels={STEP_LABELS} />
 
       {/* Step content */}
       <ScrollView
@@ -231,15 +250,13 @@ export default function HostOnboardingScreen() {
             <View style={s.centeredStep}>
               <View style={s.waveTop} />
               <LottieAnim name="welcome" size={160} />
-              <Text style={s.stepTitle}>Bienvenue chez vous,{'\n'}en tant qu'hôte</Text>
-              <Text style={s.stepSubtitle}>
-                Publiez votre logement à Gisenyi et commencez à accueillir des locataires dès aujourd'hui.
-              </Text>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step1Title')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step1Subtitle')}</Text>
               <View style={s.benefitsList}>
                 {[
-                  { icon: 'payments', text: 'Recevez vos paiements en RWF, MTN ou Airtel' },
-                  { icon: 'verified-user', text: 'Locataires vérifiés par LocaMap' },
-                  { icon: 'support-agent', text: 'Support disponible 7j/7' },
+                  { icon: 'payments',       text: t('hostOnboarding.benefit1') },
+                  { icon: 'verified-user',  text: t('hostOnboarding.benefit2') },
+                  { icon: 'support-agent',  text: t('hostOnboarding.benefit3') },
                 ].map((b, i) => (
                   <View key={i} style={s.benefitRow}>
                     <View style={s.benefitIcon}>
@@ -255,23 +272,23 @@ export default function HostOnboardingScreen() {
           {/* ── STEP 2 : Identité ── */}
           {step === 2 && (
             <View style={s.formStep}>
-              <Text style={s.stepTitle}>Votre identité</Text>
-              <Text style={s.stepSubtitle}>Ces informations seront visibles par les locataires.</Text>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step2Title')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step2Subtitle')}</Text>
 
               <View style={s.field}>
-                <Text style={s.fieldLabel}>Nom complet *</Text>
+                <Text style={s.fieldLabel}>{t('hostOnboarding.fullName')}</Text>
                 <TextInput
                   style={s.input}
                   value={data.fullName}
                   onChangeText={(v) => updateData({ fullName: v })}
-                  placeholder="Jean Mugisha"
+                  placeholder={t('hostOnboarding.fullNamePlaceholder')}
                   placeholderTextColor={colors.inkDisabled}
                   autoCapitalize="words"
                 />
               </View>
 
               <View style={s.field}>
-                <Text style={s.fieldLabel}>Numéro de téléphone *</Text>
+                <Text style={s.fieldLabel}>{t('hostOnboarding.phone')}</Text>
                 <View style={s.phoneRow}>
                   <View style={s.phonePrefix}>
                     <Text style={s.phonePrefixText}>🇷🇼 +250</Text>
@@ -289,9 +306,7 @@ export default function HostOnboardingScreen() {
 
               <View style={[s.infoBox]}>
                 <MaterialIcons name="info-outline" size={16} color={colors.inkSubtle} />
-                <Text style={s.infoText}>
-                  Votre téléphone sera utilisé pour les paiements et les notifications de réservation.
-                </Text>
+                <Text style={s.infoText}>{t('hostOnboarding.phoneInfo')}</Text>
               </View>
             </View>
           )}
@@ -299,16 +314,12 @@ export default function HostOnboardingScreen() {
           {/* ── STEP 3 : Logements ── */}
           {step === 3 && (
             <View style={s.formStep}>
-              <Text style={s.stepTitle}>Vos types de logements</Text>
-              <Text style={s.stepSubtitle}>
-                Sélectionnez tous les types de biens que vous proposez à la location.
-              </Text>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step3Title')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step3Subtitle')}</Text>
 
               <View style={s.infoBox}>
                 <MaterialIcons name="info-outline" size={16} color={colors.inkSubtle} />
-                <Text style={s.infoText}>
-                  Vous pouvez en sélectionner plusieurs. Les détails de chaque annonce (capacité, photos, prix) seront configurés lors de la publication.
-                </Text>
+                <Text style={s.infoText}>{t('hostOnboarding.step3Info')}</Text>
               </View>
 
               <View style={s.typeGrid}>
@@ -344,7 +355,9 @@ export default function HostOnboardingScreen() {
                 <View style={s.selectionSummary}>
                   <MaterialIcons name="check-circle" size={16} color={colors.primary} />
                   <Text style={s.selectionSummaryText}>
-                    {data.propertyTypes.length} type{data.propertyTypes.length > 1 ? 's' : ''} sélectionné{data.propertyTypes.length > 1 ? 's' : ''}
+                    {t('hostOnboarding.selectionCount', {
+                      count: data.propertyTypes.length,
+                    })}
                   </Text>
                 </View>
               )}
@@ -357,10 +370,8 @@ export default function HostOnboardingScreen() {
               <View style={s.lottieRow}>
                 <LottieAnim name="wallet" size={100} />
               </View>
-              <Text style={s.stepTitle}>Recevez vos paiements</Text>
-              <Text style={s.stepSubtitle}>
-                Choisissez comment vous souhaitez recevoir vos loyers. Vous pouvez en sélectionner plusieurs.
-              </Text>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step4Title')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step4Subtitle')}</Text>
 
               {PAYMENT_OPTIONS.map((opt) => {
                 const selected = data.paymentMethods.includes(opt.id);
@@ -388,7 +399,7 @@ export default function HostOnboardingScreen() {
                     {/* Champs conditionnels */}
                     {selected && opt.id === 'mtn_momo' && (
                       <View style={s.subField}>
-                        <Text style={s.fieldLabel}>Numéro MTN MoMo</Text>
+                        <Text style={s.fieldLabel}>{t('hostOnboarding.mtnNumber')}</Text>
                         <View style={s.phoneRow}>
                           <View style={s.phonePrefix}>
                             <Text style={s.phonePrefixText}>+250</Text>
@@ -407,7 +418,7 @@ export default function HostOnboardingScreen() {
 
                     {selected && opt.id === 'airtel_money' && (
                       <View style={s.subField}>
-                        <Text style={s.fieldLabel}>Numéro Airtel Money</Text>
+                        <Text style={s.fieldLabel}>{t('hostOnboarding.airtelNumber')}</Text>
                         <View style={s.phoneRow}>
                           <View style={s.phonePrefix}>
                             <Text style={s.phonePrefixText}>+250</Text>
@@ -426,15 +437,15 @@ export default function HostOnboardingScreen() {
 
                     {selected && opt.id === 'bank' && (
                       <View style={s.subField}>
-                        <Text style={s.fieldLabel}>Nom de la banque</Text>
+                        <Text style={s.fieldLabel}>{t('hostOnboarding.bankNameField')}</Text>
                         <TextInput
                           style={s.input}
                           value={data.bankName}
                           onChangeText={(v) => updateData({ bankName: v })}
-                          placeholder="Ex: BK, Equity, I&M…"
+                          placeholder={t('hostOnboarding.bankNamePlaceholder')}
                           placeholderTextColor={colors.inkDisabled}
                         />
-                        <Text style={[s.fieldLabel, { marginTop: spacing[3] }]}>Numéro de compte</Text>
+                        <Text style={[s.fieldLabel, { marginTop: spacing[3] }]}>{t('hostOnboarding.bankAccount')}</Text>
                         <TextInput
                           style={s.input}
                           value={data.bankAccount}
@@ -451,9 +462,7 @@ export default function HostOnboardingScreen() {
 
               <View style={s.infoBox}>
                 <MaterialIcons name="lock-outline" size={16} color={colors.inkSubtle} />
-                <Text style={s.infoText}>
-                  Vos informations bancaires sont chiffrées et sécurisées. Elles ne seront jamais partagées avec les locataires.
-                </Text>
+                <Text style={s.infoText}>{t('hostOnboarding.paymentSecurityInfo')}</Text>
               </View>
             </View>
           )}
@@ -462,10 +471,8 @@ export default function HostOnboardingScreen() {
           {step === 5 && (
             <View style={s.centeredStep}>
               <LottieAnim name="success" size={160} />
-              <Text style={s.stepTitle}>Vous êtes hôte LocaMap !</Text>
-              <Text style={s.stepSubtitle}>
-                Votre profil d'hôte a été configuré avec succès. Publiez votre première annonce et commencez à recevoir des locataires.
-              </Text>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step5Title')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step5Subtitle')}</Text>
               <View style={s.summaryCard}>
                 <View style={s.summaryRow}>
                   <MaterialIcons name="person" size={18} color={colors.primary} />
@@ -508,16 +515,20 @@ export default function HostOnboardingScreen() {
           activeOpacity={canContinue ? 0.85 : 1}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canContinue }}
-          accessibilityLabel={step === 5 ? 'Accéder au tableau de bord' : 'Continuer'}
+          accessibilityLabel={step === 5 ? t('hostOnboarding.goToDashboard') : t('hostOnboarding.continue')}
         >
           <Text style={s.ctaText}>
-            {step === 5 ? 'Accéder au tableau de bord' : step === 4 ? 'Finaliser' : 'Continuer'}
+            {step === 5
+              ? t('hostOnboarding.goToDashboard')
+              : step === 4
+                ? t('hostOnboarding.finish')
+                : t('hostOnboarding.continue')}
           </Text>
           {step < 5 && <MaterialIcons name="arrow-forward" size={20} color={colors.white} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
         {step > 1 && step < 5 && (
           <Text style={s.skipText} onPress={handleNext}>
-            Ignorer cette étape
+            {t('hostOnboarding.skip')}
           </Text>
         )}
       </View>
