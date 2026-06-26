@@ -16,7 +16,7 @@ import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
 import { SectionHeader, RowItem, NotifRow, DeleteAccountModal } from '../components/account';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'GuestAccount' as any>;
+type Nav = NativeStackNavigationProp<RootStackParamList, 'GuestAccount'>;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type PaymentMethod = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'VISA' | 'MASTERCARD';
