@@ -4,10 +4,18 @@ export type PropertyType = 'villa' | 'apartment' | 'house' | 'studio' | 'room';
 export type PaymentMethod = 'mtn_momo' | 'airtel_money' | 'bank';
 
 export interface HostOnboardingData {
-  // Step 2 — Identity
+  // Step 2 — Identity (complete)
   fullName: string;
   phone: string;
+  dateOfBirth: string;
+  nationality: string;
   photoURL: string | null;
+
+  // Step 3 — KYC documents
+  kycSelfie: string | null;
+  kycIdFront: string | null;
+  kycIdBack: string | null;
+  kycStatus: 'idle' | 'pending' | 'submitted';
 
   // Step 3 — Property types (multi-select — un hôte peut avoir plusieurs types)
   propertyTypes: PropertyType[];
@@ -38,7 +46,13 @@ interface HostOnboardingState {
 const INITIAL_DATA: HostOnboardingData = {
   fullName: '',
   phone: '',
+  dateOfBirth: '',
+  nationality: 'Rwanda',
   photoURL: null,
+  kycSelfie: null,
+  kycIdFront: null,
+  kycIdBack: null,
+  kycStatus: 'idle',
   propertyTypes: [],
   paymentMethods: [],
   mtnNumber: '',
@@ -53,7 +67,7 @@ export const useHostOnboardingStore = create<HostOnboardingState>((set, get) => 
   completed: false,
 
   setStep: (step) => set({ step }),
-  nextStep: () => set((s) => ({ step: Math.min(s.step + 1, 5) })),
+  nextStep: () => set((s) => ({ step: Math.min(s.step + 1, 6) })),
   prevStep: () => set((s) => ({ step: Math.max(s.step - 1, 1) })),
   updateData: (patch) => set((s) => ({ data: { ...s.data, ...patch } })),
   togglePropertyType: (type) => {

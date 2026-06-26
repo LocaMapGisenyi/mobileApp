@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   StatusBar,
   useWindowDimensions,
   Pressable,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -55,7 +58,7 @@ const LottieAnim = ({ name, size = 180 }: { name: string; size?: number }) => (
 
 // ─── Progress path indicator ──────────────────────────────────────────────────
 // Step labels are now resolved inside the component via t()
-const STEP_COUNT = 5;
+const STEP_COUNT = 6;
 
 const ProgressPath = ({ current, labels }: { current: number; labels: string[] }) => {
   return (
@@ -144,6 +147,67 @@ const PAYMENT_OPTION_DEFS: { id: PaymentMethod; color: string; icon: string }[] 
   { id: 'bank',         color: colors.primary, icon: 'account-balance' },
 ];
 
+// ─── KYC Upload Card ──────────────────────────────────────────────────────────
+const KycUploadCard = ({
+  label,
+  description,
+  icon,
+  uri,
+  onPick,
+}: {
+  label: string;
+  description: string;
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  uri: string | null;
+  onPick: () => Promise<void>;
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  const handlePress = async () => {
+    setLoading(true);
+    try { await onPick(); } finally { setLoading(false); }
+  };
+
+  return (
+    <TouchableOpacity
+      style={[kyc.card, uri && kyc.cardDone]}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
+      {uri ? (
+        <Image source={{ uri }} style={kyc.preview} />
+      ) : (
+        <View style={kyc.placeholder}>
+          <MaterialIcons name={icon} size={28} color={colors.primary} />
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text style={kyc.label}>{label}</Text>
+        <Text style={kyc.desc}>{description}</Text>
+      </View>
+      <View style={[kyc.status, uri && kyc.statusDone]}>
+        {loading
+          ? <ActivityIndicator size="small" color={colors.primary} />
+          : uri
+            ? <MaterialIcons name="check" size={16} color={colors.white} />
+            : <MaterialIcons name="add-a-photo" size={16} color={colors.primary} />
+        }
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const kyc = StyleSheet.create({
+  card:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: colors.surface, gap: 12 },
+  cardDone:    { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  placeholder: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  preview:     { width: 56, height: 56, borderRadius: 8 },
+  label:       { fontSize: 14, fontWeight: '700', color: colors.ink, marginBottom: 2 },
+  desc:        { fontSize: 12, color: colors.inkSubtle, lineHeight: 16 },
+  status:      { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  statusDone:  { backgroundColor: colors.primary, borderColor: colors.primary },
+});
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function HostOnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -158,6 +222,7 @@ export default function HostOnboardingScreen() {
   const STEP_LABELS = [
     t('hostOnboarding.stepWelcome'),
     t('hostOnboarding.stepIdentity'),
+    t('hostOnboarding.stepKyc'),
     t('hostOnboarding.stepProperty'),
     t('hostOnboarding.stepPayment'),
     t('hostOnboarding.stepConfirmed'),
@@ -181,12 +246,15 @@ export default function HostOnboardingScreen() {
 
   const handleNext = useCallback(() => {
     dirRef.current = 'forward';
-    if (step === 5) {
+    if (step === 6) {
       navigation.replace('HostDashboard');
     } else {
+      if (step === 3) {
+        updateData({ kycStatus: 'submitted' });
+      }
       nextStep();
     }
-  }, [step, nextStep, navigation]);
+  }, [step, nextStep, updateData, navigation]);
 
   const handleBack = useCallback(() => {
     if (step === 1) {
@@ -200,9 +268,19 @@ export default function HostOnboardingScreen() {
   // Validation per step
   const canContinue = (() => {
     if (step === 1) return true;
-    if (step === 2) return data.fullName.trim().length >= 2 && data.phone.trim().length >= 8;
-    if (step === 3) return data.propertyTypes.length > 0;
-    if (step === 4) {
+    if (step === 2) return (
+      data.fullName.trim().length >= 2 &&
+      data.phone.trim().length >= 8 &&
+      data.dateOfBirth.trim().length >= 8 &&
+      data.nationality.trim().length >= 2
+    );
+    if (step === 3) return (
+      data.kycSelfie !== null &&
+      data.kycIdFront !== null &&
+      data.kycIdBack !== null
+    );
+    if (step === 4) return data.propertyTypes.length > 0;
+    if (step === 5) {
       if (data.paymentMethods.length === 0) return false;
       if (data.paymentMethods.includes('mtn_momo') && !data.mtnNumber.trim()) return false;
       if (data.paymentMethods.includes('airtel_money') && !data.airtelNumber.trim()) return false;
@@ -269,7 +347,7 @@ export default function HostOnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 2 : Identité ── */}
+          {/* ── STEP 2 : Identité complète ── */}
           {step === 2 && (
             <View style={s.formStep}>
               <Text style={s.stepTitle}>{t('hostOnboarding.step2Title')}</Text>
@@ -282,6 +360,30 @@ export default function HostOnboardingScreen() {
                   value={data.fullName}
                   onChangeText={(v) => updateData({ fullName: v })}
                   placeholder={t('hostOnboarding.fullNamePlaceholder')}
+                  placeholderTextColor={colors.inkDisabled}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.fieldLabel}>{t('hostOnboarding.dateOfBirth')}</Text>
+                <TextInput
+                  style={s.input}
+                  value={data.dateOfBirth}
+                  onChangeText={(v) => updateData({ dateOfBirth: v })}
+                  placeholder="JJ/MM/AAAA"
+                  placeholderTextColor={colors.inkDisabled}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.fieldLabel}>{t('hostOnboarding.nationality')}</Text>
+                <TextInput
+                  style={s.input}
+                  value={data.nationality}
+                  onChangeText={(v) => updateData({ nationality: v })}
+                  placeholder={t('hostOnboarding.nationalityPlaceholder')}
                   placeholderTextColor={colors.inkDisabled}
                   autoCapitalize="words"
                 />
@@ -304,15 +406,74 @@ export default function HostOnboardingScreen() {
                 </View>
               </View>
 
-              <View style={[s.infoBox]}>
+              <View style={s.infoBox}>
                 <MaterialIcons name="info-outline" size={16} color={colors.inkSubtle} />
-                <Text style={s.infoText}>{t('hostOnboarding.phoneInfo')}</Text>
+                <Text style={s.infoText}>{t('hostOnboarding.identityInfo')}</Text>
               </View>
             </View>
           )}
 
-          {/* ── STEP 3 : Logements ── */}
+          {/* ── STEP 3 : KYC ── */}
           {step === 3 && (
+            <View style={s.formStep}>
+              <Text style={s.stepTitle}>{t('hostOnboarding.step3KycTitle')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.step3KycSubtitle')}</Text>
+
+              <KycUploadCard
+                label={t('hostOnboarding.kycSelfie')}
+                description={t('hostOnboarding.kycSelfieDesc')}
+                icon="face"
+                uri={data.kycSelfie}
+                onPick={async () => {
+                  const result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.8,
+                  });
+                  if (!result.canceled) updateData({ kycSelfie: result.assets[0].uri });
+                }}
+              />
+
+              <KycUploadCard
+                label={t('hostOnboarding.kycIdFront')}
+                description={t('hostOnboarding.kycIdFrontDesc')}
+                icon="credit-card"
+                uri={data.kycIdFront}
+                onPick={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    quality: 0.9,
+                  });
+                  if (!result.canceled) updateData({ kycIdFront: result.assets[0].uri });
+                }}
+              />
+
+              <KycUploadCard
+                label={t('hostOnboarding.kycIdBack')}
+                description={t('hostOnboarding.kycIdBackDesc')}
+                icon="flip"
+                uri={data.kycIdBack}
+                onPick={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    quality: 0.9,
+                  });
+                  if (!result.canceled) updateData({ kycIdBack: result.assets[0].uri });
+                }}
+              />
+
+              <View style={s.infoBox}>
+                <MaterialIcons name="lock-outline" size={16} color={colors.inkSubtle} />
+                <Text style={s.infoText}>{t('hostOnboarding.kycSecurityInfo')}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── STEP 4 : Logements ── */}
+          {step === 4 && (
             <View style={s.formStep}>
               <Text style={s.stepTitle}>{t('hostOnboarding.step3Title')}</Text>
               <Text style={s.stepSubtitle}>{t('hostOnboarding.step3Subtitle')}</Text>
@@ -364,8 +525,8 @@ export default function HostOnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 4 : Paiement ── */}
-          {step === 4 && (
+          {/* ── STEP 5 : Paiement ── */}
+          {step === 5 && (
             <View style={s.formStep}>
               <View style={s.lottieRow}>
                 <LottieAnim name="wallet" size={100} />
@@ -467,8 +628,8 @@ export default function HostOnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 5 : Confirmé ── */}
-          {step === 5 && (
+          {/* ── STEP 6 : Confirmé ── */}
+          {step === 6 && (
             <View style={s.centeredStep}>
               <LottieAnim name="success" size={160} />
               <Text style={s.stepTitle}>{t('hostOnboarding.step5Title')}</Text>
@@ -500,6 +661,12 @@ export default function HostOnboardingScreen() {
                     ).join(' · ')}
                   </Text>
                 </View>
+                <View style={s.summaryRow}>
+                  <MaterialIcons name="hourglass-empty" size={18} color={colors.warning} />
+                  <Text style={[s.summaryText, { color: colors.warning }]}>
+                    {t('hostOnboarding.kycPending')}
+                  </Text>
+                </View>
               </View>
             </View>
           )}
@@ -518,15 +685,17 @@ export default function HostOnboardingScreen() {
           accessibilityLabel={step === 5 ? t('hostOnboarding.goToDashboard') : t('hostOnboarding.continue')}
         >
           <Text style={s.ctaText}>
-            {step === 5
+            {step === 6
               ? t('hostOnboarding.goToDashboard')
-              : step === 4
-                ? t('hostOnboarding.finish')
-                : t('hostOnboarding.continue')}
+              : step === 3
+                ? t('hostOnboarding.submitKyc')
+                : step === 5
+                  ? t('hostOnboarding.finish')
+                  : t('hostOnboarding.continue')}
           </Text>
-          {step < 5 && <MaterialIcons name="arrow-forward" size={20} color={colors.white} style={{ marginLeft: 8 }} />}
+          {step < 6 && <MaterialIcons name="arrow-forward" size={20} color={colors.white} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
-        {step > 1 && step < 5 && (
+        {step > 1 && step < 6 && (
           <Text style={s.skipText} onPress={handleNext}>
             {t('hostOnboarding.skip')}
           </Text>
