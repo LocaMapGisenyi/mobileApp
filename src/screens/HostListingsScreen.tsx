@@ -10,7 +10,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -452,9 +452,9 @@ const HostListingsScreen = () => {
   }
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 20 }]}
+        contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -462,7 +462,6 @@ const HostListingsScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
-            progressViewOffset={insets.top}
           />
         }
       >
@@ -511,7 +510,7 @@ const HostListingsScreen = () => {
         onConfirm={handleArchiveConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
