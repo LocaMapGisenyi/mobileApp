@@ -462,6 +462,7 @@ const HostListingsScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
+            progressViewOffset={insets.top}
           />
         }
       >

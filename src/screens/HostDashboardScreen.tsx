@@ -83,8 +83,8 @@ const barS = StyleSheet.create({
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatFC = (n: number | undefined | null) =>
-  (typeof n === 'number' ? n : 0).toLocaleString('fr-FR') + ' FC';
+const formatRWF = (n: number | undefined | null) =>
+  (typeof n === 'number' ? n : 0).toLocaleString('fr-FR') + ' RWF';
 
 const getFormattedDate = () => {
   const str = new Date().toLocaleDateString('fr-FR', {
@@ -130,7 +130,7 @@ const HostDashboardScreen = () => {
         occupancyTotal:       sum?.occupancyTotal       ?? 30,
         revenueMonth:         sum?.revenueMonth         ?? 0,
         revenuePending:       sum?.revenuePending       ?? 0,
-        currency:             sum?.currency             ?? 'CDF',
+        currency:             sum?.currency             ?? 'RWF',
         unreadNotifications:  sum?.unreadNotifications  ?? 0,
       });
       setPendingRequests(Array.isArray(requests) ? requests : []);
@@ -232,6 +232,7 @@ const HostDashboardScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
+            progressViewOffset={insets.top}
           />
         }
       >
@@ -309,7 +310,7 @@ const HostDashboardScreen = () => {
                           : null}
                       </Text>
                       {typeof req.amount === 'number' && (
-                        <Text style={s.cardAmount}>{formatFC(req.amount)}</Text>
+                        <Text style={s.cardAmount}>{formatRWF(req.amount)}</Text>
                       )}
                       <View style={s.cardActions}>
                         <TouchableOpacity
@@ -345,7 +346,7 @@ const HostDashboardScreen = () => {
                         )}
                       </View>
                       <Text style={s.cardMeta}>
-                        {req.guestName} · Il y a {req.hoursAgo}h
+                        {req.guestName} · {t('hostDashboard.hoursAgoLabel', { count: req.hoursAgo })}
                       </Text>
                       {req.preview && (
                         <Text style={s.cardPreview} numberOfLines={2}>{req.preview}</Text>
@@ -375,7 +376,7 @@ const HostDashboardScreen = () => {
         {/* ── KPIs du jour ── */}
         {summary && (
           <Animated.View entering={FadeInDown.delay(200).duration(360)} style={s.section}>
-            <Text style={s.sectionLabel}>AUJOURD'HUI</Text>
+            <Text style={s.sectionLabel}>{t('hostDashboard.today')}</Text>
 
             <View style={s.kpiRow}>
               <View style={s.kpiChip}>
@@ -416,14 +417,14 @@ const HostDashboardScreen = () => {
             <View style={s.revenueCard}>
               <View style={s.revenueRow}>
                 <Text style={s.revenueLbl}>{t('hostDashboard.revenueMonth')}</Text>
-                <Text style={s.revenueAmt}>{formatFC(summary.revenueMonth)}</Text>
+                <Text style={s.revenueAmt}>{formatRWF(summary.revenueMonth)}</Text>
               </View>
               <View style={s.revenueDivider} />
               <View style={s.revenueRow}>
                 <View>
                   <Text style={s.revenueLbl}>{t('hostDashboard.revenuePending')}</Text>
                   <Text style={[s.revenueAmt, s.revenueAmtPending]}>
-                    {formatFC(summary.revenuePending)}
+                    {formatRWF(summary.revenuePending)}
                   </Text>
                 </View>
                 <TouchableOpacity style={s.detailsBtn} activeOpacity={0.8}>
