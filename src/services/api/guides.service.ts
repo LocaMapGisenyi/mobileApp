@@ -1,5 +1,6 @@
-import api from './config';
+import { supabase } from '../../lib/supabase';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 export interface GuideCategory {
   id: string;
   title: string;
@@ -18,51 +19,78 @@ export interface Guide {
   createdAt: Date;
 }
 
-// Service pour les appels API liés aux guides locaux
+// ─── Service ──────────────────────────────────────────────────────────────────
 export const guidesService = {
-  // Récupérer toutes les catégories de guides
   getCategories: async (): Promise<GuideCategory[]> => {
-    try {
-      const response = await api.get('/guides/categories');
-      return response;
-    } catch (error) {
-      console.error('Error fetching guide categories:', error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('guide_categories')
+      .select('*')
+      .order('title');
+    if (error) return [];
+    return (Array.isArray(data) ? data : []).map(c => ({
+      id: c.id,
+      title: c.title,
+      icon: c.icon ?? '',
+      description: c.description ?? '',
+    }));
   },
 
-  // Récupérer tous les guides
   getAll: async (categoryId?: string): Promise<Guide[]> => {
-    try {
-      const response = await api.get('/guides', {
-        params: { categoryId }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error fetching guides:', error);
-      throw error;
-    }
+    let query = supabase
+      .from('guides')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (categoryId) query = query.eq('category_id', categoryId);
+    const { data, error } = await query;
+    if (error) return [];
+    return (Array.isArray(data) ? data : []).map(g => ({
+      id: g.id,
+      categoryId: g.category_id ?? '',
+      title: g.title,
+      summary: g.summary ?? '',
+      image: g.image ?? '',
+      content: g.content,
+      isNew: g.is_new,
+      createdAt: new Date(g.created_at),
+    }));
   },
 
-  // Récupérer un guide par son ID
   getById: async (id: string): Promise<Guide> => {
-    try {
-      const response = await api.get(`/guides/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching guide with ID ${id}:`, error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('guides')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      categoryId: data.category_id ?? '',
+      title: data.title,
+      summary: data.summary ?? '',
+      image: data.image ?? '',
+      content: data.content,
+      isNew: data.is_new,
+      createdAt: new Date(data.created_at),
+    };
   },
 
-  // Récupérer les guides récents
   getNew: async (): Promise<Guide[]> => {
-    try {
-      const response = await api.get('/guides/new');
-      return response;
-    } catch (error) {
-      console.error('Error fetching new guides:', error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('guides')
+      .select('*')
+      .eq('is_new', true)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (error) return [];
+    return (Array.isArray(data) ? data : []).map(g => ({
+      id: g.id,
+      categoryId: g.category_id ?? '',
+      title: g.title,
+      summary: g.summary ?? '',
+      image: g.image ?? '',
+      content: g.content,
+      isNew: g.is_new,
+      createdAt: new Date(g.created_at),
+    }));
   },
-}; 
+};

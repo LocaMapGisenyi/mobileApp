@@ -1,6 +1,7 @@
-import api from './config';
+import { supabase } from '../../lib/supabase';
+import * as msgSvc from '../message.service';
 
-// Types pour les messages et conversations
+// ─── Core types ───────────────────────────────────────────────────────────────
 export interface Message {
   id: string;
   conversationId: string;
@@ -29,85 +30,243 @@ export interface Conversation {
   updatedAt: Date;
 }
 
-// Service pour les appels API liés aux messages
+// ─── Host messaging types ──────────────────────────────────────────────────────
+export type ConvStatus = 'ACTIVE' | 'ARCHIVED' | 'REPORTED' | 'FROZEN';
+export type ConvFilter = 'all' | 'unread' | 'archived';
+
+export interface HostConversation {
+  id: string;
+  status: ConvStatus;
+  guestId: string;
+  guestName: string;
+  guestAvatar: string | null;
+  listingId: string;
+  listingTitle: string;
+  reservationId: string | null;
+  lastMessageText: string | null;
+  lastMessageAt: string | null;
+  lastMessageSenderId: string | null;
+  unreadCount: number;
+}
+
+export interface HostMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  templateId: string | null;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  content: string;
+  category: string;
+}
+
+export type ReportCategory = 'language' | 'harassment' | 'fraud' | 'spam';
+
+export const CONTACT_REGEX =
+  /(\+?250\s?7\d{2}\s?\d{3}\s?\d{3}|07\d{2}\s?\d{3}\s?\d{3}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+
+export const maskContacts = (text: string): string =>
+  text.replace(CONTACT_REGEX, '[INFO MASQUÉE]');
+
+export const hasContacts = (text: string): boolean => CONTACT_REGEX.test(text);
+
+const getCurrentUserId = async (): Promise<string> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+};
+
 export const messageService = {
-  // Récupérer toutes les conversations
   getConversations: async (): Promise<Conversation[]> => {
-    try {
-      const response = await api.get('/conversations');
-      return response;
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const rows = await msgSvc.getConversations(userId);
+    return rows.map(r => ({
+      id: r.id,
+      participants: Array.isArray((r as any).participant_profiles)
+        ? (r as any).participant_profiles.map((p: any) => ({ id: p.id, name: p.full_name, avatar: p.avatar_url }))
+        : [],
+      lastMessage: r.last_message_text
+        ? { text: r.last_message_text, senderId: r.last_message_sender_id ?? '', createdAt: new Date(r.last_message_at ?? r.updated_at), read: true }
+        : undefined,
+      propertyId: r.property_id ?? undefined,
+      unreadCount: (r as any).unread_count ?? 0,
+      updatedAt: new Date(r.updated_at),
+    }));
   },
 
-  // Récupérer une conversation par son ID
   getConversationById: async (conversationId: string): Promise<Conversation> => {
-    try {
-      const response = await api.get(`/conversations/${conversationId}`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching conversation ${conversationId}:`, error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*, conversation_participants(user_id, unread_count)')
+      .eq('id', conversationId)
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      participants: [],
+      unreadCount: 0,
+      updatedAt: new Date(data.updated_at),
+      propertyId: data.property_id ?? undefined,
+      lastMessage: data.last_message_text
+        ? { text: data.last_message_text, senderId: data.last_message_sender_id ?? '', createdAt: new Date(data.last_message_at!), read: true }
+        : undefined,
+    };
   },
 
-  // Récupérer les messages d'une conversation
   getMessages: async (conversationId: string): Promise<Message[]> => {
-    try {
-      const response = await api.get(`/conversations/${conversationId}/messages`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching messages for conversation ${conversationId}:`, error);
-      throw error;
-    }
+    const { messages } = await msgSvc.getMessages(conversationId);
+    return messages.map(m => ({
+      id: m.id,
+      conversationId: m.conversation_id,
+      senderId: m.sender_id,
+      text: m.content,
+      createdAt: new Date(m.created_at),
+      read: m.is_read,
+    }));
   },
 
-  // Envoyer un message
   sendMessage: async (conversationId: string, text: string): Promise<Message> => {
-    try {
-      const response = await api.post(`/conversations/${conversationId}/messages`, { text });
-      return response;
-    } catch (error) {
-      console.error(`Error sending message to conversation ${conversationId}:`, error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const m = await msgSvc.sendMessage(conversationId, userId, text);
+    return {
+      id: m.id,
+      conversationId: m.conversation_id,
+      senderId: m.sender_id,
+      text: m.content,
+      createdAt: new Date(m.created_at),
+      read: m.is_read,
+    };
   },
 
-  // Marquer une conversation comme lue
   markAsRead: async (conversationId: string): Promise<void> => {
-    try {
-      await api.put(`/conversations/${conversationId}/read`);
-    } catch (error) {
-      console.error(`Error marking conversation ${conversationId} as read:`, error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    await msgSvc.markConversationRead(conversationId, userId);
   },
 
-  // Créer une nouvelle conversation avec un propriétaire
   createConversation: async (ownerId: string, propertyId: string, initialMessage: string): Promise<Conversation> => {
-    try {
-      const response = await api.post('/conversations', {
-        ownerId,
-        propertyId,
-        initialMessage,
-      });
-      return response;
-    } catch (error) {
-      console.error('Error creating new conversation:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const conv = await msgSvc.getOrCreateConversation(userId, ownerId, propertyId);
+    await msgSvc.sendMessage(conv.id, userId, initialMessage);
+    return { id: conv.id, participants: [], unreadCount: 0, updatedAt: new Date(conv.updated_at), propertyId };
   },
 
-  // Récupérer les statistiques des messages pour un hôte
   getMessageStats: async (): Promise<{ total: number; unread: number }> => {
-    try {
-      const response = await api.get('/conversations/stats');
-      return response;
-    } catch (error) {
-      console.error('Error fetching message statistics:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const { data } = await supabase
+      .from('conversation_participants')
+      .select('unread_count')
+      .eq('user_id', userId);
+    const total = Array.isArray(data) ? data.length : 0;
+    const unread = Array.isArray(data) ? data.reduce((s, r) => s + (r.unread_count ?? 0), 0) : 0;
+    return { total, unread };
   },
-}; 
+
+  // ─── Host messaging ────────────────────────────────────────────────────────
+  getHostConversations: async (filter?: ConvFilter): Promise<HostConversation[]> => {
+    const userId = await getCurrentUserId();
+    const rows = await msgSvc.getConversations(userId);
+    const filtered =
+      filter === 'archived'
+        ? rows.filter(r => r.status === 'ARCHIVED')
+        : filter === 'unread'
+        ? rows.filter(r => (r as any).unread_count > 0)
+        : rows.filter(r => r.status !== 'ARCHIVED');
+    return filtered.map(r => ({
+      id: r.id,
+      status: r.status as ConvStatus,
+      guestId: '',
+      guestName: 'Locataire',
+      guestAvatar: null,
+      listingId: r.property_id ?? '',
+      listingTitle: '',
+      reservationId: null,
+      lastMessageText: r.last_message_text,
+      lastMessageAt: r.last_message_at,
+      lastMessageSenderId: r.last_message_sender_id,
+      unreadCount: (r as any).unread_count ?? 0,
+    }));
+  },
+
+  getHostMessages: async (
+    conversationId: string,
+    cursor?: string,
+  ): Promise<{ messages: HostMessage[]; nextCursor: string | null }> => {
+    const { messages, nextCursor } = await msgSvc.getMessages(conversationId, cursor);
+    return {
+      messages: messages.map(m => ({
+        id: m.id,
+        conversationId: m.conversation_id,
+        senderId: m.sender_id,
+        senderName: (m as any).sender?.full_name ?? 'Utilisateur',
+        content: m.content,
+        isRead: m.is_read,
+        createdAt: m.created_at,
+        templateId: m.template_id,
+      })),
+      nextCursor,
+    };
+  },
+
+  sendHostMessage: async (
+    conversationId: string,
+    content: string,
+    templateId?: string,
+  ): Promise<HostMessage> => {
+    const userId = await getCurrentUserId();
+    const m = await msgSvc.sendMessage(conversationId, userId, content, templateId);
+    return {
+      id: m.id,
+      conversationId: m.conversation_id,
+      senderId: m.sender_id,
+      senderName: 'Hôte',
+      content: m.content,
+      isRead: m.is_read,
+      createdAt: m.created_at,
+      templateId: m.template_id,
+    };
+  },
+
+  markHostConversationRead: async (conversationId: string): Promise<void> => {
+    const userId = await getCurrentUserId();
+    await msgSvc.markConversationRead(conversationId, userId);
+  },
+
+  archiveHostConversation: async (conversationId: string): Promise<void> => {
+    await msgSvc.archiveConversation(conversationId);
+  },
+
+  reportMessage: async (
+    conversationId: string,
+    _category: ReportCategory,
+    _description?: string,
+  ): Promise<void> => {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ status: 'REPORTED' })
+      .eq('id', conversationId);
+    if (error) throw error;
+  },
+
+  getTemplates: async (): Promise<MessageTemplate[]> => {
+    const userId = await getCurrentUserId();
+    const rows = await msgSvc.getTemplates(userId);
+    return rows.map(r => ({ id: r.id, name: r.name, content: r.content, category: r.category }));
+  },
+
+  createTemplate: async (data: Omit<MessageTemplate, 'id'>): Promise<MessageTemplate> => {
+    const userId = await getCurrentUserId();
+    const row = await msgSvc.createTemplate(userId, data);
+    return { id: row.id, name: row.name, content: row.content, category: row.category };
+  },
+
+  deleteTemplate: async (templateId: string): Promise<void> => {
+    await msgSvc.deleteTemplate(templateId);
+  },
+};

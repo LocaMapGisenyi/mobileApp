@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator, StatusBar,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,7 +61,10 @@ const AddPaymentModal = ({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={pm.overlay}>
+      <KeyboardAvoidingView
+        style={pm.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={pm.card}>
           <Text style={pm.title}>{labels.title}</Text>
 
@@ -122,7 +126,7 @@ const AddPaymentModal = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

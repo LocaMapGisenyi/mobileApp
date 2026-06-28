@@ -1,4 +1,5 @@
-import api from './config';
+import { supabase } from '../../lib/supabase';
+import * as notifSvc from '../notification.service';
 import { SearchFilters } from '../../types';
 
 export interface Alert {
@@ -17,74 +18,98 @@ export interface Notification {
   type: 'alert' | 'message' | 'system' | 'booking';
   read: boolean;
   createdAt: Date;
-  relatedId?: string; // ID de la propriété, conversation, etc. concernée
+  relatedId?: string;
 }
 
-// Service pour les appels API liés aux alertes et notifications
+const getCurrentUserId = async (): Promise<string> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+};
+
 export const alertService = {
-  // Récupérer toutes les alertes de l'utilisateur
   getAlerts: async (): Promise<Alert[]> => {
-    try {
-      const response = await api.get('/alerts');
-      return response;
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map(a => ({
+      id: a.id,
+      name: a.name,
+      filters: (a.filters as SearchFilters) ?? {},
+      frequency: a.frequency as 'daily' | 'weekly' | 'instant',
+      createdAt: new Date(a.created_at),
+      userId: a.user_id,
+    }));
   },
 
-  // Créer une nouvelle alerte
   createAlert: async (alertData: Omit<Alert, 'id' | 'createdAt' | 'userId'>): Promise<Alert> => {
-    try {
-      const response = await api.post('/alerts', alertData);
-      return response;
-    } catch (error) {
-      console.error('Error creating alert:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert({
+        user_id: userId,
+        name: alertData.name,
+        filters: alertData.filters,
+        frequency: alertData.frequency,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      name: data.name,
+      filters: data.filters as SearchFilters,
+      frequency: data.frequency as 'daily' | 'weekly' | 'instant',
+      createdAt: new Date(data.created_at),
+      userId: data.user_id,
+    };
   },
 
-  // Mettre à jour une alerte
   updateAlert: async (id: string, alertData: Partial<Alert>): Promise<Alert> => {
-    try {
-      const response = await api.put(`/alerts/${id}`, alertData);
-      return response;
-    } catch (error) {
-      console.error(`Error updating alert ${id}:`, error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('alerts')
+      .update({ name: alertData.name, filters: alertData.filters, frequency: alertData.frequency })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      name: data.name,
+      filters: data.filters as SearchFilters,
+      frequency: data.frequency as 'daily' | 'weekly' | 'instant',
+      createdAt: new Date(data.created_at),
+      userId: data.user_id,
+    };
   },
 
-  // Supprimer une alerte
   deleteAlert: async (id: string): Promise<void> => {
-    try {
-      await api.delete(`/alerts/${id}`);
-    } catch (error) {
-      console.error(`Error deleting alert ${id}:`, error);
-      throw error;
-    }
+    const { error } = await supabase.from('alerts').delete().eq('id', id);
+    if (error) throw error;
   },
 
-  // Récupérer toutes les notifications
-  getNotifications: async (readStatus?: boolean): Promise<Notification[]> => {
-    try {
-      const response = await api.get('/notifications', {
-        params: { read: readStatus }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      throw error;
-    }
+  getNotifications: async (): Promise<Notification[]> => {
+    const userId = await getCurrentUserId();
+    const rows = await notifSvc.getNotifications(userId);
+    return rows.map(n => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      type: n.type as Notification['type'],
+      read: n.is_read,
+      createdAt: new Date(n.created_at),
+      relatedId: n.related_id ?? undefined,
+    }));
   },
 
-  // Marquer une notification comme lue
-  markAsRead: async (id: string): Promise<void> => {
-    try {
-      await api.put(`/notifications/${id}/read`);
-    } catch (error) {
-      console.error(`Error marking notification ${id} as read:`, error);
-      throw error;
-    }
+  markAsRead: async (id: string): Promise<void> => notifSvc.markNotificationRead(id),
+
+  markAllRead: async (): Promise<void> => {
+    const userId = await getCurrentUserId();
+    await notifSvc.markAllNotificationsRead(userId);
   },
-}; 
+};

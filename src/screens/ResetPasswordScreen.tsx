@@ -1,238 +1,312 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  View,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
-  Image,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Text, Button, Snackbar } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
+import LottieView from 'lottie-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInUp, FadeOut } from 'react-native-reanimated';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthNavigator';
+import { colors } from '../theme';
 import TextInputField from '../components/TextInputField';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { authService } from '../services/api/auth.service';
 
-type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
+type ResetPasswordNav = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const ResetPasswordScreen = () => {
-  const navigation = useNavigation<ResetPasswordScreenNavigationProp>();
-  
-  // State
+  const { t } = useTranslation();
+  const navigation = useNavigation<ResetPasswordNav>();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [fieldError, setFieldError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
-  // Validation
-  const validateEmail = () => {
+  const validateEmail = (): boolean => {
     if (!email.trim()) {
-      setError('Email requis');
+      setFieldError(t('auth.emailRequired'));
       return false;
     }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Format d\'email invalide');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setFieldError(t('auth.invalidEmail'));
       return false;
     }
-    
-    setError('');
+    setFieldError('');
     return true;
   };
 
-  // Handle reset
-  const handleResetPassword = () => {
+  const handleReset = async () => {
+    setTouched(true);
     if (!validateEmail()) return;
-    
+    setSubmitError('');
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authService.forgotPassword(email.trim());
       setEmailSent(true);
-      setSnackbarVisible(true);
-    }, 1500);
+      // Defer play until after state update so LottieView is mounted with speed=1
+      setTimeout(() => lottieRef.current?.play(), 50);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : t('common.unknownError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity 
-          style={styles.backButton}
+      {/* ─── Hero zone ───────────────────────────────────────────────────── */}
+      <View style={[styles.hero, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          style={[styles.backBtn, { top: insets.top + 12 }]}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialIcons name="arrow-back" size={20} color={colors.white} />
         </TouchableOpacity>
-        
-        <Animated.View 
-          style={styles.headerContainer}
-          entering={FadeInDown.duration(800)}
-        >
-          <Image
-            source={require('../assets/images/forgot-password.svg')}
-            style={styles.image}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Mot de passe oublié ?</Text>
-          <Text style={styles.subtitle}>
-            Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe
-          </Text>
-        </Animated.View>
-        
-        <Animated.View entering={FadeInDown.duration(800).delay(200)}>
-          {!emailSent ? (
-            <>
+
+        <LottieView
+          source={require('../assets/lottie/reset.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+          resizeMode="contain"
+        />
+
+        <Animated.Text style={styles.heroTitle} entering={FadeInUp.duration(500)}>
+          {t('auth.forgotPassword')}
+        </Animated.Text>
+      </View>
+
+      {/* ─── Form / success sheet ─────────────────────────────────────────── */}
+      <ScrollView
+        style={styles.sheet}
+        contentContainerStyle={[
+          styles.sheetContent,
+          { paddingBottom: insets.bottom + 32 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {!emailSent ? (
+          <Animated.View
+            key="form"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(300)}
+          >
+            <Animated.Text style={styles.subtitle} entering={FadeInUp.duration(400).delay(80)}>
+              {t('auth.resetPasswordInstructions')}
+            </Animated.Text>
+
+            <Animated.View entering={FadeInUp.duration(400).delay(140)}>
               <TextInputField
-                label="Email"
+                label={t('auth.email')}
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   setTouched(true);
+                  if (fieldError) setFieldError('');
+                  if (submitError) setSubmitError('');
                 }}
-                error={error}
+                error={fieldError}
                 touched={touched}
                 icon="email-outline"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 returnKeyType="done"
-                placeholder="votre@email.com"
+                onSubmitEditing={handleReset}
+                placeholder={t('auth.emailPlaceholder')}
               />
-              
-              <Button
-                mode="contained"
-                onPress={handleResetPassword}
-                style={styles.submitButton}
-                contentStyle={styles.buttonContent}
-                loading={loading}
+            </Animated.View>
+
+            {submitError ? (
+              <Animated.View
+                style={styles.errorBanner}
+                entering={FadeIn.duration(200)}
+              >
+                <MaterialIcons name="error-outline" size={16} color={colors.error} />
+                <Text style={styles.errorBannerText}>{submitError}</Text>
+              </Animated.View>
+            ) : null}
+
+            <Animated.View entering={FadeInUp.duration(400).delay(200)}>
+              <TouchableOpacity
+                style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+                onPress={handleReset}
                 disabled={loading}
+                activeOpacity={0.82}
+                accessibilityRole="button"
               >
-                Envoyer un lien de réinitialisation
-              </Button>
-            </>
-          ) : (
-            <View style={styles.successContainer}>
-              <MaterialCommunityIcons
-                name="check-circle-outline"
-                size={60}
-                color="#006064"
-                style={styles.successIcon}
-              />
-              <Text style={styles.successTitle}>Email envoyé !</Text>
-              <Text style={styles.successText}>
-                Si un compte existe avec cette adresse e-mail, vous recevrez un lien de réinitialisation du mot de passe.
-              </Text>
-              <Button
-                mode="contained"
+                {loading ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.submitBtnText}>{t('auth.sendResetLink')}</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
+        ) : (
+          <Animated.View
+            key="success"
+            style={styles.successContainer}
+            entering={FadeIn.duration(400)}
+          >
+            <Animated.Text style={styles.successTitle} entering={FadeInUp.duration(500)}>
+              {t('auth.emailSentTitle')}
+            </Animated.Text>
+
+            <Animated.Text
+              style={styles.successSubtitle}
+              entering={FadeInUp.duration(500).delay(80)}
+            >
+              {t('auth.emailSentSubtitle')}
+            </Animated.Text>
+
+            <Animated.View
+              style={{ width: '100%' }}
+              entering={FadeInUp.duration(500).delay(160)}
+            >
+              <TouchableOpacity
+                style={styles.submitBtn}
                 onPress={() => navigation.navigate('Login')}
-                style={[styles.submitButton, styles.backToLoginButton]}
-                contentStyle={styles.buttonContent}
+                activeOpacity={0.82}
+                accessibilityRole="button"
               >
-                Retour à la connexion
-              </Button>
-            </View>
-          )}
-        </Animated.View>
+                <Text style={styles.submitBtnText}>{t('auth.backToLogin')}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
+        )}
       </ScrollView>
-      
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        style={styles.snackbar}
-      >
-        Lien de réinitialisation envoyé (simulation)
-      </Snackbar>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0A2E2E',
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
+  hero: {
+    height: 260,
+    backgroundColor: '#0A2E2E',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 24,
+    paddingHorizontal: 24,
   },
-  backButton: {
-    marginBottom: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
+  lottie: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
   },
-  image: {
-    width: 200,
-    height: 160,
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#212121',
-    marginBottom: 12,
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
     textAlign: 'center',
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+  sheetContent: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#757575',
+    fontSize: 15,
+    color: '#5A7878',
+    lineHeight: 22,
+    marginBottom: 24,
     textAlign: 'center',
-    marginBottom: 16,
   },
-  submitButton: {
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF1EC',
+    borderWidth: 1,
+    borderColor: '#F3C5B0',
     borderRadius: 8,
-    marginTop: 24,
-    backgroundColor: '#006064',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
-  buttonContent: {
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#C1440E',
+    lineHeight: 18,
+  },
+  submitBtn: {
     height: 52,
+    borderRadius: 10,
+    backgroundColor: '#0D6E6E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    width: '100%',
   },
-  snackbar: {
-    backgroundColor: '#323232',
+  submitBtnDisabled: {
+    opacity: 0.65,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   successContainer: {
     alignItems: 'center',
-    padding: 16,
-  },
-  successIcon: {
-    marginBottom: 16,
+    paddingTop: 12,
   },
   successTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#212121',
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F1F1F',
     textAlign: 'center',
+    marginBottom: 12,
   },
-  successText: {
-    fontSize: 16,
-    color: '#757575',
+  successSubtitle: {
+    fontSize: 15,
+    color: '#5A7878',
     textAlign: 'center',
+    lineHeight: 22,
     marginBottom: 32,
-  },
-  backToLoginButton: {
-    width: '100%',
+    paddingHorizontal: 8,
   },
 });
 
-export default ResetPasswordScreen; 
+export default ResetPasswordScreen;

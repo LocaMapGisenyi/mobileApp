@@ -1,92 +1,93 @@
-import api from './config';
+import { supabase } from '../../lib/supabase';
+import * as reviewSvc from '../review.service';
 import { Review } from '../../types';
 
-// Service pour les appels API liés aux avis
+const toReview = (r: any): Review => ({
+  id: r.id,
+  propertyId: r.property_id,
+  authorId: r.author_id,
+  authorName: r.author?.full_name ?? 'Utilisateur',
+  authorAvatar: r.author?.avatar_url ?? undefined,
+  rating: r.rating,
+  comment: r.comment,
+  date: new Date(r.created_at),
+  isVerified: r.is_verified,
+  stayDuration: r.stay_duration ?? undefined,
+  ownerReply: r.reply
+    ? { text: r.reply.text, date: new Date(r.reply.created_at) }
+    : undefined,
+});
+
 export const reviewService = {
-  // Récupérer tous les avis pour une propriété
   getReviewsByPropertyId: async (propertyId: string): Promise<Review[]> => {
-    try {
-      const response = await api.get(`/properties/${propertyId}/reviews`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching reviews for property ${propertyId}:`, error);
-      throw error;
-    }
+    const rows = await reviewSvc.getReviewsByProperty(propertyId);
+    return rows.map(toReview);
   },
 
-  // Récupérer un avis par son ID
   getReviewById: async (reviewId: string): Promise<Review> => {
-    try {
-      const response = await api.get(`/reviews/${reviewId}`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching review ${reviewId}:`, error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, author:profiles!author_id(full_name, avatar_url), reply:review_replies(*)')
+      .eq('id', reviewId)
+      .single();
+    if (error) throw error;
+    return toReview(data);
   },
 
-  // Ajouter un avis
-  addReview: async (review: Omit<Review, 'id' | 'date' | 'authorAvatar' | 'authorName' | 'isVerified'>): Promise<Review> => {
-    try {
-      const response = await api.post(`/properties/${review.propertyId}/reviews`, review);
-      return response;
-    } catch (error) {
-      console.error(`Error adding review for property ${review.propertyId}:`, error);
-      throw error;
-    }
+  addReview: async (
+    review: Omit<Review, 'id' | 'date' | 'authorAvatar' | 'authorName' | 'isVerified'>,
+  ): Promise<Review> => {
+    const row = await reviewSvc.addReview({
+      property_id: review.propertyId,
+      author_id: review.authorId,
+      rating: review.rating,
+      comment: review.comment,
+      stay_duration: review.stayDuration,
+    });
+    return toReview(row);
   },
 
-  // Supprimer un avis
-  deleteReview: async (reviewId: string): Promise<void> => {
-    try {
-      await api.delete(`/reviews/${reviewId}`);
-    } catch (error) {
-      console.error(`Error deleting review ${reviewId}:`, error);
-      throw error;
-    }
-  },
+  deleteReview: async (reviewId: string): Promise<void> => reviewSvc.deleteReview(reviewId),
 
-  // Mettre à jour un avis
   updateReview: async (reviewId: string, reviewData: Partial<Review>): Promise<Review> => {
-    try {
-      const response = await api.put(`/reviews/${reviewId}`, reviewData);
-      return response;
-    } catch (error) {
-      console.error(`Error updating review ${reviewId}:`, error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({ rating: reviewData.rating, comment: reviewData.comment })
+      .eq('id', reviewId)
+      .select()
+      .single();
+    if (error) throw error;
+    return toReview(data);
   },
 
-  // Répondre à un avis (en tant que propriétaire)
   replyToReview: async (reviewId: string, replyText: string): Promise<Review> => {
-    try {
-      const response = await api.post(`/reviews/${reviewId}/reply`, { text: replyText });
-      return response;
-    } catch (error) {
-      console.error(`Error replying to review ${reviewId}:`, error);
-      throw error;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    await reviewSvc.replyToReview(reviewId, user.id, replyText);
+    return reviewService.getReviewById(reviewId);
   },
 
-  // Récupérer les avis que l'utilisateur a laissés
   getUserReviews: async (): Promise<Review[]> => {
-    try {
-      const response = await api.get('/users/me/reviews');
-      return response;
-    } catch (error) {
-      console.error('Error fetching user reviews:', error);
-      throw error;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const rows = await reviewSvc.getUserReviews(user.id);
+    return rows.map(toReview);
   },
 
-  // Récupérer les avis reçus pour les propriétés de l'utilisateur
   getHostReviews: async (): Promise<Review[]> => {
-    try {
-      const response = await api.get('/users/me/properties/reviews');
-      return response;
-    } catch (error) {
-      console.error('Error fetching host property reviews:', error);
-      throw error;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data: propIds } = await supabase
+      .from('properties')
+      .select('id')
+      .eq('owner_id', user.id);
+    if (!Array.isArray(propIds) || propIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, author:profiles!author_id(full_name, avatar_url), reply:review_replies(*)')
+      .in('property_id', propIds.map(p => p.id))
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return (Array.isArray(data) ? data : []).map(toReview);
   },
-}; 
+};

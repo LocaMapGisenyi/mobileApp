@@ -34,7 +34,8 @@
         {
           "locationWhenInUsePermission": "LocaMap utilise votre position pour localiser votre annonce."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

@@ -44,7 +44,7 @@ const PreferenceCarouselScreen = () => {
     {
       title: t('preferences.chooseLanguage'),
       description: t('preferences.languageDescription'),
-      illustration: require('../assets/images/language.svg'),
+      lottieSource: require('../assets/lottie/language.json'),
       type: 'radio' as const,
       options: [
         { key: 'fr', label: t('languages.fr'), value: 'fr', icon: 'language' },
@@ -58,7 +58,7 @@ const PreferenceCarouselScreen = () => {
     {
       title: t('preferences.chooseCurrency'),
       description: t('preferences.currencyDescription'),
-      illustration: require('../assets/images/currency.svg'),
+      lottieSource: require('../assets/lottie/currency.json'),
       type: 'radio' as const,
       options: [
         { key: 'RWF', label: t('currencies.RWF'), value: 'RWF', icon: 'cash' },
@@ -71,14 +71,14 @@ const PreferenceCarouselScreen = () => {
     {
       title: t('preferences.notifications'),
       description: t('preferences.notificationsDescription'),
-      illustration: require('../assets/images/notifications.svg'),
+      lottieSource: require('../assets/lottie/notifications.json'),
       type: 'switch' as const,
       options: [
-        { 
-          key: 'notifications', 
-          label: t('preferences.enableNotifications'), 
-          value: true, 
-          icon: 'notifications-outline' 
+        {
+          key: 'notifications',
+          label: t('preferences.enableNotifications'),
+          value: true,
+          icon: 'notifications-outline',
         },
       ],
       selectedValue: notificationsEnabled,
@@ -148,7 +148,7 @@ const PreferenceCarouselScreen = () => {
             <CarouselSlide
               title={slide.title}
               description={slide.description}
-              illustration={slide.illustration}
+              lottieSource={slide.lottieSource}
               options={slide.options}
               selectedValue={slide.selectedValue}
               onSelect={slide.onSelect as (value: string | boolean) => void}

@@ -6,9 +6,9 @@ import AppNavigator from './src/navigation';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from './src/theme';
 import { usePreferences } from './src/store/preferences';
+import { useUserStore } from './src/store/user';
 import { I18nextProvider } from 'react-i18next';
 import i18n, { initializeLanguage } from './src/utils/i18n';
-import { useSyncLanguage } from './src/hooks/useLanguage';
 import ToastManager from './src/components/ToastManager';
 
 // Configuration complète des polices pour React Native Paper
@@ -107,27 +107,22 @@ const theme = {
 // Wrapper pour le theme
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(true);
-  // Synchroniser la langue
-  useSyncLanguage();
-  const { initializeLanguageFromSystem } = usePreferences();
 
-  // Initialiser les préférences de langue au démarrage
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Initialiser la langue basée sur AsyncStorage ou la langue système
-        await initializeLanguage();
-        // S'assurer que les préférences sont également à jour
-        await initializeLanguageFromSystem();
+        const savedLang = await initializeLanguage();
+        usePreferences.setState({ language: savedLang as any });
+        await useUserStore.getState().actions.initAuth();
       } catch (error) {
-        console.error('Erreur lors de l\'initialisation des préférences linguistiques:', error);
+        console.error('Erreur initialisation:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     initApp();
-  }, [initializeLanguageFromSystem]);
+  }, []);
   
   if (isLoading) {
     return (

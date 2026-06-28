@@ -1,11 +1,13 @@
-import api from './config';
+import { supabase } from '../../lib/supabase';
+import * as hostSvc from '../host.service';
+import * as propertySvc from '../property.service';
 
 // ─── Calendar types ───────────────────────────────────────────────────────────
 export type CalendarDayStatus = 'available' | 'booked' | 'blocked';
 export type BlockReason = 'personal' | 'maintenance' | 'other';
 
 export interface CalendarDay {
-  date: string;           // ISO date string "YYYY-MM-DD"
+  date: string;
   status: CalendarDayStatus;
   priceOverride?: number;
   minNights?: number;
@@ -76,7 +78,6 @@ export interface ListingCard {
   avgRating: number | null;
   reviewCount: number;
   coverPhotoUrl: string | null;
-  // 30-day stats
   occupancyRate: number | null;
   revenueMonth: number | null;
   viewCount: number | null;
@@ -123,111 +124,102 @@ export interface OccupancyData {
   rate: number;
 }
 
-// Service pour les appels API liés aux statistiques et fonctionnalités des hôtes
+const getCurrentUserId = async (): Promise<string> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+};
+
 export const hostService = {
-  // Récupérer les statistiques globales de l'hôte
   getOverview: async (): Promise<HostStats> => {
-    try {
-      const response = await api.get('/host/stats/overview');
-      return response;
-    } catch (error) {
-      console.error('Error fetching host statistics overview:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const stats = await hostSvc.getHostStats(userId);
+    return {
+      propertyCount: stats.propertyCount,
+      totalBookings: stats.totalBookings,
+      occupancyRate: 0,
+      averageRating: stats.avgRating,
+      totalRevenue: { amount: stats.totalRevenue, currency: stats.currency },
+      pendingReviews: 0,
+      unreadMessages: 0,
+    };
   },
 
-  // Récupérer les statistiques d'une propriété spécifique
-  getPropertyStats: async (propertyId: string, period?: 'week' | 'month' | 'year'): Promise<PropertyStats> => {
-    try {
-      const response = await api.get(`/host/stats/properties/${propertyId}`, {
-        params: { period }
-      });
-      return response;
-    } catch (error) {
-      console.error(`Error fetching statistics for property ${propertyId}:`, error);
-      throw error;
-    }
-  },
+  getPropertyStats: async (): Promise<PropertyStats> => ({
+    propertyId: '', bookingCount: 0, occupancyRate: 0,
+    revenue: { amount: 0, currency: 'RWF' }, averageRating: 0, reviewCount: 0,
+  }),
 
-  // Récupérer les données de revenus
-  getRevenueData: async (startDate: Date, endDate: Date): Promise<RevenueData[]> => {
-    try {
-      const response = await api.get('/host/stats/revenue', {
-        params: {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
-        }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      throw error;
-    }
-  },
+  getRevenueData: async (): Promise<RevenueData[]> => [],
+  getOccupancyData: async (): Promise<OccupancyData[]> => [],
 
-  // Récupérer les données d'occupation
-  getOccupancyData: async (startDate: Date, endDate: Date): Promise<OccupancyData[]> => {
-    try {
-      const response = await api.get('/host/stats/occupancy', {
-        params: {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
-        }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error fetching occupancy data:', error);
-      throw error;
-    }
-  },
-
-  // ─── Dashboard ─────────────────────────────────────────────────────────────
   getDashboardSummary: async (): Promise<DashboardSummary> => {
-    const response = await api.get('/host/dashboard');
-    return response;
+    const userId = await getCurrentUserId();
+    return hostSvc.getDashboardSummary(userId);
   },
 
   getPendingRequests: async (): Promise<PendingRequest[]> => {
-    const response = await api.get('/host/requests/pending');
-    return response;
+    const userId = await getCurrentUserId();
+    return hostSvc.getPendingRequests(userId);
   },
 
-  acceptRequest: async (id: string): Promise<void> => {
-    await api.post(`/host/requests/${id}/accept`);
-  },
+  acceptRequest: async (id: string): Promise<void> => hostSvc.acceptRequest(id),
+  declineRequest: async (id: string): Promise<void> => hostSvc.declineRequest(id),
 
-  declineRequest: async (id: string, reason?: string): Promise<void> => {
-    await api.post(`/host/requests/${id}/decline`, { reason });
-  },
-
-  // ─── Listings management ──────────────────────────────────────────────────
   getListings: async (): Promise<ListingCard[]> => {
-    const response = await api.get('/host/listings');
-    return response;
+    const userId = await getCurrentUserId();
+    const rows = await hostSvc.getHostListings(userId);
+    return rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      city: r.city,
+      propertyType: r.property_type,
+      accommodationType: r.accommodation_type ?? '',
+      pricePerNight: r.price_per_month,
+      currency: r.currency,
+      status: r.status as ListingStatus,
+      completionScore: r.completion_score,
+      avgRating: r.avg_rating,
+      reviewCount: r.review_count,
+      coverPhotoUrl: r.images?.[0]?.url ?? null,
+      occupancyRate: r.occupancy_rate,
+      revenueMonth: r.revenue_month,
+      viewCount: r.view_count,
+    }));
   },
 
   updateListingStatus: async (id: string, status: 'ACTIVE' | 'PAUSED'): Promise<void> => {
-    await api.patch(`/host/listings/${id}/status`, { status });
+    await propertySvc.updatePropertyStatus(id, status);
   },
 
   archiveListing: async (id: string): Promise<void> => {
-    await api.delete(`/host/listings/${id}`);
+    await propertySvc.updatePropertyStatus(id, 'ARCHIVED');
   },
 
-  // ─── Calendar ──────────────────────────────────────────────────────────────
   getHostListings: async (): Promise<HostListing[]> => {
-    const response = await api.get('/host/listings/simple');
-    return response;
+    const userId = await getCurrentUserId();
+    const rows = await hostSvc.getHostListings(userId);
+    return rows.map(r => ({ id: r.id, title: r.title, type: r.property_type }));
   },
 
   getCalendar: async (listingId: string, month: string): Promise<CalendarDay[]> => {
-    const response = await api.get(`/host/calendar/${listingId}`, {
-      params: { month },
-    });
-    return response;
+    const rows = await propertySvc.getCalendarDays(listingId, month);
+    return rows.map(r => ({
+      date: r.date,
+      status: r.status as CalendarDayStatus,
+      priceOverride: r.price_override ?? undefined,
+      minNights: r.min_nights ?? undefined,
+      blockReason: r.block_reason as BlockReason ?? undefined,
+      reservationId: r.reservation_id ?? undefined,
+    }));
   },
 
   bulkUpdateCalendar: async (listingId: string, patch: CalendarBulkPatch): Promise<void> => {
-    await api.patch(`/host/calendar/${listingId}/bulk`, patch);
+    await propertySvc.bulkUpdateCalendar(listingId, patch.dates, {
+      status: patch.status,
+      price_override: patch.priceOverride,
+      min_nights: patch.minNights,
+      block_reason: patch.blockReason,
+    });
   },
-}; 
+};

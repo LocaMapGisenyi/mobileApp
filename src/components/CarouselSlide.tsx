@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, View, Text, Dimensions, Image, ImageSourcePropType } from 'react-native';
+import { StyleSheet, View, Text, Dimensions } from 'react-native';
 import { Switch, TouchableRipple } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import LottieView from 'lottie-react-native';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 
 const { width } = Dimensions.get('window');
@@ -17,7 +18,7 @@ interface OptionItem {
 interface CarouselSlideProps {
   title: string;
   description: string;
-  illustration: ImageSourcePropType;
+  lottieSource: object;
   options?: OptionItem[];
   selectedValue?: string | boolean;
   onSelect?: (value: string | boolean) => void;
@@ -30,7 +31,7 @@ const AnimatedTouchableRipple = Animated.createAnimatedComponent(TouchableRipple
 const CarouselSlide = ({
   title,
   description,
-  illustration,
+  lottieSource,
   options = [],
   selectedValue,
   onSelect,
@@ -39,11 +40,11 @@ const CarouselSlide = ({
 }: CarouselSlideProps) => {
   return (
     <View style={styles.container}>
-      <Animated.View 
-        style={styles.illustrationContainer} 
+      <Animated.View
+        style={styles.illustrationContainer}
         entering={FadeIn.delay(200 * index).duration(600)}
       >
-        <Image source={illustration} style={styles.illustration} />
+        <LottieView source={lottieSource} autoPlay loop style={styles.illustration} />
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(100 * index).duration(800).springify()}>
@@ -135,7 +136,6 @@ const styles = StyleSheet.create({
   illustration: {
     width: '80%',
     height: '100%',
-    resizeMode: 'contain',
   },
   title: {
     fontSize: typography.fontSize['2xl'],

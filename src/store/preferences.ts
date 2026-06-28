@@ -62,12 +62,12 @@ export const usePreferences = create<PreferencesState>()(
       ...DEFAULT_PREFERENCES,
 
       setLanguage: async (language) => {
-        return new Promise<void>((resolve) => {
-          set({ language });
-          // Synchroniser avec i18n
-          updateI18nLanguage(language);
-          setTimeout(resolve, 50);
-        });
+        set({ language });
+        // Persiste dans la clé lue par initializeLanguage() au prochain démarrage
+        await AsyncStorage.setItem('@locamap:language', language);
+        if (i18n && typeof i18n.changeLanguage === 'function') {
+          await i18n.changeLanguage(language);
+        }
       },
       
       setCurrency: async (currency) => {

@@ -1,31 +1,45 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
+  Text,
+  TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Button } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../store/user';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
 import TextInputField from '../components/TextInputField';
+import LottieView from 'lottie-react-native';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+
+const DEEP = '#0A2E2E';
+const SURFACE = '#FFFFFF';
+const BG = '#F3F8F8';
+const INK = '#0F1F1F';
+const INK_SUBTLE = '#5A7878';
+const BORDER = '#D0E8E8';
+const ERROR = '#C1440E';
+const PRIMARY = '#0D6E6E';
 
 const LoginScreen = () => {
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const navigation = useNavigation<LoginNav>();
   const { t } = useTranslation();
-  const setOnboardingCompleted = useUserStore(s => s.actions.setOnboardingCompleted);
-  const setUser = useUserStore(s => s.actions);
+  const insets = useSafeAreaInsets();
+  const login = useUserStore(s => s.actions.login);
+
+  const passwordRef = useRef<TextInput>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,383 +48,353 @@ const LoginScreen = () => {
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  // Mock login — bypasse l'API, fonctionne sans backend
   const handleLogin = async () => {
     setEmailTouched(true);
     setPasswordTouched(true);
-
-    if (!email.trim()) {
-      setError(t('errors.requiredField') || 'Email requis');
+    if (!email.trim() || !password.trim()) {
+      setError(t('errors.requiredField'));
       return;
     }
-    if (!password.trim()) {
-      setError(t('errors.requiredField') || 'Mot de passe requis');
-      return;
-    }
-
     setLoading(true);
     setError('');
-
-    // Simulation d'un délai réseau
-    await new Promise(r => setTimeout(r, 800));
-
-    // Connexion locale sans backend
-    useUserStore.setState(state => ({
-      user: {
-        ...state.user,
-        id: 'mock-user-1',
-        fullName: 'Utilisateur LocaMap',
-        email: email.trim(),
-        phoneNumber: null,
-        photoURL: null,
-        authProvider: 'manual',
-        isLoggedIn: true,
-        hasCompletedOnboarding: true,
-        token: 'mock-token',
-      },
-    }));
-
-    setLoading(false);
+    try {
+      await login(email.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.invalidCredentials'));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    // Mock social login
-    useUserStore.setState(state => ({
-      user: {
-        ...state.user,
-        id: 'mock-social-1',
-        fullName: `Utilisateur ${provider}`,
-        email: `user@${provider.toLowerCase()}.com`,
-        phoneNumber: null,
-        photoURL: null,
-        authProvider: provider.toLowerCase() as any,
-        isLoggedIn: true,
-        hasCompletedOnboarding: true,
-        token: `mock-${provider}-token`,
-      },
-    }));
-  };
+  // OAuth not yet configured — stub kept for future wiring
+  const handleSocialLogin = (_provider: 'google' | 'facebook') => {};
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+    <View style={styles.root}>
+      {/* ── Top zone: deep background + Lottie + wordmark ── */}
+      <Animated.View
+        entering={FadeIn.duration(600)}
+        style={[styles.topZone, { paddingTop: insets.top + 8 }]}
       >
-        {/* Header bar */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('auth.login') || 'Connexion'}</Text>
+        <LottieView
+          source={require('../assets/lottie/login.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+        <View style={styles.wordmarkRow}>
+          <Text style={styles.wordmark}>LocaMap</Text>
+          <Text style={styles.tagline}>{t('auth.loginSubtitle')}</Text>
         </View>
+      </Animated.View>
 
+      {/* ── Bottom zone: white form sheet ── */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.kvav}
+      >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          style={styles.sheet}
+          contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Hero / Logo section */}
-          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.heroSection}>
-            <Text style={styles.appName}>LocaMap</Text>
-            <Text style={styles.appSubtitle}>Trouvez votre logement à Gisenyi</Text>
-            <View style={styles.heroAccentLine} />
+          {/* Email */}
+          <Animated.View entering={FadeInUp.delay(60).duration(400)}>
+            <TextInputField
+              label={t('auth.email')}
+              value={email}
+              onChangeText={setEmail}
+              icon="email-outline"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              returnKeyType="next"
+              placeholder="votre@email.com"
+              touched={emailTouched}
+              error={emailTouched && !email.trim() ? t('errors.requiredField') : ''}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+            />
           </Animated.View>
 
-          {/* Form section */}
-          <View style={styles.formContainer}>
-            {/* Email field */}
-            <Animated.View entering={FadeInDown.delay(160).duration(400)}>
-              <TextInputField
-                label={t('auth.email') || 'Email'}
-                value={email}
-                onChangeText={setEmail}
-                icon="email-outline"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                returnKeyType="next"
-                placeholder="votre@email.com"
-                touched={emailTouched}
-                error={emailTouched && !email.trim() ? (t('errors.requiredField') || 'Requis') : ''}
-              />
+          {/* Password */}
+          <Animated.View entering={FadeInUp.delay(120).duration(400)}>
+            <TextInputField
+              ref={passwordRef}
+              label={t('auth.password')}
+              value={password}
+              onChangeText={setPassword}
+              icon="lock-outline"
+              secureTextEntry
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              placeholder="••••••••"
+              touched={passwordTouched}
+              error={passwordTouched && !password.trim() ? t('errors.requiredField') : ''}
+            />
+          </Animated.View>
+
+          {/* Forgot password */}
+          <Animated.View entering={FadeInUp.delay(180).duration(400)}>
+            <TouchableOpacity
+              style={styles.forgotRow}
+              onPress={() => navigation.navigate('ResetPassword')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Error banner */}
+          {error ? (
+            <Animated.View entering={FadeIn.duration(250)} style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={ERROR} />
+              <Text style={styles.errorText}>{error}</Text>
             </Animated.View>
+          ) : null}
 
-            {/* Password field */}
-            <Animated.View entering={FadeInDown.delay(220).duration(400)}>
-              <TextInputField
-                label={t('auth.password') || 'Mot de passe'}
-                value={password}
-                onChangeText={setPassword}
-                icon="lock-outline"
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                placeholder="••••••••"
-                touched={passwordTouched}
-                error={passwordTouched && !password.trim() ? (t('errors.requiredField') || 'Requis') : ''}
-              />
-            </Animated.View>
+          {/* Login button */}
+          <Animated.View entering={FadeInUp.delay(240).duration(400)}>
+            <TouchableOpacity
+              style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+            >
+              {loading ? (
+                <ActivityIndicator color={SURFACE} size="small" />
+              ) : (
+                <Text style={styles.primaryBtnLabel}>{t('auth.login')}</Text>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
 
-            {/* Forgot password */}
-            <Animated.View entering={FadeInDown.delay(270).duration(400)}>
-              <TouchableOpacity
-                style={styles.forgotPassword}
-                onPress={() => navigation.navigate('ResetPassword')}
-                accessibilityRole="button"
-              >
-                <Text style={styles.forgotPasswordText}>
-                  {t('auth.forgotPassword') || 'Mot de passe oublié ?'}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
+          {/* Divider */}
+          <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerLabel}>{t('common.or')}</Text>
+            <View style={styles.dividerLine} />
+          </Animated.View>
 
-            {/* Error message */}
-            {error ? (
-              <Animated.View entering={FadeInDown.duration(250)} style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={16} color={colors.error} />
-                <Text style={styles.errorText}>{error}</Text>
-              </Animated.View>
-            ) : null}
+          {/* Social buttons */}
+          <Animated.View entering={FadeInUp.delay(360).duration(400)} style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialGoogle}
+              onPress={() => handleSocialLogin('google')}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Google"
+            >
+              <Ionicons name="logo-google" size={18} color={PRIMARY} />
+              <Text style={styles.socialGoogleLabel}>Google</Text>
+            </TouchableOpacity>
 
-            {/* Login button */}
-            <Animated.View entering={FadeInDown.delay(320).duration(400)}>
-              <Button
-                mode="contained"
-                onPress={handleLogin}
-                loading={loading}
-                disabled={loading}
-                style={styles.loginButton}
-                contentStyle={styles.buttonContent}
-                labelStyle={styles.buttonLabel}
-                buttonColor={colors.primary}
-              >
-                {t('auth.login') || 'Se connecter'}
-              </Button>
-            </Animated.View>
+            <TouchableOpacity
+              style={styles.socialFacebook}
+              onPress={() => handleSocialLogin('facebook')}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Facebook"
+            >
+              <Ionicons name="logo-facebook" size={18} color={SURFACE} />
+              <Text style={styles.socialFacebookLabel}>Facebook</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
-            {/* Divider */}
-            <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>{t('common.or') || 'ou'}</Text>
-              <View style={styles.divider} />
-            </Animated.View>
-
-            {/* Social buttons */}
-            <Animated.View entering={FadeInDown.delay(460).duration(400)} style={styles.socialButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.google }]}
-                onPress={() => handleSocialLogin('Google')}
-                accessibilityRole="button"
-                accessibilityLabel="Continuer avec Google"
-              >
-                <Ionicons name="logo-google" size={20} color={colors.white} />
-                <Text style={styles.socialButtonText}>
-                  {t('auth.continueWithGoogle') || 'Continuer avec Google'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.facebook }]}
-                onPress={() => handleSocialLogin('Facebook')}
-                accessibilityRole="button"
-                accessibilityLabel="Continuer avec Facebook"
-              >
-                <Ionicons name="logo-facebook" size={20} color={colors.white} />
-                <Text style={styles.socialButtonText}>
-                  {t('auth.continueWithFacebook') || 'Continuer avec Facebook'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.apple }]}
-                onPress={() => handleSocialLogin('Apple')}
-                accessibilityRole="button"
-                accessibilityLabel="Continuer avec Apple"
-              >
-                <Ionicons name="logo-apple" size={20} color={colors.white} />
-                <Text style={styles.socialButtonText}>
-                  {t('auth.continueWithApple') || 'Continuer avec Apple'}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Register link */}
-            <Animated.View entering={FadeInDown.delay(540).duration(400)} style={styles.registerContainer}>
-              <Text style={styles.registerText}>
-                {t('auth.noAccount') || 'Pas encore de compte ?'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Register')}
-                accessibilityRole="button"
-              >
-                <Text style={styles.registerLink}>
-                  {' '}{t('auth.register') || "S'inscrire"}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
+          {/* Register link */}
+          <Animated.View entering={FadeInUp.delay(420).duration(400)} style={styles.registerRow}>
+            <Text style={styles.registerPrompt}>{t('auth.noAccount')}</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Register')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.registerLink}>{t('auth.register')}</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
+    backgroundColor: DEEP,
   },
 
-  // ─── Header bar ───────────────────────────────────────────────────────────────
-  header: {
-    height: 56,
-    justifyContent: 'center',
+  // ─── Top zone ────────────────────────────────────────────────────────────────
+  topZone: {
+    flex: 0.42,
+    minHeight: 160,
+    backgroundColor: DEEP,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    overflow: 'hidden',
   },
-  headerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: '600',
-    color: colors.ink,
+  lottie: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
-
-  // ─── Scroll ───────────────────────────────────────────────────────────────────
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 120,
-  },
-
-  // ─── Hero section ─────────────────────────────────────────────────────────────
-  heroSection: {
-    backgroundColor: colors.surfaceSunken,
-    paddingVertical: 40,
-    paddingHorizontal: spacing[5],
+  wordmarkRow: {
     alignItems: 'center',
+    zIndex: 1,
   },
-  appName: {
-    fontSize: typography.fontSize['2xl'],
+  wordmark: {
+    fontSize: typography.fontSize['3xl'],
     fontWeight: '800',
-    color: colors.primary,
+    color: SURFACE,
     letterSpacing: -0.5,
   },
-  appSubtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.inkSubtle,
+  tagline: {
+    fontSize: typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.72)',
+    marginTop: 4,
     textAlign: 'center',
-    marginTop: spacing[2],
-  },
-  heroAccentLine: {
-    width: 40,
-    height: 3,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
-    marginTop: 12,
-    alignSelf: 'center',
   },
 
-  // ─── Form ─────────────────────────────────────────────────────────────────────
-  formContainer: {
+  // ─── Bottom sheet ─────────────────────────────────────────────────────────────
+  kvav: {
+    flex: 1,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: SURFACE,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+  sheetContent: {
     paddingHorizontal: spacing[5],
     paddingTop: spacing[6],
   },
 
   // ─── Forgot password ──────────────────────────────────────────────────────────
-  forgotPassword: {
+  forgotRow: {
     alignSelf: 'flex-end',
-    marginBottom: spacing[5],
     marginTop: -spacing[2],
+    marginBottom: spacing[4],
   },
-  forgotPasswordText: {
+  forgotText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary,
+    color: PRIMARY,
     fontWeight: '500',
   },
 
-  // ─── Error container ──────────────────────────────────────────────────────────
-  errorContainer: {
+  // ─── Error banner ─────────────────────────────────────────────────────────────
+  errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing[2],
     backgroundColor: '#FFF1F0',
     borderWidth: 1,
-    borderColor: colors.error,
+    borderColor: ERROR,
     borderRadius: borderRadius.md,
-    padding: spacing[3],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[3],
     marginBottom: spacing[4],
-    gap: spacing[2],
   },
   errorText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.error,
     flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: ERROR,
   },
 
-  // ─── Login button ─────────────────────────────────────────────────────────────
-  loginButton: {
-    borderRadius: borderRadius.md,
+  // ─── Primary button ───────────────────────────────────────────────────────────
+  primaryBtn: {
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing[5],
   },
-  buttonContent: {
-    height: 52,
+  primaryBtnDisabled: {
+    opacity: 0.65,
   },
-  buttonLabel: {
+  primaryBtnLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: SURFACE,
+    letterSpacing: 0.2,
   },
 
   // ─── Divider ──────────────────────────────────────────────────────────────────
-  dividerContainer: {
+  dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing[5],
+    marginBottom: spacing[4],
   },
-  divider: {
+  dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: BORDER,
   },
-  dividerText: {
+  dividerLabel: {
     paddingHorizontal: spacing[3],
     fontSize: typography.fontSize.sm,
-    color: colors.inkSubtle,
+    color: INK_SUBTLE,
   },
 
   // ─── Social buttons ───────────────────────────────────────────────────────────
-  socialButtonsContainer: {
+  socialRow: {
+    flexDirection: 'row',
     gap: spacing[3],
-    marginBottom: spacing[6],
+    marginBottom: spacing[5],
   },
-  socialButton: {
+  socialGoogle: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.md,
-    height: 50,
-    gap: spacing[3],
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    backgroundColor: SURFACE,
+    gap: spacing[2],
   },
-  socialButtonText: {
-    fontSize: typography.fontSize.base,
+  socialGoogleLabel: {
+    fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.white,
+    color: PRIMARY,
+  },
+  socialFacebook: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#1877F2',
+    gap: spacing[2],
+  },
+  socialFacebookLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '600',
+    color: SURFACE,
   },
 
   // ─── Register link ────────────────────────────────────────────────────────────
-  registerContainer: {
+  registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 4,
   },
-  registerText: {
+  registerPrompt: {
     fontSize: typography.fontSize.sm,
-    color: colors.inkSubtle,
+    color: INK_SUBTLE,
   },
   registerLink: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary,
     fontWeight: '700',
+    color: PRIMARY,
   },
 });
 
