@@ -43,7 +43,7 @@ export function useResetPassword() {
  * Hook pour la vérification du token
  */
 export function useVerifyToken() {
-  return useApiAction<{ valid: boolean; user?: User }, []>(
+  return useApiAction<{ valid: boolean; user?: { id: string; email: string } }, []>(
     () => authService.verifyToken()
   );
 }
@@ -82,4 +82,4 @@ export function useUploadAvatar() {
   return useApiAction<{ avatarUrl: string }, [FormData]>(
     formData => userService.uploadAvatar(formData)
   );
-} 
+}

@@ -1,6 +1,5 @@
 /**
- * LocaMap — Direction A : Lac Kivu · Sarcelle
- * Couleur signature : sarcelle profonde du lac à l'aube
+ * LocaMap — orange pour agir, vert pour se repérer, gris pour lire.
  */
 
 import { Platform } from 'react-native';
@@ -8,47 +7,52 @@ import { Platform } from 'react-native';
 // ─── Palette ─────────────────────────────────────────────────────────────────
 
 export const colors = {
-  // Primaire : sarcelle profonde — lac Kivu au petit matin
-  primary: '#0D6E6E',
-  primaryLight: '#E8F4F4',   // surface de chip, fond d'input focus
-  primaryMid: '#1A9494',     // état hover / icône active légère
-  primaryDark: '#084F4F',    // état pressed, profondeur
+  accent: '#F58F20',
+  accentPressed: '#E17B0E',
+  accentLight: '#FFF0DD',
+  onAccent: '#363636',
+  onPrimary: '#FFFFFF',
+  // Vert : navigation, sélection et confirmation
+  primary: '#467434',
+  primaryLight: '#EDF3E9',   // surface de chip, fond d'input focus
+  primaryMid: '#568940',     // état hover / icône active légère
+  primaryDark: '#315225',    // état pressed, profondeur
 
   // Fond & surface
-  background: '#FAFAFA',     // blanc neutre pur, pas warm
+  background: '#F7F8F6',     // blanc neutre pur, pas warm
   surface: '#FFFFFF',
-  surfaceSunken: '#F3F8F8',  // fond légèrement teinté sarcelle pour sections
+  surfaceSunken: '#F1F4EF',  // fond légèrement teinté vert pour sections
 
   // Texte — teinté vers le primaire, pas le gris générique
-  ink: '#0F1F1F',            // titre, label principal
-  inkMid: '#2E4A4A',         // corps de texte
-  inkSubtle: '#5A7878',      // métadonnées, labels secondaires
-  inkDisabled: '#9BB5B5',    // désactivé
+  ink: '#363636',            // titre, label principal
+  inkMid: '#4D514A',         // corps de texte
+  inkSubtle: '#62685F',      // métadonnées, labels secondaires
+  inkDisabled: '#ADB5A7',    // désactivé
 
   // Bordures
-  border: '#D0E8E8',         // bordure légère teintée sarcelle
-  borderMid: '#9BB5B5',      // bordure visible
+  border: '#DFE5DB',         // bordure légère teintée verte
+  borderMid: '#ADB5A7',      // bordure visible
 
   // Alias de compatibilité (utilisés par les anciens écrans)
-  black: '#0F1F1F',
+  black: '#363636',
   white: '#FFFFFF',
   gray: {
-    50: '#F3F8F8',
-    100: '#E8F4F4',
-    200: '#D0E8E8',
-    300: '#9BB5B5',
-    400: '#6E9898',
-    500: '#5A7878',
-    600: '#3D5E5E',
-    700: '#2E4A4A',
-    800: '#1A3333',
+    50: '#F1F4EF',
+    100: '#EDF3E9',
+    200: '#DFE5DB',
+    300: '#ADB5A7',
+    400: '#70786A',
+    500: '#62685F',
+    600: '#555C4F',
+    700: '#4D514A',
+    800: '#363636',
   },
 
   // États sémantiques
-  success: '#1A8A6E',
-  warning: '#C47C00',
-  error: '#C1440E',          // latérite — contraste fort avec le vert-sarcelle
-  info: '#0D6E6E',
+  success: '#467434',
+  warning: '#8B510B',
+  error: '#B43C2E',          // latérite — contraste fort avec le vert
+  info: '#467434',
 
   // Sociaux
   apple: '#000000',
@@ -61,10 +65,10 @@ export const colors = {
   },
 
   // Compatibilité
-  background_compat: '#FAFAFA',
-  text: '#0F1F1F',
-  outline: '#D0E8E8',
-  secondary: '#1A9494',
+  background_compat: '#F7F8F6',
+  text: '#363636',
+  outline: '#DFE5DB',
+  secondary: '#568940',
 };
 
 // ─── Typographie ──────────────────────────────────────────────────────────────
@@ -93,9 +97,9 @@ export const typography = {
     }),
   },
   fontSize: {
-    xs: 11,
-    sm: 13,
-    base: 15,
+    xs: 12,
+    sm: 14,
+    base: 16,
     md: 17,
     lg: 20,
     xl: 24,
@@ -138,15 +142,15 @@ export const spacing = {
 export const borderRadius = {
   none: 0,
   sm: 4,
-  md: 6,       // inputs, boutons — plus serré qu'Airbnb
-  lg: 12,      // cards
+  md: 10,
+  lg: 16,
   xl: 16,
-  '2xl': 24,
+  '2xl': 16,
   full: 9999,
-  button: 6,
-  card: 12,
-  input: 6,
-  searchBar: 28,
+  button: 12,
+  card: 16,
+  input: 10,
+  searchBar: 12,
   tag: 6,
 };
 
@@ -162,35 +166,35 @@ export const shadows = {
     elevation: 0,
   },
   xs: {
-    shadowColor: '#0D6E6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 1,
   },
   sm: {
-    shadowColor: '#0D6E6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#0D6E6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.10,
     shadowRadius: 6,
     elevation: 3,
   },
   lg: {
-    shadowColor: '#0D6E6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
   },
   xl: {
-    shadowColor: '#0D6E6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
     shadowRadius: 16,
@@ -219,14 +223,15 @@ export const commonStyles = {
     color: colors.ink,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
+    minHeight: 48,
     borderRadius: borderRadius.button,
     padding: spacing[4],
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   primaryButtonText: {
-    color: colors.white,
+    color: colors.onAccent,
     fontWeight: typography.fontWeight.semiBold,
     fontSize: typography.fontSize.base,
   },
@@ -272,7 +277,7 @@ export const commonStyles = {
   paragraph: {
     fontSize: typography.fontSize.base,
     color: colors.inkMid,
-    lineHeight: typography.lineHeight.relaxed,
+    lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
   },
   smallText: {
     fontSize: typography.fontSize.sm,

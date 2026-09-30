@@ -1,0 +1,406 @@
+
+> locamap@1.0.0 lint
+> eslint .
+
+
+D:\PETER\locamap\App.tsx
+  106:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\download-fonts.js
+  7:7  warning  'writeFile' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\AmenityTag.tsx
+  44:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\AnimatedView.tsx
+  2:10  warning  'StyleSheet' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\CarouselSlide.tsx
+   74:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\CategoryButton.tsx
+   5:39  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  45:38  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\ChatBubble.tsx
+  8:20  warning  'FadeIn' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\ConversationListItem.tsx
+  4:39  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  4:53  warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\GuideSection.tsx
+  38:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\ImageCarousel.tsx
+  24:30  warning  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+  40:30  warning  'index' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\MapPreviewCard.tsx
+  21:9  warning  'width' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\MessageInputBar.tsx
+  24:3  warning  'sendButtonText' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\PriceDisplay.tsx
+  3:10  warning  'usePreferences' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\PriceMarker.tsx
+  2:34  warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\PropertyCard.tsx
+  23:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\RatingStars.tsx
+  85:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\ReviewCard.tsx
+   3:34  warning  'Button' is defined but never used. Allowed unused vars must match /^_/u                      @typescript-eslint/no-unused-vars
+  57:9   warning  'handleReplySubmit' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\SearchBar.tsx
+  11:39  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\SearchFiltersModal.tsx
+  323:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\SimpleAnimatedView.tsx
+  2:31  warning  'StyleSheet' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\components\SocialLoginButton.tsx
+  86:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\SwitchInput.tsx
+  41:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\components\TextInputField.tsx
+  56:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\hooks\useApi.ts
+  17:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\hooks\useLocalizedContent.ts
+   2:30  warning  'Language' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+   2:40  warning  'Currency' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+  77:7   warning  'currencySymbols' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\mocks\react-native-maps.tsx
+   4:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  11:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\navigation\index.tsx
+    9:18  warning  'spacing' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+    9:39  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   13:8   warning  'HomeScreen' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+   18:8   warning  'LoginScreen' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   19:8   warning  'RegisterScreen' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   21:8   warning  'ResetPasswordScreen' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   22:8   warning  'SavedScreen' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   92:32  warning  'descriptors' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  113:90  warning  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+  129:37  warning  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+  245:9   warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  424:7   warning  'styles' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\AccountProfileEditor.tsx
+  2:115  warning  'View' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\AlertPreferencesScreen.tsx
+   12:3   warning  'Image' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+   21:3   warning  'FontAwesome5' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+   28:3   warning  'SegmentedButtons' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   29:3   warning  'Avatar' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  233:38  warning  Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+  312:38  warning  Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+  339:39  warning  'index' is defined but never used. Allowed unused args must match /^_/u             @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\AuthScreen.tsx
+   3:43  warning  'IconButton' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  12:10  warning  'MaterialCommunityIcons' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\ConversationScreen.tsx
+  12:31  warning  'useNavigation' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\CreateListingScreen.tsx
+   21:32  warning  'FadeInRight' is defined but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
+   21:45  warning  'FadeOutLeft' is defined but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
+   24:18  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+   33:7   warning  'PROPERTY_TYPE_VALUES' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   41:7   warning  'ACCOMMODATION_TYPE_VALUES' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   68:7   warning  'MIN_DURATION_VALUES' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   75:7   warning  'NOTICE_PERIOD_VALUES' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   82:7   warning  'HOUSE_RULE_KEYS' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  339:8   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  660:31  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  661:79  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  662:79  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  672:37  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  690:37  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  743:35  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\ExplorerScreen.tsx
+    9:3   warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+   25:26  warning  'SearchFilters' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   42:3   warning  'withTiming' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+   97:9   warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  100:11  warning  'currency' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  116:5   warning  'listings' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  211:9   warning  'handleSearch' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  263:30  warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  441:63  warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\FavoritesScreen.tsx
+    4:3   warning  'View' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+    5:3   warning  'FlatList' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   18:3   warning  'FadeOut' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   32:8   warning  'FavoriteButton' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  107:82  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\GuestAccountScreen.tsx
+  368:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\GuideDetailScreen.tsx
+   5:3   warning  'ScrollView' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  12:3   warning  'Image' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  15:52  warning  'IconButton' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  22:28  warning  'SlideInRight' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  41:14  warning  'i18n' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  42:32  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\HomeScreen.tsx
+   6:3   warning  'Image' is defined but never used. Allowed unused vars must match /^_/u                              @typescript-eslint/no-unused-vars
+  10:3   warning  'ImageBackground' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+  12:3   warning  'TextInput' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+  14:16  warning  'Button' is defined but never used. Allowed unused vars must match /^_/u                             @typescript-eslint/no-unused-vars
+  14:34  warning  'Searchbar' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+  14:45  warning  'Chip' is defined but never used. Allowed unused vars must match /^_/u                               @typescript-eslint/no-unused-vars
+  14:51  warning  'Avatar' is defined but never used. Allowed unused vars must match /^_/u                             @typescript-eslint/no-unused-vars
+  14:59  warning  'Surface' is defined but never used. Allowed unused vars must match /^_/u                            @typescript-eslint/no-unused-vars
+  19:53  warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u                            @typescript-eslint/no-unused-vars
+  24:30  warning  'FadeIn' is defined but never used. Allowed unused vars must match /^_/u                             @typescript-eslint/no-unused-vars
+  37:9   warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u                     @typescript-eslint/no-unused-vars
+  39:11  warning  'listings' is assigned a value but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+  39:21  warning  'fetchListings' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  41:9   warning  'QUICK_ACCESS_BUTTON_SIZE' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostAccountScreen.tsx
+   8:3  warning  'Switch' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+  12:3  warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+  48:7  warning  'LANGUAGES_RW' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostDashboardScreen.tsx
+   29:18  warning  'spacing' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  101:9   warning  'navigation' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostLegalScreen.tsx
+  4:38  warning  'useRef' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostListingsScreen.tsx
+  20:18  warning  'borderRadius' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostMessagesScreen.tsx
+   23:32  warning  'FadeIn' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+  142:10  warning  'searchFocused' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostOnboardingScreen.tsx
+    9:3   warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+   12:3   warning  'Pressable' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   27:3   warning  'useSharedValue' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   28:3   warning  'useAnimatedStyle' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+   29:3   warning  'withTiming' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+   31:3   warning  'interpolate' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   32:3   warning  'Extrapolation' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   43:38  warning  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+   59:7   warning  'STEP_COUNT' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  216:11  warning  'width' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  337:54  warning  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+  502:42  warning  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\HostProfileScreen.tsx
+  185:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  346:88  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\HostResourcesScreen.tsx
+  11:3  warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\HostSupportScreen.tsx
+  29:3  warning  'CreateTicketPayload' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\LocalGuideScreen.tsx
+    6:16  warning  'RNTextInput' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   10:3   warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   15:27  warning  'Divider' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   19:30  warning  'GuideCategory' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   20:10  warning  'colors' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   20:53  warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  100:35  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  186:52  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\screens\LogementDetailScreen.tsx
+    1:38   warning  'useRef' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+    2:95   warning  'Image' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+    2:102  warning  'FlatList' is defined but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+    7:24   warning  'Chip' is defined but never used. Allowed unused vars must match /^_/u                            @typescript-eslint/no-unused-vars
+    7:49   warning  'IconButton' is defined but never used. Allowed unused vars must match /^_/u                      @typescript-eslint/no-unused-vars
+    7:61   warning  'Divider' is defined but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
+    7:89   warning  'SegmentedButtons' is defined but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+    9:20   warning  'FadeIn' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+    9:38   warning  'FadeInDown' is defined but never used. Allowed unused vars must match /^_/u                      @typescript-eslint/no-unused-vars
+    9:61   warning  'SlideInDown' is defined but never used. Allowed unused vars must match /^_/u                     @typescript-eslint/no-unused-vars
+   22:53   warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
+   30:7    warning  'screenWidth' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   33:7    warning  'amenityIcons' is assigned a value but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+   47:9    warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+   53:29   warning  'getReviewsForProperty' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  562:48   warning  'index' is defined but never used. Allowed unused args must match /^_/u                           @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\LoginScreen.tsx
+  20:10  warning  'colors' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  29:7   warning  'BG' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  30:7   warning  'INK' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\MapScreen.tsx
+   14:10  warning  'NativeStackNavigationProp' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   18:8   warning  'BottomSheet' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+   20:20  warning  'FadeIn' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+   20:38  warning  'useAnimatedStyle' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+   20:56  warning  'useSharedValue' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+   20:72  warning  'withTiming' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+   50:9   warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+   52:9   warning  'bottomSheetRef' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+   52:33  warning  Unexpected any. Specify a different type                                                       @typescript-eslint/no-explicit-any
+   53:9   warning  'flatListRef' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   63:10  warning  'showList' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   63:20  warning  'setShowList' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  119:9   warning  'renderPropertyCard' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\MessageListScreen.tsx
+  15:39  warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\NewMessageScreen.tsx
+  6:3  warning  'TouchableOpacity' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\PreferenceCarouselScreen.tsx
+  12:53  warning  'shadows' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  14:10  warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  21:9   warning  'navigation' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\ProfileScreen.tsx
+   65:27  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  109:27  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  128:9   warning  'theme' is assigned a value but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+  219:9   warning  'getNotificationStatus' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  231:52  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  247:52  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  306:9   warning  'toggleNotifications' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\PropertyDetailsScreen.tsx
+  17:30  warning  'IconButton' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+  20:40  warning  'FadeInUp' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+  24:9   warning  'width' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  34:11  warning  'properties' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  39:25  warning  'setLoadingAction' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\screens\SavedScreen.tsx
+    6:3   warning  'TouchableOpacity' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   23:10  warning  'Ionicons' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+   27:28  warning  'FadeInDown' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+   45:5   warning  'removeSaved' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   72:9   warning  'navigateToExplore' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  179:82  warning  Unexpected any. Specify a different type                                                      @typescript-eslint/no-explicit-any
+  241:90  warning  Unexpected any. Specify a different type                                                      @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\services\api\user.service.ts
+  162:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\services\booking.service.ts
+  136:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\services\host.service.ts
+  93:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\store\preferences.ts
+  32:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\store\useAppStore.ts
+  141:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  168:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\PETER\locamap\src\types\declarations.d.ts
+   2:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   3:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   4:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   5:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\src\utils\i18n.ts
+   21:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\auth-account.test.ts
+  2:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2:90  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\auth-links.test.ts
+  2:110  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\auth-regressions.test.ts
+   4:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   5:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\auth-upload.test.ts
+  2:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\host-calendar.test.ts
+   3:128  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:14   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\messages-regressions.test.ts
+  2:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2:99   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2:146  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  7:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\messages-store.test.ts
+   2:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\property-persistence.test.ts
+   9:17   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:219  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:15   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:15   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:17   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:15   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\property-query.test.ts
+  2:134  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:16   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\property-reviews.test.ts
+  8:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\PETER\locamap\tests\resources-behavior.test.ts
+  7:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 252 problems (0 errors, 252 warnings)

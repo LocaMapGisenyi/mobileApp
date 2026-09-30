@@ -9,14 +9,12 @@ const SectionHeader = ({ title }: { title: string }) => (
 
 const s = StyleSheet.create({
   txt: {
-    fontSize: 11,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.inkDisabled,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: colors.ink,
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
 });
 

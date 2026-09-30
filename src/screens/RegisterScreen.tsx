@@ -14,8 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
-import LottieView from 'lottie-react-native';
+import Animated from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { AuthStackParamList } from '../navigation/AuthNavigator';
@@ -28,7 +27,6 @@ type RegisterNav = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Field stagger delays — each row enters 50ms after the previous
-const STAGGER = 50;
 
 const RegisterScreen = () => {
   const navigation = useNavigation<RegisterNav>();
@@ -36,6 +34,7 @@ const RegisterScreen = () => {
   const insets = useSafeAreaInsets();
   const register = useUserStore(s => s.actions.register);
 
+  const registering = useRef(false);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
@@ -97,16 +96,19 @@ const RegisterScreen = () => {
   };
 
   const handleRegister = async () => {
+    if(registering.current)return;
     if (!validate()) return;
+    registering.current=true;
     setLoading(true);
     setApiError('');
     try {
       await register({ fullName: fullName.trim(), email: email.trim(), password });
       setShowSuccess(true);
-      setTimeout(() => navigation.navigate('PreferenceCarousel'), 800);
+      // Supabase can require email verification; the navigator follows actual session state.
     } catch (err) {
       setApiError(err instanceof Error ? err.message : t('errors.generic'));
     } finally {
+      registering.current=false;
       setLoading(false);
     }
   };
@@ -114,13 +116,8 @@ const RegisterScreen = () => {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* ── Top zone — fixed 220 px deep background ── */}
-      <Animated.View entering={FadeIn.duration(500)} style={styles.topZone}>
-        <LottieView
-          source={require('../assets/lottie/register.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
+      <Animated.View style={styles.topZone}>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: colors.ink }}>Loca<Text style={{ color: colors.primary }}>Map</Text></Text>
       </Animated.View>
 
       {/* ── White card form zone ── */}
@@ -152,14 +149,13 @@ const RegisterScreen = () => {
           >
             {/* Heading */}
             <Animated.Text
-              entering={FadeInUp.delay(STAGGER).duration(400)}
               style={styles.heading}
             >
               {t('auth.createAccount')}
             </Animated.Text>
 
             {/* Fields — staggered entry */}
-            <Animated.View entering={FadeInUp.delay(STAGGER * 2).duration(400)}>
+            <Animated.View>
               <TextInputField
                 label={t('auth.fullName')}
                 value={fullName}
@@ -176,7 +172,7 @@ const RegisterScreen = () => {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInUp.delay(STAGGER * 3).duration(400)}>
+            <Animated.View>
               <TextInputField
                 ref={emailRef}
                 label={t('auth.email')}
@@ -196,7 +192,7 @@ const RegisterScreen = () => {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInUp.delay(STAGGER * 4).duration(400)}>
+            <Animated.View>
               <TextInputField
                 ref={passwordRef}
                 label={t('auth.password')}
@@ -214,7 +210,7 @@ const RegisterScreen = () => {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInUp.delay(STAGGER * 5).duration(400)}>
+            <Animated.View>
               <TextInputField
                 ref={confirmRef}
                 label={t('auth.confirmPassword')}
@@ -234,7 +230,6 @@ const RegisterScreen = () => {
             {/* API error banner */}
             {apiError ? (
               <Animated.View
-                entering={FadeInUp.duration(250)}
                 style={styles.apiBanner}
               >
                 <MaterialIcons name="error-outline" size={16} color={colors.error} />
@@ -243,7 +238,7 @@ const RegisterScreen = () => {
             ) : null}
 
             {/* Submit */}
-            <Animated.View entering={FadeInUp.delay(STAGGER * 6).duration(400)}>
+            <Animated.View>
               <TouchableOpacity
                 style={[styles.submitBtn, loading && styles.submitBtnLoading]}
                 onPress={handleRegister}
@@ -252,7 +247,7 @@ const RegisterScreen = () => {
                 activeOpacity={0.82}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.white} size="small" />
+                  <ActivityIndicator color={colors.onAccent} size="small" />
                 ) : (
                   <Text style={styles.submitBtnText}>{t('auth.register')}</Text>
                 )}
@@ -261,7 +256,6 @@ const RegisterScreen = () => {
 
             {/* Already have account */}
             <Animated.View
-              entering={FadeInUp.delay(STAGGER * 7).duration(400)}
               style={styles.loginRow}
             >
               <Text style={styles.loginRowText}>{t('auth.alreadyHaveAccount')}</Text>
@@ -279,12 +273,11 @@ const RegisterScreen = () => {
       {/* Success banner — absolutely positioned, appears after register */}
       {showSuccess ? (
         <Animated.View
-          entering={FadeInUp.duration(300)}
           style={[styles.successBanner, { bottom: insets.bottom + 24 }]}
           pointerEvents="none"
         >
           <MaterialIcons name="check-circle" size={18} color={colors.white} />
-          <Text style={styles.successBannerText}>{t('auth.accountCreated')}</Text>
+          <Text style={styles.successBannerText}>{useUserStore.getState().user.isLoggedIn ? t('auth.accountCreated') : 'Consultez votre email pour confirmer votre compte, puis connectez-vous.'}</Text>
         </Animated.View>
       ) : null}
     </View>
@@ -293,16 +286,12 @@ const RegisterScreen = () => {
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    backgroundColor: '#0A2E2E',
+    flex: 1, backgroundColor: colors.background,
   },
 
   // ── Top zone ────────────────────────────────────────────────────────────────
   topZone: {
-    height: 220,
-    backgroundColor: '#0A2E2E',
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 92, paddingTop: 24, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center',
   },
   lottie: {
     width: 160,
@@ -314,11 +303,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
+    flex: 1, backgroundColor: colors.background,
   },
 
   // ── Back button ──────────────────────────────────────────────────────────────
@@ -330,7 +315,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F8F8',
+    backgroundColor: '#F1F4EF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -340,8 +325,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 68,
-    paddingHorizontal: spacing[5],
+    width: '100%', maxWidth: 520, alignSelf: 'center', paddingTop: 68, paddingHorizontal: 24,
   },
 
   // ── Heading ──────────────────────────────────────────────────────────────────
@@ -373,30 +357,18 @@ const styles = StyleSheet.create({
 
   // ── Submit button ────────────────────────────────────────────────────────────
   submitBtn: {
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing[2],
-    marginBottom: spacing[5],
+    minHeight: 54, borderRadius: 12, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 20,
   },
   submitBtnLoading: {
     opacity: 0.75,
   },
   submitBtnText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.2,
+    fontSize: 16, fontWeight: '700', color: colors.onAccent,
   },
 
   // ── Login row ────────────────────────────────────────────────────────────────
   loginRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 8,
   },
   loginRowText: {
     fontSize: typography.fontSize.sm,
@@ -413,7 +385,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    backgroundColor: '#1A8A6E',
+    backgroundColor: '#467434',
     borderRadius: borderRadius.lg,
     flexDirection: 'row',
     alignItems: 'center',
@@ -422,7 +394,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     gap: spacing[2],
     // Tinted shadow so it lifts against the white card
-    shadowColor: '#1A8A6E',
+    shadowColor: '#467434',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 10,

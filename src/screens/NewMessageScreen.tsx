@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  StyleSheet,
+  View,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
   StatusBar,
   Image,
   ScrollView } from 'react-native';
@@ -29,33 +29,34 @@ const NewMessageScreen = () => {
   const route = useRoute<NewMessageScreenRouteProp>();
   const navigation = useNavigation<NewMessageScreenNavigationProp>();
   const { propertyId, propertyTitle, ownerId, ownerName, ownerAvatar } = route.params;
-  
+
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const { startNewConversation, sendMessage } = useMessagesStore();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  
+
   const handleSend = async () => {
-    if (message.trim().length === 0) return;
-    
-    const conversationId = startNewConversation(
+    if (message.trim().length === 0 || sending) return;
+    setSending(true);
+    try {
+    const conversationId = await startNewConversation(
       propertyId,
       propertyTitle,
       ownerId,
       ownerName,
       ownerAvatar || ''
     );
-    
+
     await sendMessage(conversationId, message.trim());
-    
-    setSnackbarMessage(t('message.new.sentConfirmation', { name: ownerName }));
-    setSnackbarVisible(true);
-    
-    setTimeout(() => {
+
     navigation.replace('Conversation', { conversationId });
-    }, 1500);
+    } catch (error) {
+      setSnackbarMessage(error instanceof Error ? error.message : 'Envoi impossible. Réessayez.');
+      setSnackbarVisible(true);
+    } finally { setSending(false); }
   };
-  
+
   const styles = StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -154,11 +155,11 @@ const NewMessageScreen = () => {
       color: colors.surface,
     }
   });
-  
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
+
       <Appbar.Header
         style={{ backgroundColor: colors.surface }}
         statusBarHeight={Platform.OS === 'ios' ? undefined : 0}
@@ -166,22 +167,22 @@ const NewMessageScreen = () => {
         <Appbar.BackAction onPress={() => navigation.goBack()} color={colors.primary} />
         <Appbar.Content title={t('message.new.title')} titleStyle={{color: colors.onSurface}} />
       </Appbar.Header>
-      
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
         <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
-          <Animated.View 
+          <Animated.View
             entering={FadeIn.duration(300)}
             style={styles.propertyContainer}
           >
             <Text style={styles.sectionTitle}>{t('message.new.propertyInfo')}</Text>
-            
+
             <View style={styles.propertyCard}>
               {ownerAvatar ? (
-                <Image 
+                <Image
                   source={{ uri: ownerAvatar }}
                   style={styles.propertyImage}
                   resizeMode="cover"
@@ -191,7 +192,7 @@ const NewMessageScreen = () => {
                   <Ionicons name="business-outline" size={24} color={colors.onSecondaryContainer} />
                 </View>
               )}
-              
+
               <View style={styles.propertyInfo}>
                 <Text style={styles.ownerName} numberOfLines={1}>
                   {ownerName}
@@ -202,13 +203,13 @@ const NewMessageScreen = () => {
               </View>
             </View>
           </Animated.View>
-          
-          <Animated.View 
+
+          <Animated.View
             entering={FadeInDown.delay(100).duration(300)}
             style={styles.messageContainer}
           >
             <Text style={styles.sectionTitle}>{t('message.new.yourMessage')}</Text>
-            
+
             <View style={styles.textInputContainer}>
               <TextInput
                 style={styles.textInput}
@@ -220,7 +221,7 @@ const NewMessageScreen = () => {
                 autoFocus
               />
             </View>
-            
+
             <View style={styles.tipContainer}>
               <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.tipText}>
@@ -229,12 +230,13 @@ const NewMessageScreen = () => {
             </View>
           </Animated.View>
         </ScrollView>
-        
+
         <View style={styles.footer}>
           <Button
             mode="contained"
             onPress={handleSend}
-            disabled={message.trim().length === 0}
+            disabled={sending || message.trim().length === 0}
+            loading={sending}
             icon={() => <Ionicons name="send-outline" size={18} color={message.trim().length > 0 ? colors.onPrimary : colors.onSurfaceDisabled} />}
             style={styles.sendButton}
             labelStyle={styles.sendButtonText}
@@ -260,4 +262,4 @@ const NewMessageScreen = () => {
   );
 };
 
-export default NewMessageScreen; 
+export default NewMessageScreen;

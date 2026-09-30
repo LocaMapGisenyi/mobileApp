@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -16,6 +16,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { useUserStore } from '../store/user';
+import type { Article } from '../services/api/resources.service';
 import {
   resourcesService,
   ArticleListItem,
@@ -224,10 +226,12 @@ const CourseDetailModal = ({
   course,
   onClose,
   onStepComplete,
+  error,
 }: {
   course: Course;
   onClose: () => void;
   onStepComplete: (stepId: string) => void;
+  error?: string | null;
 }) => {
   const { t } = useTranslation();
 
@@ -246,6 +250,7 @@ const CourseDetailModal = ({
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={cdm.root}>
+        {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
         {/* Close bar */}
         <View style={cdm.bar}>
           <TouchableOpacity style={cdm.closeBtn} onPress={onClose} activeOpacity={0.7}>
@@ -373,6 +378,11 @@ const HostResourcesScreen = () => {
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  const [openingArticle, setOpeningArticle] = useState(false);
+  const userId = useUserStore(state => state.user.id);
+  const ownerRef = useRef(userId);
+  ownerRef.current = userId;
 
   // Filters
   const [search, setSearch] = useState('');
@@ -406,26 +416,42 @@ const HostResourcesScreen = () => {
     setLoadingCourses(true);
     try {
       const data = await resourcesService.getCourses();
+      if (ownerRef.current !== userId) return;
       setCourses(data);
-    } catch {/* silent — use cache */} finally {
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Chargement des formations impossible.'); } finally {
       setLoadingCourses(false);
     }
-  }, []);
+  }, [userId]);
 
   const loadBookmarks = useCallback(async () => {
-    const bm = await resourcesService.getBookmarks();
-    setBookmarks(bm);
-  }, []);
+    try {
+      const bm = await resourcesService.getBookmarks();
+      if (ownerRef.current !== userId) return;
+      setBookmarks(bm);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Chargement des favoris impossible.'); }
+  }, [userId]);
 
   useEffect(() => { loadArticles(); }, [loadArticles]);
-  useEffect(() => { loadCourses(); loadBookmarks(); }, []);
+  useEffect(() => { setCourses([]); setBookmarks([]); setActiveCourse(null); void loadCourses(); void loadBookmarks(); }, [userId, loadCourses, loadBookmarks]);
 
   // ── Bookmark toggle ────────────────────────────────────────────────────────
   const handleBookmark = async (slug: string) => {
+    try {
     const nowBookmarked = await resourcesService.toggleBookmark(slug);
+    if (ownerRef.current !== userId) return;
     setBookmarks(prev =>
       nowBookmarked ? [...prev, slug] : prev.filter(s => s !== slug),
     );
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Favori non enregistré.'); }
+  };
+  const openArticle = async (slug: string) => {
+    setOpeningArticle(true); setError(null);
+    try {
+      const article = await resourcesService.getArticle(slug);
+      if (!article) throw new Error('Article introuvable.');
+      setActiveArticle(article);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Article indisponible.'); }
+    finally { setOpeningArticle(false); }
   };
 
   // ── Step complete ──────────────────────────────────────────────────────────
@@ -433,7 +459,8 @@ const HostResourcesScreen = () => {
     if (!activeCourse) return;
     try {
       await resourcesService.markStepComplete(activeCourse.id, stepId);
-    } catch {/* optimistic regardless */}
+      if (ownerRef.current !== userId) return;
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Progression non enregistrée.'); return; }
     setActiveCourse(prev => {
       if (!prev) return null;
       const steps = prev.steps.map(s => s.id === stepId ? { ...s, completed: true } : s);
@@ -474,6 +501,8 @@ const HostResourcesScreen = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+      {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
+      {openingArticle && <ActivityIndicator color={colors.primary} />}
       {/* Header */}
       <Animated.View entering={FadeInDown.duration(300)} style={s.header}>
         <View>
@@ -624,7 +653,7 @@ const HostResourcesScreen = () => {
                   <ArticleCard
                     item={item}
                     bookmarked={bookmarks.includes(item.slug)}
-                    onPress={() => {/* article detail — future screen */}}
+                    onPress={() => void openArticle(item.slug)}
                     onBookmark={() => handleBookmark(item.slug)}
                   />
                 </Animated.View>
@@ -708,11 +737,19 @@ const HostResourcesScreen = () => {
       )}
 
       {/* Course detail modal */}
+      {!!activeArticle && <Modal visible animationType="slide" onRequestClose={() => setActiveArticle(null)}>
+        <ScrollView contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, gap: 20, backgroundColor: colors.surface }}>
+          <TouchableOpacity onPress={() => setActiveArticle(null)}><Text style={{ color: colors.primary }}>Fermer</Text></TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: '700' }}>{activeArticle.title}</Text>
+          <Text selectable style={{ fontSize: 16, lineHeight: 24 }}>{activeArticle.content}</Text>
+        </ScrollView>
+      </Modal>}
       {activeCourse && (
         <CourseDetailModal
           course={activeCourse}
           onClose={() => setActiveCourse(null)}
           onStepComplete={handleStepComplete}
+          error={error}
         />
       )}
     </View>

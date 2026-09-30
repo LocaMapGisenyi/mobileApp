@@ -57,8 +57,6 @@ const ResetPasswordScreen = () => {
     try {
       await authService.forgotPassword(email.trim());
       setEmailSent(true);
-      // Defer play until after state update so LottieView is mounted with speed=1
-      setTimeout(() => lottieRef.current?.play(), 50);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t('common.unknownError'));
     } finally {
@@ -204,11 +202,11 @@ const ResetPasswordScreen = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0A2E2E',
+    backgroundColor: '#363636',
   },
   hero: {
     height: 260,
-    backgroundColor: '#0A2E2E',
+    backgroundColor: '#363636',
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 24,
@@ -247,7 +245,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#5A7878',
+    color: '#62685F',
     lineHeight: 22,
     marginBottom: 24,
     textAlign: 'center',
@@ -267,13 +265,13 @@ const styles = StyleSheet.create({
   errorBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#C1440E',
+    color: '#B43C2E',
     lineHeight: 18,
   },
   submitBtn: {
     height: 52,
     borderRadius: 10,
-    backgroundColor: '#0D6E6E',
+    backgroundColor: '#467434',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -295,13 +293,13 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#0F1F1F',
+    color: '#363636',
     textAlign: 'center',
     marginBottom: 12,
   },
   successSubtitle: {
     fontSize: 15,
-    color: '#5A7878',
+    color: '#62685F',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,

@@ -25,6 +25,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { useUserStore } from '../store/user';
+import { supabase } from '../lib/supabase';
 import {
   messageService,
   HostConversation,
@@ -160,24 +161,67 @@ const HostMessagesScreen = () => {
   const [reporting, setReporting] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  const activeIdRef = useRef<string | null>(null);
+  const accountRef = useRef(currentUserId);
+  accountRef.current = currentUserId;
+  const merge = (rows: HostMessage[]) => [...new Map(rows.map(row => [row.id, row])).values()]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  useEffect(() => {
+    setConversations([]); setMessages([]); setActiveConv(null); setDraft(''); setNextCursor(null);
+    activeIdRef.current = null;
+  }, [currentUserId]);
+  useEffect(() => { activeIdRef.current = activeConv?.id ?? null; }, [activeConv?.id]);
 
   // ── Load conversations ─────────────────────────────────────────────────────
   const loadConversations = useCallback(async () => {
     try {
       setListError(null);
       const data = await messageService.getHostConversations(filter);
+      if (accountRef.current !== currentUserId) return;
       setConversations(Array.isArray(data) ? data : []);
-    } catch {
-      setListError(t('hostMessages.title'));
+    } catch (failure) {
+      setListError(failure instanceof Error ? failure.message : 'Chargement des messages impossible.');
     } finally {
       setLoadingList(false);
     }
-  }, [filter, t]);
+  }, [filter, currentUserId]);
 
   useEffect(() => {
     setLoadingList(true);
     loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase.channel(`host-inbox-${currentUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${currentUserId}` }, () => void loadConversations())
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') void loadConversations();
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setListError('Connexion interrompue. Actualisez les messages.');
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [currentUserId, loadConversations]);
+  useEffect(() => {
+    const id = activeConv?.id;
+    if (!id || !currentUserId) return;
+    let active = true;
+    const refresh = async (markRead = false) => {
+      try {
+        const page = await messageService.getHostMessages(id);
+        if (!active || accountRef.current !== currentUserId) return;
+        setMessages(previous => merge([...previous, ...page.messages]));
+        setListError(null);
+        if (markRead) await messageService.markHostConversationRead(id);
+      } catch (failure) { if (active) setListError(failure instanceof Error ? failure.message : 'Actualisation impossible.'); }
+    };
+    const channel = supabase.channel(`host-conversation-${currentUserId}-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` }, payload => void refresh(payload.eventType === 'INSERT'))
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') void refresh(true);
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setListError('Connexion interrompue. Rouvrez la conversation pour actualiser.');
+      });
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [activeConv?.id, currentUserId]);
 
   // ── Load templates once ────────────────────────────────────────────────────
   useEffect(() => {
@@ -188,27 +232,29 @@ const HostMessagesScreen = () => {
 
   // ── Open conversation ──────────────────────────────────────────────────────
   const openConversation = useCallback(async (conv: HostConversation) => {
+    activeIdRef.current = conv.id;
     setActiveConv(conv);
     setMessages([]);
     setNextCursor(null);
     setLoadingMessages(true);
     try {
       const { messages: msgs, nextCursor: nc } = await messageService.getHostMessages(conv.id);
+      if (activeIdRef.current !== conv.id || accountRef.current !== currentUserId) return;
       setMessages(Array.isArray(msgs) ? msgs : []);
       setNextCursor(nc);
       // Mark as read
       if (conv.unreadCount > 0) {
-        await messageService.markHostConversationRead(conv.id).catch(() => {});
+        await messageService.markHostConversationRead(conv.id);
         setConversations(prev =>
           prev.map(c => c.id === conv.id ? { ...c, unreadCount: 0 } : c),
         );
       }
-    } catch {
-      /* show empty */
+    } catch (failure) {
+      setListError(failure instanceof Error ? failure.message : 'Chargement impossible.');
     } finally {
       setLoadingMessages(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   // ── Load more (pagination) ─────────────────────────────────────────────────
   const loadMore = useCallback(async () => {
@@ -217,9 +263,10 @@ const HostMessagesScreen = () => {
     try {
       const { messages: older, nextCursor: nc } =
         await messageService.getHostMessages(activeConv.id, nextCursor);
-      setMessages(prev => [...(Array.isArray(older) ? older : []), ...prev]);
+      if (activeIdRef.current !== activeConv.id || accountRef.current !== currentUserId) return;
+      setMessages(prev => merge([...(Array.isArray(older) ? older : []), ...prev]));
       setNextCursor(nc);
-    } catch {/* silent */} finally {
+    } catch (failure) { setListError(failure instanceof Error ? failure.message : 'Chargement impossible.'); } finally {
       setLoadingMore(false);
     }
   }, [activeConv, nextCursor, loadingMore]);
@@ -245,8 +292,10 @@ const HostMessagesScreen = () => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     try {
       const sent = await messageService.sendHostMessage(activeConv.id, content);
-      setMessages(prev => prev.map(m => m.id === optimistic.id ? sent : m));
-    } catch {
+      if (activeIdRef.current !== activeConv.id || accountRef.current !== currentUserId) return;
+      setMessages(prev => merge([...prev.filter(m => m.id !== optimistic.id), sent]));
+    } catch (failure) {
+      setListError(failure instanceof Error ? failure.message : 'Message non envoyé. Réessayez.');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
       setDraft(content);
     } finally {
@@ -279,9 +328,11 @@ const HostMessagesScreen = () => {
   // ── Archive ────────────────────────────────────────────────────────────────
   const handleArchive = async () => {
     if (!activeConv) return;
-    await messageService.archiveHostConversation(activeConv.id).catch(() => {});
-    setConversations(prev => prev.filter(c => c.id !== activeConv.id));
-    setActiveConv(null);
+    try {
+      await messageService.archiveHostConversation(activeConv.id);
+      setConversations(prev => prev.filter(c => c.id !== activeConv.id));
+      setActiveConv(null);
+    } catch (failure) { setListError(failure instanceof Error ? failure.message : 'Archivage impossible.'); }
   };
 
   // ── Report ─────────────────────────────────────────────────────────────────
@@ -292,7 +343,7 @@ const HostMessagesScreen = () => {
       await messageService.reportMessage(activeConv.id, reportCategory);
       setReportVisible(false);
       setActiveConv(null);
-    } catch {/* silent */} finally {
+    } catch (failure) { setListError(failure instanceof Error ? failure.message : 'Signalement non envoyé.'); } finally {
       setReporting(false);
     }
   };
@@ -348,6 +399,7 @@ const HostMessagesScreen = () => {
           </View>
         </View>
 
+        {!!listError && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{listError}</Text>}
         {/* Messages */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}

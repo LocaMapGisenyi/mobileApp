@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  StatusBar, 
-  Share
-} from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, Share, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Divider, IconButton, useTheme, ActivityIndicator } from 'react-native-paper';
+import { Text, Divider, IconButton, useTheme } from 'react-native-paper';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';

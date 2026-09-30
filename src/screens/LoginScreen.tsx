@@ -1,106 +1,81 @@
 import React, { useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  ScrollView,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
-  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigation/AuthNavigator';
-import { Ionicons } from '@expo/vector-icons';
-import { useUserStore } from '../store/user';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
-import { colors, spacing, typography, borderRadius } from '../theme';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../navigation/AuthNavigator';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useUserStore } from '../store/user';
+import { colors } from '../theme';
 import TextInputField from '../components/TextInputField';
-import LottieView from 'lottie-react-native';
 
-type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
-
-const DEEP = '#0A2E2E';
-const SURFACE = '#FFFFFF';
-const BG = '#F3F8F8';
-const INK = '#0F1F1F';
-const INK_SUBTLE = '#5A7878';
-const BORDER = '#D0E8E8';
-const ERROR = '#C1440E';
-const PRIMARY = '#0D6E6E';
-
-const LoginScreen = () => {
-  const navigation = useNavigation<LoginNav>();
+export default function LoginScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'Login'>>();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const login = useUserStore(s => s.actions.login);
-
   const passwordRef = useRef<TextInput>(null);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const sending=useRef(false);
   const [error, setError] = useState('');
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [passwordTouched, setPasswordTouched] = useState(false);
-
-  const handleLogin = async () => {
-    setEmailTouched(true);
-    setPasswordTouched(true);
+  const [touched, setTouched] = useState(false);
+  const submit = async () => {
+    if(sending.current)return;
+    setTouched(true);
     if (!email.trim() || !password.trim()) {
       setError(t('errors.requiredField'));
       return;
     }
-    setLoading(true);
+    sending.current=true; setLoading(true);
     setError('');
     try {
       await login(email.trim(), password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.invalidCredentials'));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t('errors.invalidCredentials'));
     } finally {
+      sending.current=false;
       setLoading(false);
     }
   };
-
-  // OAuth not yet configured — stub kept for future wiring
-  const handleSocialLogin = (_provider: 'google' | 'facebook') => {};
-
   return (
-    <View style={styles.root}>
-      {/* ── Top zone: deep background + Lottie + wordmark ── */}
-      <Animated.View
-        entering={FadeIn.duration(600)}
-        style={[styles.topZone, { paddingTop: insets.top + 8 }]}
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          s.scroll,
+          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 },
+        ]}
       >
-        <LottieView
-          source={require('../assets/lottie/login.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
-        <View style={styles.wordmarkRow}>
-          <Text style={styles.wordmark}>LocaMap</Text>
-          <Text style={styles.tagline}>{t('auth.loginSubtitle')}</Text>
-        </View>
-      </Animated.View>
-
-      {/* ── Bottom zone: white form sheet ── */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.kvav}
-      >
-        <ScrollView
-          style={styles.sheet}
-          contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Email */}
-          <Animated.View entering={FadeInUp.delay(60).duration(400)}>
+        <View style={s.content}>
+          <View style={s.brand}>
+            <View style={s.mark}>
+              <MaterialIcons name="roofing" size={32} color={colors.onAccent} />
+            </View>
+            <Text style={s.wordmark}>
+              Loca<Text style={s.green}>Map</Text>
+            </Text>
+          </View>
+          <View style={s.headingBlock}>
+            <Text accessibilityRole="header" style={s.heading}>
+              {t('auth.login')}
+            </Text>
+            <Text style={s.subtitle}>{t('auth.loginSubtitle')}</Text>
+          </View>
+          <View style={s.form}>
             <TextInputField
               label={t('auth.email')}
               value={email}
@@ -110,16 +85,12 @@ const LoginScreen = () => {
               autoCapitalize="none"
               autoComplete="email"
               returnKeyType="next"
-              placeholder="votre@email.com"
-              touched={emailTouched}
-              error={emailTouched && !email.trim() ? t('errors.requiredField') : ''}
+              placeholder={t('auth.emailPlaceholder')}
+              touched={touched}
+              error={touched && !email.trim() ? t('errors.requiredField') : ''}
               onSubmitEditing={() => passwordRef.current?.focus()}
-              blurOnSubmit={false}
+              editable={!loading}
             />
-          </Animated.View>
-
-          {/* Password */}
-          <Animated.View entering={FadeInUp.delay(120).duration(400)}>
             <TextInputField
               ref={passwordRef}
               label={t('auth.password')}
@@ -128,274 +99,120 @@ const LoginScreen = () => {
               icon="lock-outline"
               secureTextEntry
               returnKeyType="done"
-              onSubmitEditing={handleLogin}
-              placeholder="••••••••"
-              touched={passwordTouched}
-              error={passwordTouched && !password.trim() ? t('errors.requiredField') : ''}
+              onSubmitEditing={() => void submit()}
+              placeholder={t('auth.passwordPlaceholder')}
+              touched={touched}
+              error={touched && !password.trim() ? t('errors.requiredField') : ''}
+              editable={!loading}
             />
-          </Animated.View>
-
-          {/* Forgot password */}
-          <Animated.View entering={FadeInUp.delay(180).duration(400)}>
-            <TouchableOpacity
-              style={styles.forgotRow}
+            <Pressable
               onPress={() => navigation.navigate('ResetPassword')}
               accessibilityRole="button"
+              style={s.forgot}
             >
-              <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Error banner */}
-          {error ? (
-            <Animated.View entering={FadeIn.duration(250)} style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={16} color={ERROR} />
-              <Text style={styles.errorText}>{error}</Text>
-            </Animated.View>
-          ) : null}
-
-          {/* Login button */}
-          <Animated.View entering={FadeInUp.delay(240).duration(400)}>
-            <TouchableOpacity
-              style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-              onPress={handleLogin}
+              <Text style={s.link}>{t('auth.forgotPassword')}</Text>
+            </Pressable>
+            {!!error && (
+              <View style={s.error}>
+                <MaterialIcons name="error-outline" size={20} color={colors.error} />
+                <Text accessibilityRole="alert" style={s.errorText}>
+                  {error}
+                </Text>
+              </View>
+            )}
+            <Pressable
               disabled={loading}
-              activeOpacity={0.82}
               accessibilityRole="button"
+              accessibilityState={{ disabled: loading, busy: loading }}
+              onPress={() => void submit()}
+              style={({ pressed }) => [s.submit, pressed && s.pressed, loading && s.disabled]}
             >
               {loading ? (
-                <ActivityIndicator color={SURFACE} size="small" />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
-                <Text style={styles.primaryBtnLabel}>{t('auth.login')}</Text>
+                <>
+                  <Text style={s.submitText}>{t('auth.login')}</Text>
+                  <MaterialIcons name="arrow-forward" size={21} color={colors.onAccent} />
+                </>
               )}
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Divider */}
-          <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerLabel}>{t('common.or')}</Text>
-            <View style={styles.dividerLine} />
-          </Animated.View>
-
-          {/* Social buttons */}
-          <Animated.View entering={FadeInUp.delay(360).duration(400)} style={styles.socialRow}>
-            <TouchableOpacity
-              style={styles.socialGoogle}
-              onPress={() => handleSocialLogin('google')}
-              activeOpacity={0.82}
-              accessibilityRole="button"
-              accessibilityLabel="Google"
-            >
-              <Ionicons name="logo-google" size={18} color={PRIMARY} />
-              <Text style={styles.socialGoogleLabel}>Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.socialFacebook}
-              onPress={() => handleSocialLogin('facebook')}
-              activeOpacity={0.82}
-              accessibilityRole="button"
-              accessibilityLabel="Facebook"
-            >
-              <Ionicons name="logo-facebook" size={18} color={SURFACE} />
-              <Text style={styles.socialFacebookLabel}>Facebook</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Register link */}
-          <Animated.View entering={FadeInUp.delay(420).duration(400)} style={styles.registerRow}>
-            <Text style={styles.registerPrompt}>{t('auth.noAccount')}</Text>
-            <TouchableOpacity
+            </Pressable>
+          </View>
+          <View style={s.register}>
+            <Text style={s.subtitle}>{t('auth.noAccount')}</Text>
+            <Pressable
               onPress={() => navigation.navigate('Register')}
               accessibilityRole="button"
+              style={s.registerButton}
             >
-              <Text style={styles.registerLink}>{t('auth.register')}</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+              <Text style={s.link}>{t('auth.register')}</Text>
+            </Pressable>
+          </View>
+          <View style={s.location}>
+            <MaterialIcons name="place" size={18} color={colors.primary} />
+            <Text style={s.locationText}>{t('explore.locationGisenyi')}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-};
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: DEEP,
-  },
-
-  // ─── Top zone ────────────────────────────────────────────────────────────────
-  topZone: {
-    flex: 0.42,
-    minHeight: 160,
-    backgroundColor: DEEP,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-    overflow: 'hidden',
-  },
-  lottie: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  wordmarkRow: {
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  wordmark: {
-    fontSize: typography.fontSize['3xl'],
-    fontWeight: '800',
-    color: SURFACE,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: typography.fontSize.sm,
-    color: 'rgba(255,255,255,0.72)',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-
-  // ─── Bottom sheet ─────────────────────────────────────────────────────────────
-  kvav: {
-    flex: 1,
-  },
-  sheet: {
-    flex: 1,
-    backgroundColor: SURFACE,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-  },
-  sheetContent: {
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[6],
-  },
-
-  // ─── Forgot password ──────────────────────────────────────────────────────────
-  forgotRow: {
-    alignSelf: 'flex-end',
-    marginTop: -spacing[2],
-    marginBottom: spacing[4],
-  },
-  forgotText: {
-    fontSize: typography.fontSize.sm,
-    color: PRIMARY,
-    fontWeight: '500',
-  },
-
-  // ─── Error banner ─────────────────────────────────────────────────────────────
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: '#FFF1F0',
-    borderWidth: 1,
-    borderColor: ERROR,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[3],
-    marginBottom: spacing[4],
-  },
-  errorText: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: ERROR,
-  },
-
-  // ─── Primary button ───────────────────────────────────────────────────────────
-  primaryBtn: {
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: PRIMARY,
+}
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 },
+  content: { width: '100%', maxWidth: 460, alignSelf: 'center' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 36 },
+  mark: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing[5],
   },
-  primaryBtnDisabled: {
-    opacity: 0.65,
-  },
-  primaryBtnLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-    color: SURFACE,
-    letterSpacing: 0.2,
-  },
-
-  // ─── Divider ──────────────────────────────────────────────────────────────────
-  dividerRow: {
+  wordmark: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
+  green: { color: colors.primary },
+  headingBlock: { gap: 10, marginBottom: 28 },
+  heading: { fontSize: 30, lineHeight: 38, fontWeight: '700', color: colors.ink },
+  subtitle: { fontSize: 16, lineHeight: 24, color: colors.inkSubtle },
+  form: { gap: 2 },
+  forgot: { minHeight: 44, alignSelf: 'flex-end', justifyContent: 'center', marginBottom: 12 },
+  link: { fontSize: 15, fontWeight: '600', color: colors.primaryDark },
+  error: {
+    padding: 14,
+    backgroundColor: '#FFF0ED',
+    borderRadius: 12,
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[4],
+    gap: 10,
+    marginBottom: 16,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: BORDER,
-  },
-  dividerLabel: {
-    paddingHorizontal: spacing[3],
-    fontSize: typography.fontSize.sm,
-    color: INK_SUBTLE,
-  },
-
-  // ─── Social buttons ───────────────────────────────────────────────────────────
-  socialRow: {
+  errorText: { flex: 1, fontSize: 14, lineHeight: 21, color: colors.error },
+  submit: {
+    backgroundColor: colors.accent,
+    minHeight: 54,
+    borderRadius: 12,
     flexDirection: 'row',
-    gap: spacing[3],
-    marginBottom: spacing[5],
-  },
-  socialGoogle: {
-    flex: 1,
-    flexDirection: 'row',
+    gap: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    backgroundColor: SURFACE,
-    gap: spacing[2],
   },
-  socialGoogleLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '600',
-    color: PRIMARY,
-  },
-  socialFacebook: {
-    flex: 1,
+  submitText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
+  pressed: { opacity: 0.8 },
+  disabled: { opacity: 0.6 },
+  register: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: '#1877F2',
-    gap: spacing[2],
+    columnGap: 8,
+    marginTop: 20,
   },
-  socialFacebookLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '600',
-    color: SURFACE,
-  },
-
-  // ─── Register link ────────────────────────────────────────────────────────────
-  registerRow: {
+  registerButton: { minHeight: 44, justifyContent: 'center' },
+  location: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    gap: 5,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    marginTop: 28,
   },
-  registerPrompt: {
-    fontSize: typography.fontSize.sm,
-    color: INK_SUBTLE,
-  },
-  registerLink: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '700',
-    color: PRIMARY,
-  },
+  locationText: { fontSize: 13, color: colors.inkSubtle },
 });
-
-export default LoginScreen;

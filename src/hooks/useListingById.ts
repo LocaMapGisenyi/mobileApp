@@ -1,34 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Property } from '../types';
-import { useSearchStore } from '../store/search';
+import { propertyService } from '../services/api/property.service';
+import { useUserStore } from '../store/user';
 
-/**
- * Hook personnalisé pour récupérer les détails d'un logement à partir de son ID
- *
- * @param id - L'identifiant du logement à récupérer
- * @returns Un objet contenant le logement, l'état de chargement et les erreurs éventuelles
- */
 const useListingById = (id: string | undefined) => {
-  const { listings } = useSearchStore();
+  const userId = useUserStore(state => state.user.id);
   const [listing, setListing] = useState<Property | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    if (!id) {
-      setError('ID du logement non défini');
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    const found = listings.find(l => l.id === id) ?? null;
-    setListing(found);
-    setError(found ? null : 'Logement non trouvé');
-    setIsLoading(false);
-  }, [id, listings]);
-
+    let cancelled = false;
+    setListing(null); setError(null); setIsLoading(true);
+    if (!id) { setError('ID du logement non défini'); setIsLoading(false); return; }
+    propertyService.getById(id).then(result => {
+      if (!cancelled) setListing(result);
+    }).catch(reason => {
+      if (!cancelled) setError(reason?.message ?? String(reason));
+    }).finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [id, userId]);
   return { listing, isLoading, error };
 };
-
-export default useListingById; 
+export default useListingById;

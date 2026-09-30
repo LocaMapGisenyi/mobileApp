@@ -7,6 +7,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+public/maplibre/
 
 # Native
 .kotlin/
@@ -32,7 +33,11 @@ yarn-error.*
 # local env files
 .env
 .env*.local
-.env.example
+!.env.example
+coverage/
+supabase/.temp/
+credentials.json
+backups/
 
 # typescript
 *.tsbuildinfo

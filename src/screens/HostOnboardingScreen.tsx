@@ -36,14 +36,12 @@ import { RootStackParamList } from '../types';
 import {
   useHostOnboardingStore,
   PropertyType,
-  PaymentMethod,
 } from '../store/hostOnboarding';
 import { colors, spacing, typography, borderRadius } from '../theme';
 
 // ─── Lottie sources ───────────────────────────────────────────────────────────
 const LOTTIE_SOURCES: Record<string, any> = {
   welcome: require('../assets/lottie/welcome.json'),
-  wallet:  require('../assets/lottie/wallet.json'),
   success: require('../assets/lottie/success.json'),
 };
 
@@ -140,13 +138,6 @@ const prog = StyleSheet.create({
   },
 });
 
-// ─── Static payment options (label/sub resolved inside component) ─────────────
-const PAYMENT_OPTION_DEFS: { id: PaymentMethod; color: string; icon: string }[] = [
-  { id: 'mtn_momo',     color: '#FFCC00', icon: 'smartphone' },
-  { id: 'airtel_money', color: '#E4002B', icon: 'smartphone' },
-  { id: 'bank',         color: colors.primary, icon: 'account-balance' },
-];
-
 // ─── KYC Upload Card ──────────────────────────────────────────────────────────
 const KycUploadCard = ({
   label,
@@ -162,10 +153,14 @@ const KycUploadCard = ({
   onPick: () => Promise<void>;
 }) => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handlePress = async () => {
     setLoading(true);
-    try { await onPick(); } finally { setLoading(false); }
+    setError('');
+    try { await onPick(); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Sélection du document impossible.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -182,6 +177,7 @@ const KycUploadCard = ({
         </View>
       )}
       <View style={{ flex: 1 }}>
+        {!!error && <Text accessibilityRole="alert" style={{ color: colors.error }}>{error}</Text>}
         <Text style={kyc.label}>{label}</Text>
         <Text style={kyc.desc}>{description}</Text>
       </View>
@@ -211,9 +207,12 @@ const kyc = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function HostOnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { step, data, nextStep, prevStep, updateData, togglePropertyType, togglePaymentMethod, complete } =
+  const { step, data, nextStep, prevStep, updateData, togglePropertyType, complete } =
     useHostOnboardingStore();
   const { t } = useTranslation();
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef=useRef(false);
+  const [submitError, setSubmitError] = useState('');
 
   const { width } = useWindowDimensions();
   const dirRef = useRef<'forward' | 'back'>('forward');
@@ -224,7 +223,7 @@ export default function HostOnboardingScreen() {
     t('hostOnboarding.stepIdentity'),
     t('hostOnboarding.stepKyc'),
     t('hostOnboarding.stepProperty'),
-    t('hostOnboarding.stepPayment'),
+    t('hostOnboarding.stepLaunch'),
     t('hostOnboarding.stepConfirmed'),
   ];
 
@@ -237,24 +236,22 @@ export default function HostOnboardingScreen() {
     { id: 'room',      label: t('hostOnboarding.typeChambre'),      icon: 'bed',        desc: t('hostOnboarding.typeChambreDesc') },
   ];
 
-  // Translated payment options
-  const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; color: string; icon: string; sub: string }[] = [
-    { id: 'mtn_momo',     label: 'MTN MoMo',                  color: '#FFCC00',      icon: 'smartphone',      sub: t('hostOnboarding.mtnSub') },
-    { id: 'airtel_money', label: 'Airtel Money',              color: '#E4002B',      icon: 'smartphone',      sub: t('hostOnboarding.airtelSub') },
-    { id: 'bank',         label: t('hostOnboarding.bankName'),     color: colors.primary, icon: 'account-balance', sub: t('hostOnboarding.bankSub') },
-  ];
-
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
+    if (submittingRef.current) return;
     dirRef.current = 'forward';
     if (step === 6) {
       navigation.replace('HostDashboard');
     } else {
-      if (step === 3) {
-        updateData({ kycStatus: 'submitted' });
+      if (step === 5) {
+        submittingRef.current=true;
+        setSubmitting(true); setSubmitError('');
+        try { await complete(); }
+        catch (error) { setSubmitError(error instanceof Error ? error.message : 'Dossier non envoyé. Réessayez.'); return; }
+        finally { submittingRef.current=false; setSubmitting(false); }
       }
       nextStep();
     }
-  }, [step, nextStep, updateData, navigation]);
+  }, [step, nextStep, complete, navigation, submitting]);
 
   const handleBack = useCallback(() => {
     if (step === 1) {
@@ -280,15 +277,16 @@ export default function HostOnboardingScreen() {
       data.kycIdBack !== null
     );
     if (step === 4) return data.propertyTypes.length > 0;
-    if (step === 5) {
-      if (data.paymentMethods.length === 0) return false;
-      if (data.paymentMethods.includes('mtn_momo') && !data.mtnNumber.trim()) return false;
-      if (data.paymentMethods.includes('airtel_money') && !data.airtelNumber.trim()) return false;
-      if (data.paymentMethods.includes('bank') && (!data.bankName.trim() || !data.bankAccount.trim())) return false;
-      return true;
-    }
     return true;
   })();
+
+  const continueLabel = submitting
+    ? t('hostOnboarding.submitting')
+    : step === 6
+      ? t('hostOnboarding.goToDashboard')
+      : step === 5
+        ? t('hostOnboarding.finish')
+        : t('hostOnboarding.continue');
 
   const entering = dirRef.current === 'forward'
     ? FadeInRight.duration(280).easing(Easing.out(Easing.quad))
@@ -332,7 +330,7 @@ export default function HostOnboardingScreen() {
               <Text style={s.stepSubtitle}>{t('hostOnboarding.step1Subtitle')}</Text>
               <View style={s.benefitsList}>
                 {[
-                  { icon: 'payments',       text: t('hostOnboarding.benefit1') },
+                  { icon: 'event-available',       text: t('hostOnboarding.benefit1') },
                   { icon: 'verified-user',  text: t('hostOnboarding.benefit2') },
                   { icon: 'support-agent',  text: t('hostOnboarding.benefit3') },
                 ].map((b, i) => (
@@ -425,6 +423,8 @@ export default function HostOnboardingScreen() {
                 icon="face"
                 uri={data.kycSelfie}
                 onPick={async () => {
+                  const permission = await ImagePicker.requestCameraPermissionsAsync();
+                  if (!permission.granted) throw new Error('Autorisez la caméra pour prendre votre photo.');
                   const result = await ImagePicker.launchCameraAsync({
                     mediaTypes: ['images'],
                     allowsEditing: true,
@@ -525,105 +525,17 @@ export default function HostOnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 5 : Paiement ── */}
+          {/* ── STEP 5 : Fonctionnement au lancement ── */}
           {step === 5 && (
             <View style={s.formStep}>
               <View style={s.lottieRow}>
-                <LottieAnim name="wallet" size={100} />
+                <MaterialIcons name="event-available" size={64} color={colors.primary} />
               </View>
-              <Text style={s.stepTitle}>{t('hostOnboarding.step4Title')}</Text>
-              <Text style={s.stepSubtitle}>{t('hostOnboarding.step4Subtitle')}</Text>
-
-              {PAYMENT_OPTIONS.map((opt) => {
-                const selected = data.paymentMethods.includes(opt.id);
-                return (
-                  <View key={opt.id}>
-                    <TouchableOpacity
-                      style={[s.payCard, selected && s.payCardActive]}
-                      onPress={() => togglePaymentMethod(opt.id)}
-                      activeOpacity={0.85}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                    >
-                      <View style={[s.payIconWrap, { backgroundColor: opt.color + '22' }]}>
-                        <MaterialIcons name={opt.icon as any} size={24} color={opt.color} />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: spacing[3] }}>
-                        <Text style={s.payLabel}>{opt.label}</Text>
-                        <Text style={s.paySub}>{opt.sub}</Text>
-                      </View>
-                      <View style={[s.payCheck, selected && s.payCheckActive]}>
-                        {selected && <MaterialIcons name="check" size={14} color={colors.white} />}
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Champs conditionnels */}
-                    {selected && opt.id === 'mtn_momo' && (
-                      <View style={s.subField}>
-                        <Text style={s.fieldLabel}>{t('hostOnboarding.mtnNumber')}</Text>
-                        <View style={s.phoneRow}>
-                          <View style={s.phonePrefix}>
-                            <Text style={s.phonePrefixText}>+250</Text>
-                          </View>
-                          <TextInput
-                            style={[s.input, s.phoneInput]}
-                            value={data.mtnNumber}
-                            onChangeText={(v) => updateData({ mtnNumber: v })}
-                            placeholder="78 XXX XXXX"
-                            placeholderTextColor={colors.inkDisabled}
-                            keyboardType="phone-pad"
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {selected && opt.id === 'airtel_money' && (
-                      <View style={s.subField}>
-                        <Text style={s.fieldLabel}>{t('hostOnboarding.airtelNumber')}</Text>
-                        <View style={s.phoneRow}>
-                          <View style={s.phonePrefix}>
-                            <Text style={s.phonePrefixText}>+250</Text>
-                          </View>
-                          <TextInput
-                            style={[s.input, s.phoneInput]}
-                            value={data.airtelNumber}
-                            onChangeText={(v) => updateData({ airtelNumber: v })}
-                            placeholder="73 XXX XXXX"
-                            placeholderTextColor={colors.inkDisabled}
-                            keyboardType="phone-pad"
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {selected && opt.id === 'bank' && (
-                      <View style={s.subField}>
-                        <Text style={s.fieldLabel}>{t('hostOnboarding.bankNameField')}</Text>
-                        <TextInput
-                          style={s.input}
-                          value={data.bankName}
-                          onChangeText={(v) => updateData({ bankName: v })}
-                          placeholder={t('hostOnboarding.bankNamePlaceholder')}
-                          placeholderTextColor={colors.inkDisabled}
-                        />
-                        <Text style={[s.fieldLabel, { marginTop: spacing[3] }]}>{t('hostOnboarding.bankAccount')}</Text>
-                        <TextInput
-                          style={s.input}
-                          value={data.bankAccount}
-                          onChangeText={(v) => updateData({ bankAccount: v })}
-                          placeholder="XXXX XXXX XXXX"
-                          placeholderTextColor={colors.inkDisabled}
-                          keyboardType="numeric"
-                        />
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-
+              <Text style={s.stepTitle}>{t('hostOnboarding.launchTitle')}</Text>
+              <Text style={s.stepSubtitle}>{t('hostOnboarding.launchDescription')}</Text>
               <View style={s.infoBox}>
-                <MaterialIcons name="lock-outline" size={16} color={colors.inkSubtle} />
-                <Text style={s.infoText}>{t('hostOnboarding.paymentSecurityInfo')}</Text>
+                <MaterialIcons name="info-outline" size={18} color={colors.inkMid} />
+                <Text style={s.launchInfo}>{t('hostOnboarding.launchPaymentInfo')}</Text>
               </View>
             </View>
           )}
@@ -654,14 +566,6 @@ export default function HostOnboardingScreen() {
                   </View>
                 )}
                 <View style={s.summaryRow}>
-                  <MaterialIcons name="account-balance-wallet" size={18} color={colors.primary} />
-                  <Text style={s.summaryText}>
-                    {data.paymentMethods.map(m =>
-                      PAYMENT_OPTIONS.find(p => p.id === m)?.label
-                    ).join(' · ')}
-                  </Text>
-                </View>
-                <View style={s.summaryRow}>
                   <MaterialIcons name="hourglass-empty" size={18} color={colors.warning} />
                   <Text style={[s.summaryText, { color: colors.warning }]}>
                     {t('hostOnboarding.kycPending')}
@@ -676,30 +580,21 @@ export default function HostOnboardingScreen() {
 
       {/* Footer CTA */}
       <View style={s.footer}>
+        {!!submitError && <Text accessibilityRole="alert" style={{ color: colors.error, marginBottom: 12 }}>{submitError}</Text>}
         <TouchableOpacity
           style={[s.ctaBtn, !canContinue && s.ctaBtnDisabled]}
-          onPress={canContinue ? handleNext : undefined}
+          onPress={canContinue && !submitting ? handleNext : undefined}
+          disabled={!canContinue || submitting}
           activeOpacity={canContinue ? 0.85 : 1}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !canContinue }}
-          accessibilityLabel={step === 5 ? t('hostOnboarding.goToDashboard') : t('hostOnboarding.continue')}
+          accessibilityState={{ disabled: !canContinue || submitting, busy: submitting }}
+          accessibilityLabel={continueLabel}
         >
           <Text style={s.ctaText}>
-            {step === 6
-              ? t('hostOnboarding.goToDashboard')
-              : step === 3
-                ? t('hostOnboarding.submitKyc')
-                : step === 5
-                  ? t('hostOnboarding.finish')
-                  : t('hostOnboarding.continue')}
+            {continueLabel}
           </Text>
-          {step < 6 && <MaterialIcons name="arrow-forward" size={20} color={colors.white} style={{ marginLeft: 8 }} />}
+          {step < 6 && <MaterialIcons name="arrow-forward" size={20} color={colors.onAccent} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
-        {step > 1 && step < 6 && (
-          <Text style={s.skipText} onPress={handleNext}>
-            {t('hostOnboarding.skip')}
-          </Text>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -865,6 +760,12 @@ const s = StyleSheet.create({
     marginTop: spacing[2],
     marginBottom: spacing[4],
   },
+  launchInfo: {
+    flex: 1,
+    fontSize: typography.fontSize.base,
+    color: colors.inkMid,
+    lineHeight: 22,
+  },
   infoText: {
     flex: 1,
     fontSize: typography.fontSize.xs,
@@ -957,60 +858,6 @@ const s = StyleSheet.create({
     color: colors.ink,
   },
 
-  // Payment cards
-  payCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: borderRadius.card,
-    padding: spacing[4],
-    marginBottom: spacing[3],
-    backgroundColor: colors.surface,
-  },
-  payCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  payIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  payLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-  paySub: {
-    fontSize: typography.fontSize.xs,
-    color: colors.inkSubtle,
-    marginTop: 2,
-  },
-  payCheck: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  payCheckActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  subField: {
-    marginLeft: spacing[4],
-    marginTop: -spacing[1],
-    marginBottom: spacing[3],
-    paddingLeft: spacing[4],
-    borderLeftWidth: 2,
-    borderLeftColor: colors.border,
-  },
-
   // Summary card (step 5)
   summaryCard: {
     width: '100%',
@@ -1045,7 +892,7 @@ const s = StyleSheet.create({
   },
   ctaBtn: {
     height: 54,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1057,7 +904,7 @@ const s = StyleSheet.create({
   ctaText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.onAccent,
   },
   skipText: {
     textAlign: 'center',

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Share,
-  Platform,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
@@ -147,7 +147,7 @@ const ReferralCard = ({ entry }: { entry: ReferralEntry }) => {
           <Text style={rc.avatarTxt}>{entry.refereeName.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={rc.name}>{entry.refereeName}</Text>
+          <Text style={rc.name}>{entry.refereeName || 'Membre parrainé'}</Text>
           <Text style={rc.date}>Depuis le {formatDate(entry.startedAt)}</Text>
         </View>
         {isComplete && (
@@ -188,7 +188,9 @@ const HostReferralScreen = () => {
   const [credits, setCredits] = useState<ReferralCredits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [actionNote, setActionNote] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -216,11 +218,10 @@ const HostReferralScreen = () => {
     if (!refCode) return;
     const msg =
       `Rejoignez LocaMap et publiez votre logement au Rwanda !\n` +
-      `Utilisez mon code ${refCode.code} lors de votre inscription :\n${refCode.link}\n\n` +
-      `Vous bénéficiez de 0% de commission sur vos 3 premières réservations.`;
+      `Enregistrez mon code ${refCode.code} dans la page Parrainage, avant votre premier séjour terminé.`;
     try {
-      await Share.share({ message: msg, url: refCode.link, title: 'Parrainage LocaMap' });
-    } catch {/* user cancelled */}
+      await Share.share({ message: msg, title: 'Parrainage LocaMap' });
+    } catch { setActionNote('Le partage n’a pas abouti. Le code reste disponible ci-dessous.'); }
   };
 
   // ── Copy code (visual feedback via Share on mobile) ────────────────────────
@@ -228,9 +229,7 @@ const HostReferralScreen = () => {
     if (!refCode) return;
     try {
       await Share.share({ message: refCode.code });
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {/* cancelled */}
+    } catch { setActionNote('Le partage du code n’a pas abouti.'); }
   };
 
   // ─── Loading / error ───────────────────────────────────────────────────────
@@ -314,19 +313,19 @@ const HostReferralScreen = () => {
             <>
               {/* Code pill */}
               <View style={s.codePill}>
-                <Text style={s.codeText}>{refCode.code}</Text>
+                <Text style={s.codeText} selectable>{refCode.code}</Text>
                 <TouchableOpacity
-                  style={[s.copyBtn, copied && s.copyBtnDone]}
+                  style={s.copyBtn}
                   onPress={handleCopyCode}
                   activeOpacity={0.8}
                 >
                   <MaterialIcons
-                    name={copied ? 'check' : 'content-copy'}
+                    name="share"
                     size={16}
-                    color={copied ? colors.success : colors.primary}
+                    color={colors.primary}
                   />
-                  <Text style={[s.copyTxt, copied && s.copyTxtDone]}>
-                    {copied ? t('hostReferral.copied') : t('hostReferral.copy')}
+                  <Text style={s.copyTxt}>
+                    Partager le code
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -350,6 +349,17 @@ const HostReferralScreen = () => {
         </Animated.View>
 
         {/* Rewards summary */}
+        <View style={s.rewardsCard}>
+          <Text style={s.sectionLabel}>Enregistrer le code d’un parrain</Text>
+          <TextInput value={redeemCode} onChangeText={setRedeemCode} autoCapitalize="characters" placeholder="LOCA-…" accessibilityLabel="Code de votre parrain" style={{margin:14,padding:12,borderWidth:1,borderColor:colors.border,color:colors.ink}} />
+          <TouchableOpacity disabled={!redeemCode.trim() || redeeming} style={[s.shareBtn,{margin:14,opacity:!redeemCode.trim() || redeeming?0.5:1}]} onPress={async () => {
+            setRedeeming(true); setActionNote('');
+            try { await referralService.redeemCode(redeemCode.trim()); setRedeemCode(''); setActionNote('Code de parrainage enregistré.'); }
+            catch (cause) { setActionNote(cause instanceof Error ? cause.message : 'Impossible d’enregistrer ce code.'); }
+            finally { setRedeeming(false); }
+          }}><Text style={s.shareBtnTxt}>{redeeming ? 'Enregistrement…' : 'Enregistrer le code'}</Text></TouchableOpacity>
+          {!!actionNote && <Text accessibilityLiveRegion="polite" style={[s.rewardDetail,{margin:14}]}>{actionNote}</Text>}
+        </View>
         <Animated.View entering={FadeInDown.delay(180).duration(300)} style={s.rewardsCard}>
           <Text style={s.sectionLabel}>{t('hostReferral.rewardsTitle')}</Text>
           <View style={s.rewardRow}>
@@ -358,8 +368,7 @@ const HostReferralScreen = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.rewardTitle}>{t('hostReferral.forReferrer')}</Text>
-              <Text style={s.rewardDetail}>{t('hostReferral.perReferee', { amount: '15 000 RWF' })}</Text>
-              <Text style={s.rewardDetail}>{t('hostReferral.bonusDetail')}</Text>
+              <Text style={s.rewardDetail}>Les crédits éventuels sont attribués après vérification par l’équipe. Aucun montant ni délai automatique n’est garanti.</Text>
             </View>
           </View>
           <View style={[s.rewardRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
@@ -368,7 +377,7 @@ const HostReferralScreen = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.rewardTitle}>{t('hostReferral.forReferee')}</Text>
-              <Text style={s.rewardDetail}>{t('hostReferral.refereeCommission')}</Text>
+              <Text style={s.rewardDetail}>Enregistrez le code avant votre premier séjour terminé. Aucun encaissement ni réduction automatique de commission n’est disponible.</Text>
             </View>
           </View>
         </Animated.View>
@@ -391,11 +400,11 @@ const HostReferralScreen = () => {
           <View style={s.faqCard}>
             <FaqItem
               q="Quand est-ce que je reçois mon bonus ?"
-              a="Le bonus de 15 000 RWF est crédité 7 jours après le check-in de votre filleul. Si votre filleul atteint 5 réservations dans les 90 jours suivants, +10 000 RWF supplémentaires sont ajoutés automatiquement."
+              a="Un crédit peut être attribué par l’équipe après un séjour terminé et une vérification. Le montant apparaît dans votre historique uniquement après son attribution."
             />
             <FaqItem
               q="Quelles sont les conditions pour que le bonus soit accordé ?"
-              a="Votre filleul doit : (1) s'inscrire via votre lien, (2) compléter la vérification d'identité (KYC), (3) publier au moins une annonce active, (4) réaliser sa première réservation avec check-in confirmé. Toutes les conditions doivent être remplies."
+              a="Votre filleul doit enregistrer votre code avant son premier séjour terminé. L’équipe vérifie ensuite le séjour et les conditions applicables avant toute attribution."
             />
             <FaqItem
               q="Y a-t-il une limite au nombre de parrainages ?"
@@ -403,11 +412,11 @@ const HostReferralScreen = () => {
             />
             <FaqItem
               q="Quelle est la durée de validité des crédits ?"
-              a="Les crédits de parrainage expirent 12 mois après leur attribution. Utilisez-les pour réduire les commissions sur vos propres annonces."
+              a="Les crédits attribués expirent après 12 mois. Leur utilisation pour un paiement n’est pas encore proposée dans l’application."
             />
             <FaqItem
               q="Puis-je parrainer un membre de ma famille ?"
-              a="Non. Le système détecte automatiquement les inscriptions avec la même adresse IP, le même appareil ou les mêmes informations bancaires. L'auto-parrainage est impossible."
+              a="Vous ne pouvez pas utiliser votre propre code. Pour les autres situations, contactez le support avant de compter sur un crédit."
             />
           </View>
         </Animated.View>

@@ -53,7 +53,7 @@ export const alertService = {
       .insert({
         user_id: userId,
         name: alertData.name,
-        filters: alertData.filters,
+        filters: { ...alertData.filters },
         frequency: alertData.frequency,
       })
       .select()
@@ -72,7 +72,7 @@ export const alertService = {
   updateAlert: async (id: string, alertData: Partial<Alert>): Promise<Alert> => {
     const { data, error } = await supabase
       .from('alerts')
-      .update({ name: alertData.name, filters: alertData.filters, frequency: alertData.frequency })
+      .update({ name: alertData.name, filters: alertData.filters ? { ...alertData.filters } : undefined, frequency: alertData.frequency })
       .eq('id', id)
       .select()
       .single();

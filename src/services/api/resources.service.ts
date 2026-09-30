@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type ResourceLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -52,184 +52,70 @@ export interface Course {
   steps: CourseStep[];
 }
 
-// ─── Cache keys ───────────────────────────────────────────────────────────────
-const CACHE = {
-  articles: (cat: string, lvl: string, lang: string) =>
-    `@resources_articles_${cat}_${lvl}_${lang}`,
-  article: (slug: string) => `@resources_article_${slug}`,
-  courses: '@resources_courses',
-  bookmarks: '@resources_bookmarks',
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const getCurrentUserId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-};
-
-// ─── Service ──────────────────────────────────────────────────────────────────
+async function getCurrentUserId(): Promise<string> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!user) throw new Error('Connectez-vous pour enregistrer vos ressources.');
+  return user.id;
+}
 export const resourcesService = {
-  getArticles: async (params?: {
-    category?: string;
-    level?: ResourceLevel;
-    lang?: ResourceLang;
-    search?: string;
-  }): Promise<ArticleListItem[]> => {
-    const cat = params?.category ?? '';
-    const lvl = params?.level ?? '';
-    const lang = params?.lang ?? '';
-    const cacheKey = CACHE.articles(cat, lvl, lang);
-
-    try {
-      let query = supabase
-        .from('articles')
-        .select(
-          'slug, title, summary, category, level, lang, read_minutes, published_at, thumbnail_url, has_video',
-        )
-        .order('published_at', { ascending: false });
-      if (params?.category) query = query.eq('category', params.category);
-      if (params?.level) query = query.eq('level', params.level);
-      if (params?.lang) query = query.eq('lang', params.lang);
-      if (params?.search)
-        query = query.or(
-          `title.ilike.%${params.search}%,summary.ilike.%${params.search}%`,
-        );
-      const { data, error } = await query;
-      if (error) throw error;
-      const items = (Array.isArray(data) ? data : []).map(a => ({
-        slug: a.slug,
-        title: a.title,
-        summary: a.summary ?? '',
-        category: a.category,
-        level: a.level as ResourceLevel,
-        lang: a.lang as ResourceLang,
-        readMinutes: a.read_minutes,
-        publishedAt: a.published_at,
-        thumbnailUrl: a.thumbnail_url,
-        hasVideo: a.has_video,
+  async getArticles(params?: { category?: string; level?: ResourceLevel; lang?: ResourceLang; search?: string }): Promise<ArticleListItem[]> {
+    let query = supabase.from('articles').select('slug,title,summary,category,level,lang,read_minutes,published_at,thumbnail_url,has_video').order('published_at', { ascending: false });
+    if (params?.category) query = query.eq('category', params.category);
+    if (params?.level) query = query.eq('level', params.level);
+    if (params?.lang) query = query.eq('lang', params.lang);
+    const search = params?.search?.replace(/[%_(),.]/g, ' ').trim().slice(0, 200);
+    if (search) query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map(a => ({ slug: a.slug, title: a.title, summary: a.summary ?? '', category: a.category,
+      level: a.level as ResourceLevel, lang: a.lang as ResourceLang, readMinutes: a.read_minutes,
+      publishedAt: a.published_at, thumbnailUrl: a.thumbnail_url, hasVideo: a.has_video }));
+  },
+  async getArticle(slug: string): Promise<Article | null> {
+    const { data, error } = await supabase.from('articles').select('*').eq('slug', slug).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return { slug: data.slug, title: data.title, summary: data.summary ?? '', content: data.content, category: data.category,
+      level: data.level as ResourceLevel, lang: data.lang as ResourceLang, readMinutes: data.read_minutes,
+      publishedAt: data.published_at, thumbnailUrl: data.thumbnail_url, videoUrl: data.video_url };
+  },
+  async getCourses(): Promise<Course[]> {
+    const userId = await getCurrentUserId();
+    const { data: courses, error } = await supabase.from('courses').select('*, steps:course_steps(*)').order('created_at');
+    if (error) throw error;
+    const { data: progress, error: progressError } = await supabase.from('course_progress').select('step_id').eq('user_id', userId);
+    if (progressError) throw progressError;
+    const completed = new Set((progress ?? []).map(row => row.step_id));
+    return (courses ?? []).map(course => {
+      const steps: CourseStep[] = [...course.steps].sort((a, b) => a.position - b.position).map(step => ({
+        id: step.id, title: step.title, type: step.type as CourseStep['type'], durationMinutes: step.duration_minutes, completed: completed.has(step.id),
       }));
-      await AsyncStorage.setItem(
-        cacheKey,
-        JSON.stringify({ ts: Date.now(), data: items }),
-      ).catch(() => {});
-      return items;
-    } catch {
-      const cached = await AsyncStorage.getItem(cacheKey).catch(() => null);
-      if (cached) return JSON.parse(cached).data ?? [];
-      return [];
-    }
+      return { id: course.id, title: course.title, description: course.description ?? '', level: course.level as ResourceLevel,
+        totalSteps: steps.length, completedSteps: steps.filter(step => step.completed).length,
+        coverUrl: course.cover_url, certificateBadge: course.certificate_badge, steps };
+    });
   },
-
-  getArticle: async (slug: string): Promise<Article | null> => {
-    const cacheKey = CACHE.article(slug);
-    try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('slug', slug)
-        .single();
-      if (error) return null;
-      const article: Article = {
-        slug: data.slug,
-        title: data.title,
-        summary: data.summary ?? '',
-        content: data.content,
-        category: data.category,
-        level: data.level as ResourceLevel,
-        lang: data.lang as ResourceLang,
-        readMinutes: data.read_minutes,
-        publishedAt: data.published_at,
-        thumbnailUrl: data.thumbnail_url,
-        videoUrl: data.video_url,
-      };
-      await AsyncStorage.setItem(
-        cacheKey,
-        JSON.stringify({ ts: Date.now(), data: article }),
-      ).catch(() => {});
-      return article;
-    } catch {
-      const cached = await AsyncStorage.getItem(cacheKey).catch(() => null);
-      return cached ? JSON.parse(cached).data ?? null : null;
-    }
-  },
-
-  getCourses: async (): Promise<Course[]> => {
+  async markStepComplete(_courseId: string, stepId: string): Promise<void> {
     const userId = await getCurrentUserId();
-    try {
-      const { data: courses, error } = await supabase
-        .from('courses')
-        .select('*, steps:course_steps(*)')
-        .order('created_at');
-      if (error) throw error;
-      let completedStepIds: string[] = [];
-      if (userId) {
-        const { data: progress } = await supabase
-          .from('course_progress')
-          .select('step_id')
-          .eq('user_id', userId);
-        completedStepIds = (Array.isArray(progress) ? progress : []).map(
-          p => p.step_id,
-        );
-      }
-      return (Array.isArray(courses) ? courses : []).map(c => {
-        const steps: CourseStep[] = (Array.isArray(c.steps) ? c.steps : [])
-          .sort((a: any, b: any) => a.position - b.position)
-          .map((s: any) => ({
-            id: s.id,
-            title: s.title,
-            type: s.type as CourseStep['type'],
-            durationMinutes: s.duration_minutes,
-            completed: completedStepIds.includes(s.id),
-          }));
-        return {
-          id: c.id,
-          title: c.title,
-          description: c.description ?? '',
-          level: c.level as ResourceLevel,
-          totalSteps: steps.length,
-          completedSteps: steps.filter(s => s.completed).length,
-          coverUrl: c.cover_url,
-          certificateBadge: c.certificate_badge,
-          steps,
-        };
-      });
-    } catch {
-      const cached = await AsyncStorage.getItem(CACHE.courses).catch(() => null);
-      if (cached) return JSON.parse(cached).data ?? [];
-      return [];
-    }
+    const { error } = await supabase.from('course_progress').upsert({ user_id: userId, step_id: stepId }, { onConflict: 'user_id,step_id' });
+    if (error) throw error;
   },
-
-  markStepComplete: async (courseId: string, stepId: string): Promise<void> => {
+  async getBookmarks(): Promise<string[]> {
     const userId = await getCurrentUserId();
-    if (!userId) return;
-    await supabase
-      .from('course_progress')
-      .upsert(
-        { user_id: userId, step_id: stepId },
-        { onConflict: 'user_id,step_id' },
-      );
+    const { data, error } = await supabase.from('user_bookmarks').select('article_slug').eq('user_id', userId);
+    if (error) throw error;
+    return (data ?? []).map(row => row.article_slug);
   },
-
-  getBookmarks: async (): Promise<string[]> => {
-    const raw = await AsyncStorage.getItem(CACHE.bookmarks).catch(() => null);
-    return raw ? JSON.parse(raw) : [];
+  async toggleBookmark(slug: string): Promise<boolean> {
+    const userId = await getCurrentUserId();
+    const { data, error: readError } = await supabase.from('user_bookmarks').select('article_slug').eq('user_id', userId).eq('article_slug', slug).maybeSingle();
+    if (readError) throw readError;
+    const result = data
+      ? await supabase.from('user_bookmarks').delete().eq('user_id', userId).eq('article_slug', slug)
+      : await supabase.from('user_bookmarks').upsert({ user_id: userId, article_slug: slug }, { onConflict: 'user_id,article_slug', ignoreDuplicates: true });
+    if (result.error) throw result.error;
+    return !data;
   },
-
-  toggleBookmark: async (slug: string): Promise<boolean> => {
-    const bookmarks = await resourcesService.getBookmarks();
-    const isBookmarked = bookmarks.includes(slug);
-    const updated = isBookmarked
-      ? bookmarks.filter(s => s !== slug)
-      : [...bookmarks, slug];
-    await AsyncStorage.setItem(CACHE.bookmarks, JSON.stringify(updated)).catch(
-      () => {},
-    );
-    return !isBookmarked;
-  },
-
-  isBookmarked: async (slug: string): Promise<boolean> => {
-    const bookmarks = await resourcesService.getBookmarks();
-    return bookmarks.includes(slug);
-  },
+  async isBookmarked(slug: string): Promise<boolean> { return (await resourcesService.getBookmarks()).includes(slug); },
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
   Switch,
   TextInput,
   Platform,
@@ -14,25 +14,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  Ionicons, 
-  MaterialCommunityIcons, 
-  MaterialIcons, 
-  FontAwesome5 
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+  FontAwesome5
 } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { 
-  Divider, 
-  Chip, 
+import {
+  Divider,
+  Chip,
   Snackbar,
   SegmentedButtons,
   Avatar
 } from 'react-native-paper';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 import { useTranslation } from 'react-i18next';
-import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
   FadeInRight,
   FadeIn
 } from 'react-native-reanimated';
@@ -42,21 +42,12 @@ import { RootStackParamList } from '../types';
 import { PropertyType, Amenity } from '../types/index';
 
 // State
+import { countProperties, getPropertyDistricts } from '../services/property.service';
 import { useAlertsStore, Alert } from '../store/alerts';
 
 type AlertPreferencesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-
-// Duration options
-const durationOptions = [
-  { key: 'any', label: 'durationOptions.anyDuration', value: 0 },
-  { key: 'oneWeek', label: 'durationOptions.oneWeek', value: 7 },
-  { key: 'oneMonth', label: 'durationOptions.oneMonth', value: 30 },
-  { key: 'threeMonths', label: 'durationOptions.threeMonths', value: 90 },
-  { key: 'sixMonths', label: 'durationOptions.sixMonths', value: 180 },
-  { key: 'oneYear', label: 'durationOptions.oneYear', value: 365 },
-];
 
 // Property types with icons
 const propertyTypesWithIcons = [
@@ -79,66 +70,62 @@ const amenitiesWithIcons = [
 
 const AlertPreferencesScreen: React.FC = () => {
   const navigation = useNavigation<AlertPreferencesScreenNavigationProp>();
-  const { createAlert, notificationsEnabled, toggleNotifications } = useAlertsStore();
+  const { alerts, createAlert, removeAlert, toggleAlertStatus, notificationsEnabled, toggleNotifications, fetchAlerts, isLoading, error } = useAlertsStore();
   const { t } = useTranslation();
-  
+
   // States for criteria
   const [alertName, setAlertName] = useState(t('alerts.alertNamePlaceholder'));
   const [selectedTypes, setSelectedTypes] = useState<PropertyType[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([200, 600]);
-  const [minDuration, setMinDuration] = useState<number>(0);
+  const [priceRange, setPriceRange] = useState<[number, number]>([100000, 600000]);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>([]);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [matchingProperties, setMatchingProperties] = useState<number | null>(null);
-  
-  // Districts data
-  const districts = [
-    { id: 'lakeSide', label: t('alerts.districtNames.lakeSide') },
-    { id: 'downtown', label: t('alerts.districtNames.downtown') },
-    { id: 'rubavu', label: t('alerts.districtNames.rubavu') },
-    { id: 'campus', label: t('alerts.districtNames.campus') },
-    { id: 'gisenyiRural', label: t('alerts.districtNames.gisenyiRural') },
-    { id: 'northBeach', label: t('alerts.districtNames.northBeach') },
-    { id: 'mbugangari', label: t('alerts.districtNames.mbugangari') }
-  ];
-  
+
+  const [districts, setDistricts] = useState<{ id: string; label: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    getPropertyDistricts().then(values => { if (active) setDistricts(values.map(value => ({ id: value, label: value }))); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   // Helper function to format currency
   const formatCurrency = (amount: number) => {
-    return `${amount} USD`;
+    return `${amount.toLocaleString()} RWF /mois`;
   };
-  
+
   // Toggle property type
   const togglePropertyType = (type: PropertyType) => {
-    setSelectedTypes(prev => 
+    setSelectedTypes(prev =>
       prev.includes(type)
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
   };
-  
+
   // Toggle amenity
   const toggleAmenity = (amenity: Amenity) => {
-    setSelectedAmenities(prev => 
+    setSelectedAmenities(prev =>
       prev.includes(amenity)
         ? prev.filter(a => a !== amenity)
         : [...prev, amenity]
     );
   };
-  
+
   // Toggle district
   const toggleDistrict = (district: string) => {
-    setSelectedDistricts(prev => 
+    setSelectedDistricts(prev =>
       prev.includes(district)
         ? prev.filter(d => d !== district)
         : [...prev, district]
     );
   };
-  
+
   // Create alert and save preferences
-  const handleSavePreferences = () => {
+  const handleSavePreferences = async () => {
+    if (isLoading || !alertName.trim()) return;
     const newAlert: Omit<Alert, 'id'> = {
-      name: alertName,
+      name: alertName.trim(),
       enabled: true,
       criteria: {
         propertyTypes: selectedTypes.length > 0 ? selectedTypes : undefined,
@@ -150,40 +137,37 @@ const AlertPreferencesScreen: React.FC = () => {
         districts: selectedDistricts.length > 0 ? selectedDistricts : undefined,
       }
     };
-    
-    createAlert(newAlert);
-    setSnackbarVisible(true);
-    
-    // Simulate calculating the number of properties matching these criteria
-    // In a real app, this would query your backend
-    const simulatedCount = Math.floor(Math.random() * 20);
-    setMatchingProperties(simulatedCount);
+
+    try {
+      await createAlert(newAlert);
+      setSnackbarVisible(true);
+    } catch { /* The store retains the backend error for display. */ }
   };
-  
-  // Mock function to dismiss the snackbar
   const onDismissSnackBar = () => setSnackbarVisible(false);
-  
-  // Effect to simulate loading matching properties
+  useEffect(() => { void fetchAlerts(); }, [fetchAlerts]);
   useEffect(() => {
-    // In a real app, this would be a backend call
-    const timeout = setTimeout(() => {
-      const simulatedCount = Math.floor(Math.random() * 20);
-      setMatchingProperties(simulatedCount);
-    }, 1000);
-    
-    return () => clearTimeout(timeout);
+    let cancelled = false;
+    setMatchingProperties(null);
+    const timer = setTimeout(() => {
+      countProperties('', { propertyType: selectedTypes, minPrice: priceRange[0], maxPrice: priceRange[1],
+        amenities: selectedAmenities, district: selectedDistricts }).then(count => {
+          if (!cancelled) setMatchingProperties(count);
+        }).catch(() => { if (!cancelled) setMatchingProperties(null); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [selectedTypes, priceRange, selectedAmenities, selectedDistricts]);
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-      
+
+      {error && <Text accessibilityRole="alert">{error}</Text>}
       {/* Header */}
-      <Animated.View 
-        entering={FadeInDown.duration(300)} 
+      <Animated.View
+        entering={FadeInDown.duration(300)}
         style={styles.header}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -192,17 +176,25 @@ const AlertPreferencesScreen: React.FC = () => {
         <Text style={styles.headerTitle}>{t('alerts.title')}</Text>
         <View style={styles.headerRight} />
       </Animated.View>
-      
+
       <Divider />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {alerts.length > 0 && <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('alerts.savedSearches')}</Text>
+          {alerts.map(alert => <View key={alert.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
+            <Text style={{ flex: 1 }}>{alert.name}</Text>
+            <Switch value={alert.enabled} onValueChange={() => { void toggleAlertStatus(alert.id); }} />
+            <TouchableOpacity accessibilityLabel={t('common.delete')} onPress={() => { void removeAlert(alert.id); }}><Ionicons name="trash-outline" size={22} color={colors.error} /></TouchableOpacity>
+          </View>)}
+        </View>}
         {/* Alert name */}
-        <Animated.View 
-          entering={FadeInDown.delay(100).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(100).duration(400)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -211,15 +203,16 @@ const AlertPreferencesScreen: React.FC = () => {
           <TextInput
             style={styles.input}
             value={alertName}
+            maxLength={200}
             onChangeText={setAlertName}
             placeholder={t('alerts.alertNamePlaceholder')}
             placeholderTextColor={colors.gray[400]}
           />
         </Animated.View>
-        
+
         {/* Property Type */}
-        <Animated.View 
-          entering={FadeInDown.delay(200).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(400)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -241,7 +234,7 @@ const AlertPreferencesScreen: React.FC = () => {
                   size={28}
                   color={selectedTypes.includes(item.type) ? colors.white : colors.gray[600]}
                 />
-                <Text 
+                <Text
                   style={[
                     styles.propertyTypeText,
                     selectedTypes.includes(item.type) && styles.propertyTypeTextSelected
@@ -253,10 +246,10 @@ const AlertPreferencesScreen: React.FC = () => {
             ))}
           </View>
         </Animated.View>
-        
+
         {/* Price Range */}
-        <Animated.View 
-          entering={FadeInDown.delay(300).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(400)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -270,23 +263,23 @@ const AlertPreferencesScreen: React.FC = () => {
             <Text style={styles.sliderLabel}>{t('search.minPrice')}</Text>
             <Slider
               style={styles.slider}
-              minimumValue={100}
-              maximumValue={900}
-              step={50}
+              minimumValue={0}
+              maximumValue={1900000}
+              step={10000}
               value={priceRange[0]}
-              onValueChange={(value) => setPriceRange([value, Math.max(value + 100, priceRange[1])])}
+              onValueChange={(value) => setPriceRange([value, Math.max(value + 10000, priceRange[1])])}
               minimumTrackTintColor={colors.gray[300]}
               maximumTrackTintColor={colors.gray[300]}
               thumbTintColor={colors.primary}
             />
-            
+
             {/* Max price slider */}
             <Text style={styles.sliderLabel}>{t('search.maxPrice')}</Text>
             <Slider
               style={styles.slider}
-              minimumValue={priceRange[0] + 100}
-              maximumValue={2000}
-              step={50}
+              minimumValue={priceRange[0] + 10000}
+              maximumValue={2000000}
+              step={10000}
               value={priceRange[1]}
               onValueChange={(value) => setPriceRange([priceRange[0], value])}
               minimumTrackTintColor={colors.primary}
@@ -295,46 +288,10 @@ const AlertPreferencesScreen: React.FC = () => {
             />
           </View>
         </Animated.View>
-        
-        {/* Minimum Duration */}
-        <Animated.View 
-          entering={FadeInDown.delay(400).duration(400)} 
-          style={styles.section}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('alerts.minDuration')}</Text>
-          </View>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.durationOptionsContainer}
-          >
-            {durationOptions.map((option, index) => (
-              <AnimatedTouchableOpacity
-                key={option.key}
-                entering={FadeInRight.delay(500 + index * 100).duration(400)}
-                style={[
-                  styles.durationOption,
-                  minDuration === option.value && styles.durationOptionSelected
-                ]}
-                onPress={() => setMinDuration(option.value)}
-              >
-                <Text 
-                  style={[
-                    styles.durationOptionText,
-                    minDuration === option.value && styles.durationOptionTextSelected
-                  ]}
-                >
-                  {t(option.label)}
-                </Text>
-              </AnimatedTouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animated.View>
-        
+
         {/* Amenities */}
-        <Animated.View 
-          entering={FadeInDown.delay(500).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(500).duration(400)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -357,7 +314,7 @@ const AlertPreferencesScreen: React.FC = () => {
                   color={selectedAmenities.includes(item.amenity) ? colors.white : colors.gray[600]}
                   style={styles.amenityIcon}
                 />
-                <Text 
+                <Text
                   style={[
                     styles.amenityText,
                     selectedAmenities.includes(item.amenity) && styles.amenityTextSelected
@@ -369,10 +326,10 @@ const AlertPreferencesScreen: React.FC = () => {
             ))}
           </View>
         </Animated.View>
-        
+
         {/* Districts */}
-        <Animated.View 
-          entering={FadeInDown.delay(600).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(600).duration(400)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -382,15 +339,15 @@ const AlertPreferencesScreen: React.FC = () => {
             {districts.map((district, index) => (
               <Chip
                 key={district.id}
-                selected={selectedDistricts.includes(district.id)}
-                onPress={() => toggleDistrict(district.id)}
+                selected={selectedDistricts.includes(district.label)}
+                onPress={() => toggleDistrict(district.label)}
                 style={[
                   styles.districtChip,
-                  selectedDistricts.includes(district.id) && styles.districtChipSelected
+                  selectedDistricts.includes(district.label) && styles.districtChipSelected
                 ]}
                 textStyle={[
                   styles.districtChipText,
-                  selectedDistricts.includes(district.id) && styles.districtChipTextSelected
+                  selectedDistricts.includes(district.label) && styles.districtChipTextSelected
                 ]}
                 mode="outlined"
                 showSelectedCheck={false}
@@ -401,10 +358,10 @@ const AlertPreferencesScreen: React.FC = () => {
             ))}
           </View>
         </Animated.View>
-        
+
         {/* Toggle notifications */}
-        <Animated.View 
-          entering={FadeInDown.delay(700).duration(400)} 
+        <Animated.View
+          entering={FadeInDown.delay(700).duration(400)}
           style={styles.toggleContainer}
         >
           <View style={styles.toggleInfo}>
@@ -420,20 +377,20 @@ const AlertPreferencesScreen: React.FC = () => {
           />
         </Animated.View>
       </ScrollView>
-      
+
       {/* Footer with Create Button */}
-      <Animated.View 
-        entering={FadeInUp.duration(400)} 
+      <Animated.View
+        entering={FadeInUp.duration(400)}
         style={styles.footer}
       >
         {/* Display matching properties count if available */}
         {matchingProperties !== null && (
-          <Animated.View 
-            entering={FadeIn.duration(400)} 
+          <Animated.View
+            entering={FadeIn.duration(400)}
             style={styles.matchingPropertiesContainer}
           >
             <Text style={styles.matchingPropertiesText}>
-              {matchingProperties === 0 
+              {matchingProperties === 0
                 ? t('alerts.noAvailableProperties')
                 : matchingProperties === 1
                   ? t('alerts.availablePropertiesSingular')
@@ -441,17 +398,18 @@ const AlertPreferencesScreen: React.FC = () => {
             </Text>
           </Animated.View>
         )}
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.saveButton}
           onPress={handleSavePreferences}
+          disabled={isLoading}
         >
           <Text style={styles.saveButtonText}>
             {t('alerts.savePreferences')}
           </Text>
         </TouchableOpacity>
       </Animated.View>
-      
+
       {/* Snackbar for notifications */}
       <Snackbar
         visible={snackbarVisible}
@@ -522,7 +480,7 @@ const styles = StyleSheet.create({
     color: colors.black,
     backgroundColor: colors.white,
   },
-  
+
   // Property types styles
   propertyTypesContainer: {
     flexDirection: 'row',
@@ -557,7 +515,7 @@ const styles = StyleSheet.create({
   propertyTypeTextSelected: {
     color: colors.white,
   },
-  
+
   // Price range styles
   priceRangeText: {
     fontSize: typography.fontSize.base,
@@ -577,7 +535,7 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: spacing[3],
   },
-  
+
   // Duration options styles
   durationOptionsContainer: {
     flexDirection: 'row',
@@ -604,7 +562,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '500',
   },
-  
+
   // Amenities styles
   amenitiesContainer: {
     flexDirection: 'row',
@@ -639,7 +597,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '500',
   },
-  
+
   // Districts styles
   districtsContainer: {
     flexDirection: 'row',
@@ -659,7 +617,7 @@ const styles = StyleSheet.create({
   districtChipTextSelected: {
     color: colors.white,
   },
-  
+
   // Toggle notifications styles
   toggleContainer: {
     flexDirection: 'row',
@@ -681,7 +639,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.gray[700],
   },
-  
+
   // Footer styles
   footer: {
     borderTopWidth: 1,
@@ -712,11 +670,11 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: '600',
   },
-  
+
   // Snackbar styles
   snackbar: {
     backgroundColor: colors.black,
   },
 });
 
-export default AlertPreferencesScreen; 
+export default AlertPreferencesScreen;

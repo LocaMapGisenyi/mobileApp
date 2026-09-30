@@ -17,6 +17,8 @@ interface RowItemProps {
 
 const RowItem = ({ icon, label, value, onPress, badge, badgeBg, badgeColor, last }: RowItemProps) => (
   <TouchableOpacity
+    accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={[label, value, badge].filter(Boolean).join(', ')}
     style={[s.row, !last && s.rowBorder]}
     onPress={onPress}
     activeOpacity={onPress ? 0.7 : 1}
@@ -39,10 +41,10 @@ const s = StyleSheet.create({
   row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 14, backgroundColor: colors.surface },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   iconWrap:  { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  label:     { flex: 1, fontSize: 15, fontWeight: '500', color: colors.ink },
-  value:     { fontSize: 13, color: colors.inkSubtle, maxWidth: 120 },
+  label:     { flex: 1, fontSize: 16, lineHeight: 23, fontWeight: '500', color: colors.ink },
+  value:     { fontSize: 13, color: colors.inkSubtle, maxWidth: '32%' },
   badge:     { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 },
-  badgeTxt:  { fontSize: 11, fontWeight: '700' },
+  badgeTxt:  { fontSize: 12, fontWeight: '700' },
 });
 
 export default RowItem;

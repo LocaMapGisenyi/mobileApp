@@ -1,91 +1,51 @@
 import { create } from 'zustand';
 import { Review, ReviewsState, ReviewSortOrder } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { reviewService } from '../services/api/review.service';
+import { useUserStore } from './user';
+let generation = 0;
+const requests = new Map<string, number>();
 
-const useReviewsStore = create<ReviewsState>((set, get) => ({
+const useReviewsStore = create<Omit<ReviewsState, 'addReview'> & { addReview: (review: Omit<Review, 'id' | 'date'> & { bookingId?: string }) => Promise<void> }>((set, get) => ({
   reviews: {},
   isLoading: false,
   error: null,
 
-  // Récupérer les avis pour un logement spécifique
-  fetchReviews: async (propertyId: string) => {
+  fetchReviews: async propertyId => {
+    const request = (requests.get(propertyId) ?? 0) + 1;
+    requests.set(propertyId, request);
+    const account = generation;
     set({ isLoading: true, error: null });
-    set({ isLoading: false });
+    try {
+      const reviews = await reviewService.getReviewsByPropertyId(propertyId);
+      if (account === generation && requests.get(propertyId) === request) set(state => ({ reviews: { ...state.reviews, [propertyId]: reviews }, isLoading: false }));
+    } catch (error) { if (account === generation) set({ isLoading: false, error: (error as Error).message }); }
   },
-
-  // Ajouter un nouvel avis
-  addReview: (review) => {
-    set((state) => {
-      // Créer un nouvel avis avec ID et date
-      const newReview: Review = {
-        ...review,
-        id: uuidv4(),
-        date: new Date(),
-      };
-
-      // Si aucun avis n'existe encore pour ce logement, initialiser avec un tableau vide
-      const propertyReviews = state.reviews[review.propertyId] || [];
-
-      return {
-        reviews: {
-          ...state.reviews,
-          [review.propertyId]: [...propertyReviews, newReview],
-        },
-        error: null,
-      };
-    });
+  addReview: async review => {
+    const account = generation;
+    set({ error: null, isLoading: true });
+    try {
+      const created = await reviewService.addReview(review);
+      if (account === generation) set(state => ({ reviews: { ...state.reviews, [review.propertyId]: [created, ...(state.reviews[review.propertyId] ?? []).filter(item => item.id !== created.id)] }, isLoading: false }));
+    } catch (error) { if (account === generation) set({ error: (error as Error).message, isLoading: false }); throw error; }
   },
-
-  // Supprimer un avis
-  deleteReview: (reviewId, propertyId) => {
-    set((state) => {
-      const propertyReviews = state.reviews[propertyId] || [];
-      
-      return {
-        reviews: {
-          ...state.reviews,
-          [propertyId]: propertyReviews.filter(review => review.id !== reviewId),
-        },
-      };
-    });
+  deleteReview: async (reviewId, propertyId) => {
+    await reviewService.deleteReview(reviewId);
+    await get().fetchReviews(propertyId);
   },
-
-  // Répondre à un avis (pour les propriétaires)
-  replyToReview: (reviewId, propertyId, replyText) => {
-    set((state) => {
-      const propertyReviews = state.reviews[propertyId] || [];
-      
-      const updatedReviews = propertyReviews.map(review => {
-        if (review.id === reviewId) {
-          return {
-            ...review,
-            ownerReply: {
-              text: replyText,
-              date: new Date(),
-            },
-          };
-        }
-        return review;
-      });
-
-      return {
-        reviews: {
-          ...state.reviews,
-          [propertyId]: updatedReviews,
-        },
-      };
-    });
+  replyToReview: async (reviewId, propertyId, text) => {
+    await reviewService.replyToReview(reviewId, text);
+    await get().fetchReviews(propertyId);
   },
 
   // Calculer la note moyenne pour un logement
   getAverageRating: (propertyId) => {
     const state = get();
     const propertyReviews = state.reviews[propertyId] || [];
-    
+
     if (propertyReviews.length === 0) {
       return 0;
     }
-    
+
     const sum = propertyReviews.reduce((acc, review) => acc + review.rating, 0);
     return Number((sum / propertyReviews.length).toFixed(1));
   },
@@ -99,9 +59,9 @@ const useReviewsStore = create<ReviewsState>((set, get) => ({
   // Récupérer les avis triés
   getSortedReviews: (propertyId, sortOrder: ReviewSortOrder) => {
     const reviews = get().getReviewsForProperty(propertyId);
-    
+
     const sortedReviews = [...reviews];
-    
+
     switch (sortOrder) {
       case 'recent':
         return sortedReviews.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -115,4 +75,5 @@ const useReviewsStore = create<ReviewsState>((set, get) => ({
   },
 }));
 
-export default useReviewsStore; 
+export default useReviewsStore;
+useUserStore.subscribe((state, previous) => { if (state.user.id !== previous.user.id) { generation++; requests.clear(); useReviewsStore.setState({ reviews: {}, error: null, isLoading: false }); } });

@@ -1,16 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Tables } from '../types/database';
 import {
   getBookings,
   getBookingById,
   createBooking,
   updateBookingStatus,
+  type BookingWithProperty,
+  BOOKING_PAGE_SIZE,
 } from '../services/booking.service';
 
 interface BookingsState {
-  bookings: Tables<'bookings'>[];
+  bookings: BookingWithProperty[];
   loading: boolean;
   error: string | null;
+  hasMore:boolean;
 }
 
 interface BookingState {
@@ -29,32 +32,50 @@ export function useBookings(
   role: 'guest' | 'host',
   status?: string
 ) {
+  const generation = useRef(0);
+  const currentRows=useRef<BookingWithProperty[]>([]);
+  const paging=useRef(false);
   const [state, setState] = useState<BookingsState>({
     bookings: [],
     loading: false,
     error: null,
+    hasMore:false,
   });
 
-  const fetch = useCallback(async () => {
+  const fetch = useCallback(async (append=false) => {
+    if(append && paging.current)return;
+    paging.current=true;
+    const request = ++generation.current;
     if (!userId) {
-      setState({ bookings: [], loading: false, error: null });
+      currentRows.current=[];paging.current=false;
+      setState({ bookings: [], loading: false, error: null,hasMore:false });
       return;
     }
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const bookings = await getBookings(userId, role, status);
-      setState({ bookings, loading: false, error: null });
+      const incoming = await getBookings(userId, role, status,{offset:append?currentRows.current.length:0,limit:BOOKING_PAGE_SIZE});
+      if(request===generation.current){
+        const bookings=append?[...currentRows.current,...incoming.filter(row=>!currentRows.current.some(old=>old.id===row.id))]:incoming;
+        currentRows.current=bookings;
+        setState({bookings,loading:false,error:null,hasMore:incoming.length===BOOKING_PAGE_SIZE});
+      }
     } catch (err) {
-      setState({ bookings: [], loading: false, error: (err as Error).message });
+      if (request === generation.current) setState(previous=>({...previous,loading:false,error:(err as Error).message}));
+    } finally {
+      if(request===generation.current)paging.current=false;
     }
   }, [userId, role, status]);
 
   useEffect(() => {
-    fetch();
+    currentRows.current=[];paging.current=false;
+    setState({bookings: [], loading: true, error: null,hasMore:false});
+    void fetch();
+    return () => { ++generation.current; };
   }, [fetch]);
 
-  return { ...state, refetch: fetch };
+  const loadMore=useCallback(()=>fetch(true),[fetch]);
+  return { ...state, refetch: fetch,loadMore };
 }
 
 export function useBooking(id: string | null) {

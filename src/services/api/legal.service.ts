@@ -50,7 +50,7 @@ export const legalService = {
         'id, slug, title, version, updated_at, summary, required, category',
       )
       .order('created_at');
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(d => ({
       id: d.id,
       slug: d.slug,
@@ -69,7 +69,7 @@ export const legalService = {
       .select('*')
       .eq('slug', slug)
       .single();
-    if (error) return null;
+    if (error) { if (error.code === 'PGRST116') return null; throw error; }
     return {
       id: data.id,
       slug: data.slug,
@@ -80,19 +80,15 @@ export const legalService = {
       required: data.required,
       category: data.category as LegalDocument['category'],
       content: data.content ?? '',
-      previousVersions: (data.previous_versions as any[]) ?? [],
+      previousVersions: Array.isArray(data.previous_versions) ? data.previous_versions.flatMap(value =>
+        value && typeof value === 'object' && !Array.isArray(value) && typeof value.version === 'string' && typeof value.updatedAt === 'string'
+          ? [{version: value.version, updatedAt: value.updatedAt}] : []) : [],
     };
   },
 
   giveConsent: async (documentId: string, version: string): Promise<void> => {
-    const userId = await getCurrentUserId();
-    const { error } = await supabase.from('consent_records').insert({
-      user_id: userId,
-      document_id: documentId,
-      version,
-      ip_address: null,
-    });
-    if (error && !error.message.includes('duplicate')) throw error;
+    const { error } = await supabase.rpc('record_consent', { p_document_id: documentId, p_version: version });
+    if (error) throw error;
   },
 
   getConsentHistory: async (): Promise<ConsentRecord[]> => {
@@ -102,10 +98,10 @@ export const legalService = {
       .select('*, document:legal_documents(title, version)')
       .eq('user_id', userId)
       .order('accepted_at', { ascending: false });
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(c => ({
       documentId: c.document_id,
-      documentTitle: (c.document as any)?.title ?? '',
+      documentTitle: (Array.isArray(c.document) ? c.document[0]?.title : c.document?.title) ?? '',
       version: c.version,
       acceptedAt: c.accepted_at,
       ipAddress: c.ip_address ?? '',

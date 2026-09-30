@@ -15,20 +15,21 @@ export type RootStackParamList = {
   MapScreen: undefined;
   Map: undefined;
   Saved: undefined;
-  
+
   // Messaging screens
   MessagesList: undefined;
   Conversation: { conversationId: string };
-  NewMessage: { 
-    propertyId: string; 
-    propertyTitle: string; 
-    ownerId: string; 
-    ownerName: string; 
+  NewMessage: {
+    propertyId: string;
+    propertyTitle: string;
+    ownerId: string;
+    ownerName: string;
     ownerAvatar: string;
   };
-  
+
   // Reviews screens
-  LeaveReview: { 
+  LeaveReview: {
+    bookingId?: string;
     propertyId: string;
     propertyTitle: string;
     ownerId: string;
@@ -38,11 +39,19 @@ export type RootStackParamList = {
   // Local guides screens
   LocalGuide: undefined;
   GuideDetail: { guideId: string };
-  
+
   // Host screens
   HostDashboard: undefined;
   HostOnboarding: undefined;
-  CreateListing: undefined;
+  CreateListing: { propertyId?: string } | undefined;
+  BookingRequest: { propertyId: string };
+  Bookings: undefined;
+  Notifications: undefined;
+  RecentlyViewed: undefined;
+  Support: undefined;
+  Legal: undefined;
+  About: undefined;
+  HostCalendar: { propertyId: string };
 
   // Question screens
   QuestionDetail: { questionId: string };
@@ -57,6 +66,16 @@ export type RootStackParamList = {
 
 // Type pour les propriétés immobilières
 export interface Property {
+  status?: 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED' | 'ARCHIVED';
+  deposit?: number;
+  minDurationMonths?: number;
+  noticePeriodDays?: number;
+  accommodationType?: string;
+  maxGuests?: number;
+  smokingAllowed?: boolean;
+  petsAllowed?: boolean;
+  visitorsAllowed?: boolean;
+  noiseAfter22?: boolean;
   id: string;
   title: string;
   description?: string;
@@ -245,4 +264,3 @@ export interface GuideQuestion {
   content: string;
   categoryId?: string;
 }
-

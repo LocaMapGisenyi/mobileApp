@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
@@ -155,16 +156,18 @@ const HostDashboardScreen = () => {
     try {
       const data = await alertService.getNotifications();
       setNotifications(Array.isArray(data) ? data : []);
-    } catch {/* silent */} finally {
+    } catch { Alert.alert('Notifications', 'Impossible de charger les notifications. Réessayez.'); } finally {
       setLoadingNotifs(false);
     }
   }, []);
 
   const handleMarkRead = async (id: string) => {
+    if (notifications.find(n => n.id === id)?.read) return;
+    try { await alertService.markAsRead(id); }
+    catch { Alert.alert('Notifications', 'La modification n’a pas été enregistrée.'); return; }
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n),
     );
-    await alertService.markAsRead(id).catch(() => {});
     // Update badge count in summary
     setSummary(prev =>
       prev ? { ...prev, unreadNotifications: Math.max(0, prev.unreadNotifications - 1) } : prev,
@@ -177,19 +180,19 @@ const HostDashboardScreen = () => {
       await alertService.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setSummary(prev => prev ? { ...prev, unreadNotifications: 0 } : prev);
-    } catch {/* silent */} finally {
+    } catch { Alert.alert('Notifications', 'La modification n’a pas été enregistrée.'); } finally {
       setMarkingAll(false);
     }
   };
 
   const handleAccept = async (id: string) => {
-    setPendingRequests(prev => prev.filter(r => r.id !== id));
-    try { await hostService.acceptRequest(id); } catch { /* rollback possible */ }
+    try { await hostService.acceptRequest(id); await loadDashboard(); }
+    catch (failure) { Alert.alert('Réservation', failure instanceof Error ? failure.message : 'La réservation n’a pas été acceptée.'); }
   };
 
   const handleDecline = async (id: string) => {
-    setPendingRequests(prev => prev.filter(r => r.id !== id));
-    try { await hostService.declineRequest(id); } catch { /* rollback possible */ }
+    try { await hostService.declineRequest(id); await loadDashboard(); }
+    catch (failure) { Alert.alert('Réservation', failure instanceof Error ? failure.message : 'La réservation n’a pas été refusée.'); }
   };
 
   const HOST_TABS = [
@@ -237,7 +240,7 @@ const HostDashboardScreen = () => {
         }
       >
         {/* ── Greeting ── */}
-        <Animated.View entering={FadeInDown.duration(360)} style={s.header}>
+        <Animated.View style={s.header}>
           <View style={s.headerLeft}>
             <View style={s.avatarCircle}>
               <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
@@ -276,7 +279,7 @@ const HostDashboardScreen = () => {
         </Animated.View>
 
         {/* ── Actions requises ── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(360)} style={s.section}>
+        <Animated.View style={s.section}>
           {pendingRequests.length > 0 ? (
             <>
               <View style={s.sectionHeaderRow}>
@@ -290,7 +293,6 @@ const HostDashboardScreen = () => {
                 req.type === 'reservation' ? (
                   <Animated.View
                     key={req.id}
-                    entering={FadeInDown.delay(140 + i * 60).duration(300)}
                   >
                     <View style={s.card}>
                       <View style={s.cardHeader}>
@@ -333,7 +335,6 @@ const HostDashboardScreen = () => {
                 ) : (
                   <Animated.View
                     key={req.id}
-                    entering={FadeInDown.delay(140 + i * 60).duration(300)}
                   >
                     <View style={s.card}>
                       <View style={s.cardHeader}>
@@ -375,7 +376,7 @@ const HostDashboardScreen = () => {
 
         {/* ── KPIs du jour ── */}
         {summary && (
-          <Animated.View entering={FadeInDown.delay(200).duration(360)} style={s.section}>
+          <Animated.View style={s.section}>
             <Text style={s.sectionLabel}>{t('hostDashboard.today')}</Text>
 
             <View style={s.kpiRow}>
@@ -412,7 +413,7 @@ const HostDashboardScreen = () => {
 
         {/* ── Revenus ── */}
         {summary && (
-          <Animated.View entering={FadeInDown.delay(300).duration(360)} style={s.section}>
+          <Animated.View style={s.section}>
             <Text style={s.sectionLabel}>{t('hostDashboard.revenue')}</Text>
             <View style={s.revenueCard}>
               <View style={s.revenueRow}>
@@ -502,7 +503,6 @@ const HostDashboardScreen = () => {
           onPress={() => setNotifVisible(false)}
         >
           <Animated.View
-            entering={FadeInDown.duration(240)}
             style={[ns.panel, { top: insets.top + 60 }]}
             onStartShouldSetResponder={() => true}
           >

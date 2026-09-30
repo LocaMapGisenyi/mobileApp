@@ -24,7 +24,6 @@ export type {
   SupportTicket, TicketMessage, FaqItem, TicketPriority, TicketStatus,
   CreateTicketPayload, ChatAvailability,
 } from './support.service';
-export { SLA_HOURS } from './support.service';
 export type {
   Article, ArticleListItem, Course, CourseStep,
   ResourceLevel, ResourceLang,
@@ -45,4 +44,4 @@ export {
   CalendarDay, CalendarDayStatus, CalendarBulkPatch, BlockReason,
   DashboardSummary, PendingRequest, HostListing,
   ListingCard, ListingStatus, ListingStatusPatch,
-} from './host.service'; 
+} from './host.service';

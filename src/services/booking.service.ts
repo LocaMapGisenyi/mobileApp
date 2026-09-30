@@ -1,16 +1,30 @@
 import { supabase } from '../lib/supabase';
 import type { Tables } from '../types/database';
+import { dateDay } from '../utils/stays';
+
+export type BookingWithProperty = Tables<'bookings'> & {property?: {title: string; city: string} | null};
+export const BOOKING_PAGE_SIZE=30;
+const BOOKING_FIELDS='id,property_id,guest_id,host_id,start_date,end_date,guest_count,status,total_price,currency,message,created_at,updated_at' as const;
+export interface BookingQuote {total_price: number; currency: string; days: number; deposit: number}
+export async function quoteBooking(input: {property_id: string; start_date: string; end_date: string; guest_count: number}): Promise<BookingQuote> {
+  if (dateDay(input.end_date) <= dateDay(input.start_date) || !Number.isInteger(input.guest_count) || input.guest_count < 1) throw new Error('Vérifiez les dates et le nombre de personnes.');
+  const {data, error} = await supabase.rpc('quote_booking', {p_property_id: input.property_id, p_start_date: input.start_date, p_end_date: input.end_date, p_guest_count: input.guest_count});
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.total_price !== 'number' || typeof data.currency !== 'string' || typeof data.days !== 'number' || typeof data.deposit !== 'number') throw new Error('Devis indisponible.');
+  return {total_price:data.total_price,currency:data.currency,days:data.days,deposit:data.deposit};
+}
 
 export async function getBookings(
   userId: string,
   role: 'guest' | 'host',
-  status?: string
-): Promise<Tables<'bookings'>[]> {
-  try {
+  status?: string,
+  page={offset:0,limit:BOOKING_PAGE_SIZE}
+): Promise<BookingWithProperty[]> {
+
     let query = supabase
       .from('bookings')
       .select(
-        'property:properties(title, city, property_images(url, is_cover)), guest:profiles!guest_id(full_name, avatar_url), *'
+        `${BOOKING_FIELDS},property:properties(title,city)`
       );
 
     if (role === 'guest') {
@@ -19,21 +33,24 @@ export async function getBookings(
       query = query.eq('host_id', userId);
     }
 
-    if (status) query = query.eq('status', status);
+    if (status) {
+      if (!['pending', 'approved', 'rejected', 'cancelled', 'completed'].includes(status)) throw new Error('Statut de réservation invalide');
+      query = query.eq('status', status as Tables<'bookings'>['status']);
+    }
 
-    const { data, error } = await query;
+    const offset=Math.max(0,Math.trunc(page.offset));
+    const limit=Math.max(1,Math.min(100,Math.trunc(page.limit)));
+    const { data, error } = await query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+limit-1);
     if (error) throw error;
     return Array.isArray(data) ? data : [];
-  } catch (err) {
-    throw err;
-  }
+
 }
 
 export async function getBookingById(id: string): Promise<Tables<'bookings'> | null> {
-  try {
+
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, property:properties(*), guest:profiles!guest_id(*), host:profiles!host_id(*)')
+      .select(BOOKING_FIELDS)
       .eq('id', id)
       .single();
 
@@ -43,53 +60,48 @@ export async function getBookingById(id: string): Promise<Tables<'bookings'> | n
     }
 
     return data;
-  } catch (err) {
-    throw err;
-  }
+
 }
 
 export async function createBooking(data: {
   property_id: string;
-  guest_id: string;
-  host_id: string;
+  guest_id?: string;
+  host_id?: string;
   start_date: string;
   end_date: string;
   guest_count: number;
-  total_price: number;
-  currency: string;
+  total_price?: number;
+  expected_total?: number;
+  currency?: string;
   message?: string;
 }): Promise<Tables<'bookings'>> {
-  try {
-    const { data: created, error } = await supabase
-      .from('bookings')
-      .insert({ ...data, status: 'pending' })
-      .select()
-      .single();
+
+    const { data: created, error } = await supabase.rpc('create_booking', {
+      p_property_id: data.property_id,
+      p_start_date: data.start_date,
+      p_end_date: data.end_date,
+      p_guest_count: data.guest_count,
+      p_message: data.message?.trim() || null,
+      ...(data.expected_total !== undefined ? {p_expected_total: data.expected_total} : {}),
+    });
 
     if (error) throw error;
+    if (!created) throw new Error('La réservation n’a pas été créée');
     return created;
-  } catch (err) {
-    throw err;
-  }
+
 }
 
 export async function updateBookingStatus(
   id: string,
   status: 'approved' | 'rejected' | 'cancelled' | 'completed'
 ): Promise<Tables<'bookings'>> {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.rpc('update_booking_status', { p_booking_id: id, p_status: status });
 
     if (error) throw error;
+    if (!data) throw new Error('La réservation n’a pas été mise à jour');
     return data;
-  } catch (err) {
-    throw err;
-  }
+
 }
 
 export async function getAvailability(
@@ -97,7 +109,7 @@ export async function getAvailability(
   startDate: string,
   endDate: string
 ): Promise<Tables<'calendar_days'>[]> {
-  try {
+
     const { data, error } = await supabase
       .from('calendar_days')
       .select('*')
@@ -107,16 +119,14 @@ export async function getAvailability(
 
     if (error) throw error;
     return Array.isArray(data) ? data : [];
-  } catch (err) {
-    throw err;
-  }
+
 }
 
 export async function getBookingStats(
   userId: string,
   role: 'guest' | 'host'
 ): Promise<{ total: number; pending: number; approved: number; cancelled: number }> {
-  try {
+
     const { data, error } = await supabase
       .from('bookings')
       .select('status')
@@ -136,7 +146,5 @@ export async function getBookingStats(
       },
       { total: 0, pending: 0, approved: 0, cancelled: 0 }
     );
-  } catch (err) {
-    throw err;
-  }
+
 }

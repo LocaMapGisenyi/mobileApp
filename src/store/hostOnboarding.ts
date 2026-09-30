@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
+import { uploadPrivateDocument } from '../lib/storage';
+import { onAccountChange } from '../lib/accountScope';
 
 export type PropertyType = 'villa' | 'apartment' | 'house' | 'studio' | 'room';
-export type PaymentMethod = 'mtn_momo' | 'airtel_money' | 'bank';
 
 export interface HostOnboardingData {
   // Step 2 — Identity (complete)
@@ -17,15 +19,8 @@ export interface HostOnboardingData {
   kycIdBack: string | null;
   kycStatus: 'idle' | 'pending' | 'submitted';
 
-  // Step 3 — Property types (multi-select — un hôte peut avoir plusieurs types)
+  // Step 4 — Property types (multi-select — un hôte peut avoir plusieurs types)
   propertyTypes: PropertyType[];
-
-  // Step 4 — Payment (multi-select)
-  paymentMethods: PaymentMethod[];
-  mtnNumber: string;
-  airtelNumber: string;
-  bankName: string;
-  bankAccount: string;
 }
 
 interface HostOnboardingState {
@@ -38,8 +33,7 @@ interface HostOnboardingState {
   prevStep: () => void;
   updateData: (patch: Partial<HostOnboardingData>) => void;
   togglePropertyType: (type: PropertyType) => void;
-  togglePaymentMethod: (method: PaymentMethod) => void;
-  complete: () => void;
+  complete: () => Promise<void>;
   reset: () => void;
 }
 
@@ -54,12 +48,8 @@ const INITIAL_DATA: HostOnboardingData = {
   kycIdBack: null,
   kycStatus: 'idle',
   propertyTypes: [],
-  paymentMethods: [],
-  mtnNumber: '',
-  airtelNumber: '',
-  bankName: '',
-  bankAccount: '',
 };
+let formGeneration = 0;
 
 export const useHostOnboardingStore = create<HostOnboardingState>((set, get) => ({
   step: 1,
@@ -77,13 +67,33 @@ export const useHostOnboardingStore = create<HostOnboardingState>((set, get) => 
       : [...propertyTypes, type];
     set((s) => ({ data: { ...s.data, propertyTypes: next } }));
   },
-  togglePaymentMethod: (method) => {
-    const { paymentMethods } = get().data;
-    const next = paymentMethods.includes(method)
-      ? paymentMethods.filter((m) => m !== method)
-      : [...paymentMethods, method];
-    set((s) => ({ data: { ...s.data, paymentMethods: next } }));
+  complete: async () => {
+    const request = formGeneration;
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (request !== formGeneration) throw new Error('Le compte ou le dossier actif a changé.');
+    if (!user) throw new Error('Connectez-vous pour envoyer votre dossier.');
+    const form = get().data;
+    if (!form.fullName.trim() || !form.kycSelfie || !form.kycIdFront || !form.kycIdBack) throw new Error('Complétez votre identité et les trois justificatifs.');
+    const documents: string[] = [];
+    for (const uri of [form.kycSelfie, form.kycIdFront, form.kycIdBack]) {
+      const mimeType = /\.png(?:\?|$)/i.test(uri) ? 'image/png' : /\.webp(?:\?|$)/i.test(uri) ? 'image/webp' : 'image/jpeg';
+      documents.push(await uploadPrivateDocument(uri, mimeType, user.id));
+      if (request !== formGeneration) throw new Error('Le compte ou le dossier actif a changé.');
+    }
+    const { data: current } = await supabase.auth.getUser();
+    if (request !== formGeneration) throw new Error('Le compte ou le dossier actif a changé.');
+    if (current.user?.id !== user.id) throw new Error('Le compte actif a changé.');
+    const { error } = await supabase.rpc('submit_host_application', {
+      p_legal_name: form.fullName.trim(), p_document_keys: documents,
+      // The existing RPC stores identity metadata here; no payout details are collected at launch.
+      p_payout_details: { phone: form.phone,
+        date_of_birth: form.dateOfBirth, nationality: form.nationality, property_types: form.propertyTypes },
+    });
+    if (error) throw error;
+    if (request !== formGeneration) throw new Error('Le compte ou le dossier actif a changé.');
+    set({ completed: true, data: { ...get().data, kycStatus: 'submitted' } });
   },
-  complete: () => set({ completed: true }),
-  reset: () => set({ step: 1, data: { ...INITIAL_DATA }, completed: false }),
+  reset: () => { ++formGeneration; set({ step: 1, data: { ...INITIAL_DATA }, completed: false }); },
 }));
+onAccountChange(() => useHostOnboardingStore.getState().reset());

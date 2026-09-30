@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, DefaultTheme, configureFonts } from 'react-native-paper';
 import AppNavigator from './src/navigation';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, AppState, Platform, Text, Pressable } from 'react-native';
 import { colors } from './src/theme';
 import { usePreferences } from './src/store/preferences';
 import { useUserStore } from './src/store/user';
 import { I18nextProvider } from 'react-i18next';
 import i18n, { initializeLanguage } from './src/utils/i18n';
 import ToastManager from './src/components/ToastManager';
+import { installAuthLinkListener } from './src/lib/authLinks';
+import { supabase } from './src/lib/supabase';
+import NewPasswordScreen from './src/screens/NewPasswordScreen';
+import { useMessagesStore } from './src/store/messages';
+import AppErrorBoundary from './src/components/AppErrorBoundary';
+import { captureError, installGlobalDiagnostics } from './src/lib/diagnostics';
 
 // Configuration complète des polices pour React Native Paper
 const fontConfig = {
@@ -74,13 +81,20 @@ const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: colors.primary,           // sarcelle #0D6E6E
+    primary: colors.primary,           // sarcelle #467434
     accent: colors.primaryMid,
     background: colors.background,
     surface: colors.surface,
     text: colors.ink,
     placeholder: colors.inkSubtle,
-    backdrop: 'rgba(13, 110, 110, 0.18)',
+    backdrop: 'rgba(54, 54, 54, 0.42)',
+    onPrimary: colors.onPrimary,
+    primaryContainer: colors.primaryLight,
+    onPrimaryContainer: colors.primaryDark,
+    secondary: colors.primary,
+    secondaryContainer: colors.accentLight,
+    onSecondaryContainer: colors.ink,
+    outline: colors.borderMid,
     notification: colors.error,
     error: colors.error,
     disabled: colors.inkDisabled,
@@ -100,30 +114,55 @@ const theme = {
     },
   },
   fonts: configureFonts({ config: fontConfig as any }),
-  roundness: 6,
+  roundness: 10,
   dark: false,
 };
 
 // Wrapper pour le theme
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const recovery = useUserStore(s => s.passwordRecovery);
+  const userId = useUserStore(s => s.authUser?.id);
+  const authError = useUserStore(s => s.error);
+
+  useEffect(() => userId ? useMessagesStore.getState().connect(userId) : undefined, [userId]);
 
   useEffect(() => {
+    let mounted = true;
+    const removeLinks = installAuthLinkListener();
+    const removeDiagnostics = installGlobalDiagnostics();
+    const refresh = (state: string) => {
+      if (Platform.OS !== 'web') {
+        if (state === 'active') supabase.auth.startAutoRefresh();
+        else supabase.auth.stopAutoRefresh();
+      }
+    };
+    refresh(AppState.currentState);
+    const appState = AppState.addEventListener('change', refresh);
     const initApp = async () => {
       try {
         const savedLang = await initializeLanguage();
+        if (!mounted) return;
         usePreferences.setState({ language: savedLang as any });
         await useUserStore.getState().actions.initAuth();
       } catch (error) {
-        console.error('Erreur initialisation:', error);
+        captureError('startup',error);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
     initApp();
+    return () => {
+      mounted = false;
+      removeLinks();
+      removeDiagnostics();
+      appState.remove();
+      supabase.auth.stopAutoRefresh();
+      useUserStore.getState().actions.disposeAuth();
+    };
   }, []);
-  
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -131,11 +170,15 @@ const AppContent = () => {
       </View>
     );
   }
-  
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <AppNavigator />
+      {authError && <View accessibilityRole="alert" style={{padding: 12, backgroundColor: colors.surfaceSunken}}>
+        <Text style={{color: colors.error}}>{authError}</Text>
+        <Pressable onPress={() => useUserStore.getState().actions.clearError()} accessibilityRole="button"><Text>Fermer</Text></Pressable>
+      </View>}
+      {recovery ? <NewPasswordScreen /> : <AppNavigator />}
       <ToastManager />
     </View>
   );
@@ -154,7 +197,7 @@ const AppWrapper = () => {
 };
 
 export default function App() {
-  return <AppWrapper />;
+  return <GestureHandlerRootView style={styles.container}><AppErrorBoundary><AppWrapper /></AppErrorBoundary></GestureHandlerRootView>;
 }
 
 const styles = StyleSheet.create({

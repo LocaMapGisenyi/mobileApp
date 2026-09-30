@@ -2,7 +2,9 @@ import { supabase } from '../../lib/supabase';
 import * as reviewSvc from '../review.service';
 import { Review } from '../../types';
 
-const toReview = (r: any): Review => ({
+const toReview = (r: reviewSvc.ReviewRow): Review => {
+  const reply = Array.isArray(r.reply) ? r.reply[0] : r.reply;
+  return ({
   id: r.id,
   propertyId: r.property_id,
   authorId: r.author_id,
@@ -13,10 +15,11 @@ const toReview = (r: any): Review => ({
   date: new Date(r.created_at),
   isVerified: r.is_verified,
   stayDuration: r.stay_duration ?? undefined,
-  ownerReply: r.reply
-    ? { text: r.reply.text, date: new Date(r.reply.created_at) }
+  ownerReply: reply
+    ? { text: reply.text, date: new Date(reply.created_at) }
     : undefined,
 });
+};
 
 export const reviewService = {
   getReviewsByPropertyId: async (propertyId: string): Promise<Review[]> => {
@@ -27,22 +30,27 @@ export const reviewService = {
   getReviewById: async (reviewId: string): Promise<Review> => {
     const { data, error } = await supabase
       .from('reviews')
-      .select('*, author:profiles!author_id(full_name, avatar_url), reply:review_replies(*)')
+      .select('*, reply:review_replies(*)')
       .eq('id', reviewId)
       .single();
     if (error) throw error;
-    return toReview(data);
+    return toReview((await reviewSvc.withReviewAuthors([data]))[0]);
   },
 
   addReview: async (
-    review: Omit<Review, 'id' | 'date' | 'authorAvatar' | 'authorName' | 'isVerified'>,
+    review: Omit<Review, 'id' | 'date' | 'authorAvatar' | 'authorName' | 'isVerified'> & { bookingId?: string },
   ): Promise<Review> => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (!user) throw new Error('Connectez-vous pour laisser un avis.');
+    if (!review.bookingId) throw new Error('Un séjour terminé est nécessaire pour laisser un avis.');
     const row = await reviewSvc.addReview({
       property_id: review.propertyId,
-      author_id: review.authorId,
+      author_id: user.id,
+      booking_id: review.bookingId,
       rating: review.rating,
       comment: review.comment,
-      stay_duration: review.stayDuration,
+
     });
     return toReview(row);
   },
@@ -77,17 +85,23 @@ export const reviewService = {
   getHostReviews: async (): Promise<Review[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    const { data: propIds } = await supabase
+    const { data: propIds, error: propertyError } = await supabase
       .from('properties')
       .select('id')
       .eq('owner_id', user.id);
-    if (!Array.isArray(propIds) || propIds.length === 0) return [];
+    if (propertyError) throw propertyError;
+    const { data: collaborations, error: collaborationError } = await supabase.from('co_hosts')
+      .select('listing_ids,permissions').eq('co_host_id', user.id).eq('status', 'ACTIVE');
+    if (collaborationError) throw collaborationError;
+    const visibleIds = [...new Set([...(propIds ?? []).map(p => p.id), ...(collaborations ?? [])
+      .filter(c => c.permissions.reviews).flatMap(c => c.listing_ids)])];
+    if (!visibleIds.length) return [];
     const { data, error } = await supabase
       .from('reviews')
-      .select('*, author:profiles!author_id(full_name, avatar_url), reply:review_replies(*)')
-      .in('property_id', propIds.map(p => p.id))
+      .select('*, reply:review_replies(*)')
+      .in('property_id', visibleIds)
       .order('created_at', { ascending: false });
-    if (error) return [];
-    return (Array.isArray(data) ? data : []).map(toReview);
+    if (error) throw error;
+    return (await reviewSvc.withReviewAuthors(data ?? [])).map(toReview);
   },
 };

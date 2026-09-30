@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Button, TextInput as PaperTextInput, Divider, Chip, HelperText, Snackbar, useTheme, Avatar, ActivityIndicator } from 'react-native-paper';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, Button, TextInput as PaperTextInput, HelperText, Snackbar, useTheme } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors as themeColors, spacing, typography, borderRadius, shadows } from '../theme';
-import { RootStackParamList, Review } from '../types';
+import { RootStackParamList } from '../types';
 import RatingStars from '../components/RatingStars';
 import useReviewsStore from '../store/reviews';
 import { useUserStore } from '../store/user';
-import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
+
+import { supabase } from '../lib/supabase';
 
 // Types des props
 type LeaveReviewScreenRouteProp = RouteProp<RootStackParamList, 'LeaveReview'>;
@@ -22,37 +24,33 @@ const MAX_COMMENT_LENGTH = 500;
 const LeaveReviewScreen = () => {
   const navigation = useNavigation<LeaveReviewNavigationProp>();
   const route = useRoute<LeaveReviewScreenRouteProp>();
-  const { propertyId, propertyTitle, ownerId, ownerName } = route.params;
+  const { propertyId, propertyTitle, bookingId } = route.params;
   const { t } = useTranslation();
   const theme = useTheme();
   const { colors } = theme;
-  
+
   const { addReview } = useReviewsStore();
   const { user } = useUserStore();
-  
+
   // États locaux
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [ownerRating, setOwnerRating] = useState(0);
-  const [ownerFeedback, setOwnerFeedback] = useState('');
-  const [includeOwnerReview, setIncludeOwnerReview] = useState(false);
-  const [stayDuration, setStayDuration] = useState<'short term' | 'long term'>('short term');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  
+
   const handleRatingChange = (newRating: number) => {
     setRating(newRating);
     if (validationError) setValidationError(null);
   };
-  
+
   const handleCommentChange = (text: string) => {
     if (text.length <= MAX_COMMENT_LENGTH) {
       setComment(text);
     }
     if (validationError) setValidationError(null);
   };
-  
+
   const validateForm = () => {
     if (rating === 0) {
       setValidationError(t('reviews.errorRatingRequired'));
@@ -65,43 +63,35 @@ const LeaveReviewScreen = () => {
     setValidationError(null);
     return true;
   };
-  
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newReviewData: Omit<Review, 'id' | 'date'> = {
-        propertyId,
-      authorId: user.id || 'anonymous_user',
-      authorName: user.fullName || t('reviews.anonymousUser'),
-      authorAvatar: user.photoURL || undefined,
-        rating,
-      comment: comment.trim(),
-        isVerified: true,
-    };
-    
-    addReview(newReviewData);
-      setIsSubmitting(false);
-    setShowSuccessSnackbar(true);
-      
-      setTimeout(() => {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        navigation.replace('PropertyDetails', { propertyId });
+
+    try {
+      if (!user.id) throw new Error('Connectez-vous pour laisser un avis.');
+      let eligibleBookingId = bookingId;
+      if (!eligibleBookingId) {
+        const { data, error } = await supabase.from('bookings').select('id').eq('property_id', propertyId).eq('guest_id', user.id)
+          .eq('status', 'completed').lte('end_date', new Date().toISOString().slice(0, 10)).order('end_date', { ascending: false }).limit(1);
+        if (error) throw error;
+        eligibleBookingId = data?.[0]?.id;
       }
-      }, 2000);
+      if (!eligibleBookingId) throw new Error('Un séjour terminé dans ce logement est nécessaire pour laisser un avis.');
+      await addReview({ propertyId, bookingId: eligibleBookingId, authorId: user.id, authorName: user.fullName ?? '', rating, comment: comment.trim() });
+      navigation.replace('PropertyDetails', { propertyId });
+    } catch (error) { setValidationError((error as Error).message); }
+    finally { setIsSubmitting(false); }
+
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.outlineVariant }]}>
         <TouchableOpacity
@@ -113,13 +103,13 @@ const LeaveReviewScreen = () => {
         <Text style={[styles.headerTitle, { color: colors.onSurface }]}>{t('reviews.leaveReviewTitle')}</Text>
         <View style={styles.iconButton} />
       </View>
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -131,14 +121,9 @@ const LeaveReviewScreen = () => {
               <Text style={[styles.subPropertyTitle, {color: colors.onSurfaceVariant}]}>
                 {t('reviews.reviewingAs')} {user.fullName ? ` ${user.fullName}` : t('reviews.anonymousUser')}
                 </Text>
-              {user.fullName && (
-                <View style={styles.verifiedBadge}>
-                  <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
-                  <Text style={[styles.verifiedText, {color: colors.primary}]}>{t('reviews.verifiedTenant')}</Text>
-                </View>
-              )}
+
             </View>
-            
+
             {/* Rating Section */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: colors.onSurfaceVariant }]}>{t('reviews.yourRating')}</Text>
@@ -152,7 +137,7 @@ const LeaveReviewScreen = () => {
                 />
               </View>
             </View>
-          
+
             {/* Comment Section */}
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, { color: colors.onSurfaceVariant }]}>{t('reviews.yourComment')}</Text>
@@ -173,7 +158,7 @@ const LeaveReviewScreen = () => {
                 </HelperText>
               </View>
             </View>
-            
+
             {/* Submit Button */}
             <Animated.View entering={FadeInUp.delay(200).duration(500)} style={styles.buttonContainer}>
             <Button
@@ -191,7 +176,7 @@ const LeaveReviewScreen = () => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-      
+
       <Snackbar
         visible={showSuccessSnackbar}
         onDismiss={() => setShowSuccessSnackbar(false)}
@@ -302,4 +287,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LeaveReviewScreen; 
+export default LeaveReviewScreen;

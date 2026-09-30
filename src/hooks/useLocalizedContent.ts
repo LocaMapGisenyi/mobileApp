@@ -83,40 +83,18 @@ const currencySymbols = {
 export const useLocalizedContent = () => {
   const { preferences } = useUserPreferences();
   const { language, currency } = preferences;
-  
+
   // Obtenir les traductions selon la langue sélectionnée
   const t = useMemo(() => {
     return translations[language] || translations.fr;
   }, [language]);
-  
+
   // Formatage du prix selon la devise sélectionnée
   const formatPrice = (price: number, originalCurrency?: string): string => {
-    // Si la devise de la propriété est différente de celle de l'utilisateur,
-    // on devrait faire une conversion ici. Ceci est une simulation simplifiée.
-    
-    // Taux de change simplifiés (à remplacer par des taux réels)
-    const exchangeRates = {
-      RWF: { USD: 0.00086, EUR: 0.00079 },
-      USD: { RWF: 1163, EUR: 0.92 },
-      EUR: { RWF: 1260, USD: 1.09 },
-    };
-    
-    // Convertir le prix si nécessaire
-    let convertedPrice = price;
-    if (originalCurrency && originalCurrency !== currency) {
-      const rate = exchangeRates[originalCurrency as Currency]?.[currency as keyof typeof exchangeRates[Currency]];
-      if (rate) {
-        convertedPrice = price * (rate as number);
-      }
-    }
-    
-    // Formater le prix
-    const symbol = currencySymbols[currency];
-    return currency === 'RWF'
-      ? `${Math.round(convertedPrice).toLocaleString()} ${symbol}`
-      : `${symbol}${Math.round(convertedPrice).toLocaleString()}`;
+    const unit=originalCurrency || 'RWF';
+    return price.toLocaleString(language==='fr'?'fr-FR':'en-US')+' '+unit;
   };
-  
+
   return {
     t,
     formatPrice,
@@ -125,4 +103,4 @@ export const useLocalizedContent = () => {
   };
 };
 
-export default useLocalizedContent; 
+export default useLocalizedContent;

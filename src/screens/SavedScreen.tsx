@@ -1,23 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  FlatList, 
-  TouchableOpacity, 
-  StatusBar,
-  Dimensions,
-  RefreshControl,
-  ImageBackground } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-  Text,
-  Button,
-  Chip,
-  Appbar,
-  ActivityIndicator,
-  useTheme,
-  FAB
-} from 'react-native-paper';
+import { StyleSheet, View, FlatList, TouchableOpacity, StatusBar, Dimensions, RefreshControl, ImageBackground, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, Button, Chip, Appbar, useTheme, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,67 +15,56 @@ const { width } = Dimensions.get('window');
 const NUM_COLUMNS_THRESHOLD = 600; // Width threshold to switch to 2 columns
 
 const SavedScreen = () => {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const theme = useTheme();
   const { colors } = theme;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  
-  const { 
-    savedItems, 
-    lastSorted, 
-    isLoading, 
-    sortBy, 
-    removeSaved 
+
+  const {
+    savedItems,
+    lastSorted,
+    isLoading,
+    sortBy,
+    removeSaved, fetchSaved, error
   } = useSavedStore();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [numColumns, setNumColumns] = useState(width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
-  
+
   // Update numColumns when dimension changes
   useEffect(() => {
     const updateLayout = () => {
       setNumColumns(Dimensions.get('window').width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
     };
-    
+
     const subscription = Dimensions.addEventListener('change', updateLayout);
     return () => subscription?.remove();
   }, []);
-  
-  const handleRefresh = useCallback(() => {
+
+  useEffect(() => { void fetchSaved(); }, [fetchSaved]);
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate data refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  }, []);
-  
+    try { await fetchSaved(); }
+    finally { setRefreshing(false); }
+  }, [fetchSaved]);
+
   const navigateToPropertyDetails = useCallback((propertyId: string) => {
     navigation.navigate('PropertyDetails', { propertyId });
   }, [navigation]);
-  
-  const navigateToExplore = useCallback(() => {
-    if (navigation.getParent()?.getState().routeNames.includes('Explore')) {
-      navigation.getParent()?.navigate('Explore');
-    } else {
-      // Fallback if direct tab navigation isn't possible
-      navigation.navigate('Home');
-    }
-  }, [navigation]);
-  
+
   const renderPropertyCard = ({ item, index }: { item: Property; index: number }) => (
     <View style={[
       styles.cardWrapper,
       { width: numColumns === 1 ? '100%' : '50%' }
     ]}>
-      <CardLogement 
-        logement={item} 
-        index={index} 
+      <CardLogement
+        logement={item}
+        index={index}
         onPress={navigateToPropertyDetails}
       />
     </View>
   );
-  
+
   const renderSortChips = () => (
     <View style={styles.sortChipsContainer}>
       <Chip
@@ -102,15 +75,15 @@ const SavedScreen = () => {
           lastSorted === 'dateAdded' ? { backgroundColor: colors.primaryContainer } : null
         ]}
         textStyle={
-          lastSorted === 'dateAdded' 
-            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' } 
+          lastSorted === 'dateAdded'
+            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' }
             : { color: colors.onSurfaceVariant }
         }
         icon="clock-outline"
       >
         {t('saved.sort.date')}
       </Chip>
-      
+
       <Chip
         selected={lastSorted === 'price'}
         onPress={() => sortBy('price')}
@@ -119,15 +92,15 @@ const SavedScreen = () => {
           lastSorted === 'price' ? { backgroundColor: colors.primaryContainer } : null
         ]}
         textStyle={
-          lastSorted === 'price' 
-            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' } 
+          lastSorted === 'price'
+            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' }
             : { color: colors.onSurfaceVariant }
         }
         icon="cash-outline"
       >
         {t('saved.sort.price')}
       </Chip>
-      
+
       <Chip
         selected={lastSorted === 'type'}
         onPress={() => sortBy('type')}
@@ -136,8 +109,8 @@ const SavedScreen = () => {
           lastSorted === 'type' ? { backgroundColor: colors.primaryContainer } : null
         ]}
         textStyle={
-          lastSorted === 'type' 
-            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' } 
+          lastSorted === 'type'
+            ? { color: colors.onPrimaryContainer, fontWeight: 'bold' }
             : { color: colors.onSurfaceVariant }
         }
         icon="home-outline"
@@ -146,35 +119,35 @@ const SavedScreen = () => {
       </Chip>
     </View>
   );
-  
+
   const renderEmptyState = () => (
-    <Animated.View 
+    <Animated.View
       entering={FadeIn.duration(400)}
       style={styles.emptyStateContainer}
     >
-      <ImageBackground 
-        source={{ uri: 'https://a0.muscache.com/im/pictures/d727f355-3f10-44b5-9750-d1efca2438fc.jpg' }} 
+      <ImageBackground
+        source={{ uri: 'https://a0.muscache.com/im/pictures/d727f355-3f10-44b5-9750-d1efca2438fc.jpg' }}
         style={styles.emptyStateImage}
         imageStyle={{ borderRadius: 120 }}
         resizeMode="cover"
       >
         <View style={styles.emptyStateImageOverlay} />
       </ImageBackground>
-      
-      <Text 
-        variant="headlineMedium" 
+
+      <Text
+        variant="headlineMedium"
         style={[styles.emptyStateTitle, { color: colors.onSurface }]}
       >
         {t('saved.emptyTitle')}
       </Text>
-      
-      <Text 
-        variant="bodyLarge" 
+
+      <Text
+        variant="bodyLarge"
         style={[styles.emptyStateSubtitle, { color: colors.onSurfaceVariant }]}
       >
         {t('saved.empty')}
       </Text>
-      
+
       <Button
         mode="contained"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Explorer' } as any)}
@@ -189,27 +162,21 @@ const SavedScreen = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      {error && <Text accessibilityRole="alert">{error}</Text>}
       <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
-      <Appbar.Header style={{ backgroundColor: colors.surface }}>
+
+      <Appbar.Header statusBarHeight={0} style={{ backgroundColor: colors.surface }}>
         <Appbar.Content title={t('saved.title')} titleStyle={{ fontWeight: 'bold' }} />
-        {savedItems.length > 0 && (
-          <Appbar.Action 
-            icon="filter-variant" 
-            onPress={() => {/* Optional filter dialog */}} 
-            color={colors.primary}
-          />
-        )}
       </Appbar.Header>
-      
+
       {savedItems.length > 0 && renderSortChips()}
-      
-      {isLoading ? (
+
+      {isLoading && savedItems.length === 0 && !refreshing ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator animating size="large" color={colors.primary} />
       </View>
       ) : savedItems.length === 0 ? (
-        renderEmptyState()
+        !isLoading && !refreshing ? renderEmptyState() : null
       ) : (
         <FlatList
           data={savedItems}
@@ -225,13 +192,12 @@ const SavedScreen = () => {
               onRefresh={handleRefresh}
               colors={[colors.primary]}
               tintColor={colors.primary}
-              progressViewOffset={insets.top}
             />
           }
           ListFooterComponent={
             <View style={styles.footerContainer}>
-              <Text 
-                variant="bodyMedium" 
+              <Text
+                variant="bodyMedium"
                 style={{ color: colors.onSurfaceVariant, textAlign: 'center' }}
               >
                 {t('saved.footerText')}
@@ -248,13 +214,13 @@ const SavedScreen = () => {
           }
         />
       )}
-      
+
       {savedItems.length > 0 && (
         <FAB
           icon="map-marker"
           style={[styles.fab, { backgroundColor: colors.primary }]}
           color={colors.onPrimary}
-          onPress={() => navigation.navigate('Map')} // Navigate to map view of saved items
+          onPress={() => navigation.navigate('MapScreen')} // Navigate to map view of saved items
           label={t('saved.viewOnMap')}
         />
       )}
@@ -273,6 +239,7 @@ const styles = StyleSheet.create({
   },
   sortChipsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
@@ -302,7 +269,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyStateImageOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.1)', 
+    backgroundColor: 'rgba(0,0,0,0.1)',
     position: 'absolute',
     top: 0,
     left: 0,
@@ -342,4 +309,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SavedScreen; 
+export default SavedScreen;

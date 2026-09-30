@@ -1,25 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  FlatList, 
-  StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Searchbar, Chip, useTheme, Snackbar } from 'react-native-paper';
+import { Text, Searchbar, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, Property } from '../types';
 import { useSearchStore } from '../store/search';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
-import PropertyCard from '../components/PropertyCard';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import FavoriteButton from '../components/FavoriteButton';
 import { useFavoritesStore } from '../store/favorites';
-import { useAlertsStore } from '../store/alerts';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
@@ -34,74 +25,20 @@ interface CategoryItem {
 const SearchScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<SearchScreenNavigationProp>();
-  const theme = useTheme();
-  const { listings, fetchListings, isLoading } = useSearchStore();
-  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
-  const { alerts, notificationsEnabled } = useAlertsStore();
-  
-  const [selectedCategory, setSelectedCategory] = useState('vue');
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [matchedProperty, setMatchedProperty] = useState<Property | null>(null);
-  
-  useEffect(() => {
-    fetchListings();
-  }, []);
+  const { listings, fetchListings, isLoading, error, setQuery, filters, hasMore, loadMore } = useSearchStore();
+  const { addFavorite, removeFavorite, isFavorite, error: favoriteError } = useFavoritesStore();
 
-  // Vérifier si un logement correspond aux critères d'alerte
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
   useEffect(() => {
-    if (!notificationsEnabled || alerts.length === 0 || !listings.length) return;
-    
-    // Simuler un délai pour découvrir un nouveau logement correspondant aux alertes
-    const timer = setTimeout(() => {
-      const enabledAlerts = alerts.filter(alert => alert.enabled);
-      if (!enabledAlerts.length) return;
-      
-      // Vérifier chaque logement avec les critères d'alerte
-      for (const property of listings) {
-        for (const alert of enabledAlerts) {
-          const criteria = alert.criteria;
-          let match = true;
-          
-          // Vérifier le type de propriété
-          if (criteria.propertyTypes && criteria.propertyTypes.length > 0) {
-            if (!property.type || !criteria.propertyTypes.includes(property.type as any)) {
-              match = false;
-            }
-          }
-          
-          // Vérifier la plage de prix
-          if (criteria.minPrice && property.price < criteria.minPrice) {
-            match = false;
-          }
-          if (criteria.maxPrice && property.price > criteria.maxPrice) {
-            match = false;
-          }
-          
-          // Vérifier le nombre de chambres
-          if (criteria.minBedrooms && (!property.bedrooms || property.bedrooms < criteria.minBedrooms)) {
-            match = false;
-          }
-          if (criteria.maxBedrooms && (!property.bedrooms || property.bedrooms > criteria.maxBedrooms)) {
-            match = false;
-          }
-          
-          // Si tout correspond, afficher l'alerte avec ce logement
-          if (match) {
-            setMatchedProperty(property);
-            setAlertVisible(true);
-            return; // Sortir après la première correspondance
-          }
-        }
-      }
-    }, 2000); // Délai de 2 secondes pour simuler la découverte
-    
-    return () => clearTimeout(timer);
-  }, [listings, alerts, notificationsEnabled]);
+    void fetchListings();
+    void useFavoritesStore.getState().fetchFavorites();
+  }, []);
 
   const handleViewProperty = (propertyId: string) => {
     navigation.navigate('PropertyDetails', { propertyId });
   };
-  
+
   const handleFavoriteToggle = (property: Property) => {
     if (isFavorite(property.id)) {
       removeFavorite(property.id);
@@ -112,16 +49,15 @@ const SearchScreen = () => {
 
   // Categories avec icônes
   const categories: CategoryItem[] = [
-    { id: 'vue', name: t('search.categories.view'), icon: 'image-outline' },
-    { id: 'design', name: t('search.categories.design'), icon: 'home' },
-    { id: 'chambres', name: t('search.categories.bedrooms'), icon: 'bed-outline' },
-    { id: 'lac', name: t('search.categories.lake'), icon: 'water-outline' },
-    { id: 'iles', name: t('search.categories.islands'), icon: 'map-outline' },
+    { id: 'all', name: t('explore.categories.all'), icon: 'home-outline' },
+    { id: 'apartment', name: t('property.types.apartment'), icon: 'business-outline' },
+    { id: 'house', name: t('property.types.house'), icon: 'home' },
+    { id: 'studio', name: t('property.types.studio'), icon: 'bed-outline' },
+    { id: 'villa', name: t('property.types.villa'), icon: 'water-outline' },
   ];
 
   const renderCategoryItem = ({ item, index }: { item: CategoryItem; index: number }) => (
-    <Animated.View 
-      entering={FadeIn.delay(index * 100)} 
+    <Animated.View
       style={styles.categoryItemContainer}
     >
       <TouchableOpacity
@@ -129,7 +65,7 @@ const SearchScreen = () => {
           styles.categoryItem,
           selectedCategory === item.id && styles.selectedCategoryItem
         ]}
-        onPress={() => setSelectedCategory(item.id)}
+        onPress={() => { setSelectedCategory(item.id); useSearchStore.getState().setFilters({ propertyType: item.id === 'all' ? undefined : [item.id] }); void fetchListings(); }}
       >
         <Ionicons
           name={item.icon}
@@ -147,7 +83,7 @@ const SearchScreen = () => {
       </Text>
     </Animated.View>
   );
-  
+
   const handleCreateAlertPress = () => {
     navigation.navigate('AlertPreferences');
   };
@@ -157,14 +93,13 @@ const SearchScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       <View style={styles.container}>
         {/* Barre de recherche */}
-        <Animated.View 
-          entering={FadeIn.duration(300)}
+        <Animated.View
           style={styles.searchContainer}
         >
           <Searchbar
             placeholder={t('search.startSearch')}
-            value=""
-            onChangeText={() => {}}
+            value={filters.query}
+            onChangeText={setQuery}
             iconColor={colors.gray[700]}
             inputStyle={styles.searchInput}
             style={styles.searchBar}
@@ -172,7 +107,7 @@ const SearchScreen = () => {
             onIconPress={() => {}}
             clearIcon={() => null}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.alertButton}
             onPress={handleCreateAlertPress}
           >
@@ -182,7 +117,7 @@ const SearchScreen = () => {
         </Animated.View>
 
         {/* Catégories */}
-        <Animated.View entering={FadeIn.duration(300).delay(100)}>
+        <Animated.View>
           <FlatList
             data={categories}
             renderItem={renderCategoryItem}
@@ -194,42 +129,38 @@ const SearchScreen = () => {
         </Animated.View>
 
         {/* Tag "tous les frais compris" */}
-        <Animated.View 
-          entering={FadeIn.duration(300).delay(200)}
+        <Animated.View
           style={styles.tagContainer}
         >
           <View style={styles.pricingTag}>
             <Ionicons name="pricetag" size={14} color={colors.primary} />
-            <Text style={styles.pricingTagText}>{t('search.priceIncludesAllFees')}</Text>
+            <Text style={styles.pricingTagText}>{t('property.perMonth')}</Text>
           </View>
         </Animated.View>
 
         {/* Liste des propriétés */}
-        <ScrollView 
+        <ScrollView
           style={styles.propertiesContainer}
           showsVerticalScrollIndicator={false}
         >
+          {(error || favoriteError) && <Text accessibilityRole="alert" onPress={() => { void fetchListings(); }}>{error || favoriteError} — {t('common.retry')}</Text>}
+          {isLoading && listings.length === 0 && <ActivityIndicator style={{ marginVertical: 24 }} color={colors.primary} accessibilityLabel="Recherche des logements" />}
+          {!isLoading && !error && listings.length === 0 && <Text>{t('explore.noResults')}</Text>}
           {listings.map((property, index) => (
-            <Animated.View 
+            <Animated.View
               key={property.id}
-              entering={FadeInDown.delay(300 + index * 100)}
               style={styles.propertyCardContainer}
             >
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => handleViewProperty(property.id)}
               >
-                <View style={styles.featuredBadge}>
-                  <Ionicons name="trophy" size={15} color={colors.white} />
-                  <Text style={styles.featuredBadgeText}>{t('search.travelersChoice')}</Text>
-                </View>
-                
                 <Image
                   source={{ uri: property.images[0] as string }}
                   style={styles.propertyImage}
                   resizeMode="cover"
                 />
-                
+
                 <View style={styles.heartButton}>
                   <FavoriteButton
                     propertyId={property.id}
@@ -244,47 +175,24 @@ const SearchScreen = () => {
                     <Text style={styles.locationText}>{property.location?.district || property.location?.city}, Rwanda</Text>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={14} color={colors.black} />
-                      <Text style={styles.ratingText}>{property.rating || 4.5}</Text>
+                      <Text style={styles.ratingText}>{property.rating ?? '—'}</Text>
                     </View>
                   </View>
-                  
-                  <Text style={styles.distanceText}>{t('search.distance', { distance: 5 })}</Text>
-                  <Text style={styles.dateText}>{t('search.dates', { start: '11', end: '16', month: t('search.months.june') })}</Text>
-                  
+
                   <View style={styles.priceContainer}>
                     <Text style={styles.priceText}>
                       <Text style={styles.priceBold}>{property.price} {property.currency}</Text>
-                      <Text style={styles.priceUnit}> {t('property.perNight')}</Text>
+                      <Text style={styles.priceUnit}> {t('property.perMonth')}</Text>
                     </Text>
                   </View>
                 </View>
               </TouchableOpacity>
             </Animated.View>
           ))}
+          {hasMore && listings.length > 0 && <Button loading={isLoading} disabled={isLoading} onPress={() => { void loadMore(); }}>{t('explore.loadMore')}</Button>}
         </ScrollView>
-        
-        {/* Snackbar pour les alertes */}
-        <Snackbar
-          visible={alertVisible}
-          onDismiss={() => setAlertVisible(false)}
-          duration={5000}
-          action={{
-            label: t('common.view'),
-            onPress: () => {
-              if (matchedProperty) {
-                navigation.navigate('PropertyDetails', { propertyId: matchedProperty.id });
-              }
-            },
-          }}
-          style={styles.snackbar}
-        >
-          <View style={styles.snackbarContent}>
-            <Ionicons name="notifications" size={20} color={colors.white} style={styles.snackbarIcon} />
-            <Text style={styles.snackbarText}>
-              {t('alerts.newMatchingProperty')}
-            </Text>
-          </View>
-        </Snackbar>
+
+
       </View>
     </SafeAreaView>
   );
@@ -296,6 +204,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   container: {
+    width: '100%', maxWidth: 960, alignSelf: 'center',
     flex: 1,
     backgroundColor: colors.white,
   },
@@ -471,4 +380,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SearchScreen; 
+export default SearchScreen;

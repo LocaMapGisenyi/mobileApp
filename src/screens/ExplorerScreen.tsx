@@ -1,904 +1,471 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  FlatList,
-  TouchableOpacity,
-  StatusBar,
-  useWindowDimensions,
-  Platform,
-  RefreshControl,
-  Image } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Text,
-  useTheme,
   ActivityIndicator,
-  Button,
-} from 'react-native-paper';
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
-import { RootStackParamList } from '../types';
-import { Property } from '../types/index';
-import SearchFiltersModal from '../components/SearchFiltersModal';
-import { useSearchStore, SearchFilters } from '../store/search';
-import { useUserStore } from '../store/user';
-import { usePreferences } from '../store/preferences';
-
 import { useTranslation } from 'react-i18next';
+import { colors } from '../theme';
+import type { RootStackParamList } from '../types';
+import { useSearchStore } from '../store/search';
 import { useFavoritesStore } from '../store/favorites';
-import Animated, {
-  FadeInUp,
-  FadeIn,
-  FadeInDown,
-  FadeInRight,
-  ZoomIn,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  interpolate,
-  Extrapolation,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-import { colors as themeColors, spacing as themeSpacing, typography as themeTypo, borderRadius as themeBR } from '../theme';
+import { useUserStore } from '../store/user';
+import SearchFiltersModal from '../components/SearchFiltersModal';
+import ListingCard from '../components/ListingCard';
 
-const NUM_COLUMNS_THRESHOLD = 700;
+const categories = [
+  { id: 'all', key: 'all', icon: 'apps' },
+  { id: 'lake_view', key: 'lake', icon: 'water' },
+  { id: 'furnished', key: 'furnished', icon: 'chair' },
+  { id: 'villa', key: 'villas', icon: 'villa' },
+  { id: 'apartment', key: 'apartments', icon: 'apartment' },
+  { id: 'new', key: 'new', icon: 'schedule' },
+] as const;
 
-// Définition des catégories personnalisées
-const CUSTOM_CATEGORIES = [
-  {
-    id: 'all',
-    labelKey: 'explore.categories.all',
-    icon: 'explore',
-    color: themeColors.primary,
-  },
-  {
-    id: 'lake_view',
-    labelKey: 'explore.categories.lake',
-    icon: 'water',
-    color: themeColors.primary,
-    amenityFilter: ['Vue sur le lac', 'Lakefront']
-  },
-  {
-    id: 'student',
-    labelKey: 'explore.categories.student',
-    icon: 'school',
-    color: themeColors.primary,
-    amenityFilter: ['Pour étudiants', 'Student housing']
-  },
-  {
-    id: 'furnished',
-    labelKey: 'explore.categories.furnished',
-    icon: 'chair',
-    color: themeColors.primary,
-    amenityFilter: ['Meublé', 'Furnished']
-  },
-  {
-    id: 'longTerm',
-    labelKey: 'explore.categories.longTerm',
-    icon: 'event-available',
-    color: themeColors.primary,
-    amenityFilter: ['Long séjour', 'Long term']
-  },
-  {
-    id: 'villa',
-    labelKey: 'explore.categories.villas',
-    icon: 'villa',
-    color: themeColors.primary,
-    propertyType: 'villa'
-  },
-  {
-    id: 'appartement',
-    labelKey: 'explore.categories.apartments',
-    icon: 'apartment',
-    color: themeColors.primary,
-    propertyType: 'appartement'
-  },
-  {
-    id: 'new',
-    labelKey: 'explore.categories.new',
-    icon: 'fiber-new',
-    color: themeColors.primary,
-    isNew: true
-  }
-];
-
-
-const ExplorerScreen = () => {
-  const insets = useSafeAreaInsets();
-  const theme = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+export default function ExplorerScreen() {
   const { t } = useTranslation();
-  const { currency } = usePreferences();
-  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
-  const { user } = useUserStore();
-
-  // Initiales de l'avatar (max 2 caractères)
-  const avatarInitials = user.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : user.email ? user.email[0].toUpperCase() : 'U';
-
-  // Lettres de "LocaMap" pour l'animation staggerée
-  const APP_NAME_LETTERS = 'LocaMap'.split('');
-  const HEADER_MAX_HEIGHT = 72;
-  const HEADER_MIN_HEIGHT = 52;
-
+  const columns = width >= 1050 ? 3 : width >= 700 ? 2 : 1;
+  const user = useUserStore(s => s.user);
   const {
-    listings,
     filteredListings,
-    isLoading,
     filters,
+    isLoading,
+    error,
+    hasMore,
     showFiltersModal,
     fetchListings,
+    loadMore,
     setQuery,
     setFilters,
     applyFilters,
     resetFilters,
     toggleFiltersModal,
   } = useSearchStore();
-
-  const [numColumns, setNumColumns] = useState(width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
-
-  // Update numColumns reactively when width changes (orientation, multi-window)
+  const { isFavorite, toggleSave, error: favoriteError } = useFavoritesStore();
+  const [search, setSearch] = useState(filters.query);
+  const category = filters.createdAfter
+    ? 'new'
+    : filters.amenities?.includes('lake_view')
+      ? 'lake_view'
+      : filters.amenities?.includes('furnished')
+        ? 'furnished'
+        : filters.propertyType?.length === 1 &&
+            ['villa', 'apartment'].includes(filters.propertyType[0])
+          ? filters.propertyType[0]
+          : 'all';
   useEffect(() => {
-    setNumColumns(width > NUM_COLUMNS_THRESHOLD ? 2 : 1);
-  }, [width]);
+    setSearch(filters.query);
+  }, [filters.query]);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [searchText, setSearchText] = useState('');
-
-  // Animation values for scroll-based effects
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  // Header compresse au scroll : hauteur + taille du nom + ombre
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(
-      scrollY.value,
-      [0, 60],
-      [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
-      Extrapolation.CLAMP
-    );
-    const shadowOpacity = interpolate(
-      scrollY.value,
-      [0, 30],
-      [0, 0.08],
-      Extrapolation.CLAMP
-    );
-    return {
-      height,
-      shadowOpacity,
-      shadowColor: themeColors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowRadius: 8,
-      elevation: interpolate(scrollY.value, [0, 30], [0, 4], Extrapolation.CLAMP),
-    };
-  });
-
-  const appNameScaleStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scaleX: interpolate(scrollY.value, [0, 60], [1, 0.78], Extrapolation.CLAMP),
-      },
-      {
-        scaleY: interpolate(scrollY.value, [0, 60], [1, 0.78], Extrapolation.CLAMP),
-      },
-    ],
-  }));
-
-  const subtitleOpacityStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.value,
-      [0, 40],
-      [1, 0],
-      Extrapolation.CLAMP
-    ),
-    height: interpolate(
-      scrollY.value,
-      [0, 40],
-      [18, 0],
-      Extrapolation.CLAMP
-    ),
-  }));
-
-  const handleFetchListings = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    await fetchListings();
-    if (isRefresh) setRefreshing(false);
-  }, [fetchListings]);
-
+  const [searchFocused, setSearchFocused] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      if (listings.length === 0) {
-        handleFetchListings();
-      }
-    }, [listings.length, handleFetchListings])
+      void fetchListings();
+      void useFavoritesStore.getState().fetchFavorites();
+    }, [fetchListings]),
   );
-
-  const handleSearch = () => {
-    setQuery(searchText);
-    setActiveCategory('all');
-  };
-
-  const handleCategoryPress = (categoryId: string) => {
-    setActiveCategory(categoryId);
-
-    const category = CUSTOM_CATEGORIES.find(cat => cat.id === categoryId);
-
-    if (categoryId === 'all') {
-      // Reset filters but keep the search query if any
-      const newFilters: Partial<SearchFilters> = {
-        ...filters,
-        propertyType: undefined,
-        amenities: undefined
-      };
-      setFilters(newFilters);
-    } else if (category?.amenityFilter) {
-      // Filter by amenities
-      setFilters({
-        ...filters,
-        amenities: category.amenityFilter
-      });
-    } else if (category?.propertyType) {
-      // Filter by property type
-      setFilters({
-        ...filters,
-        propertyType: [category.propertyType]
-      });
-    } else if (category?.isNew) {
-      // Filter for 'new' properties (added in the last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      // Apply a custom filter for new properties
-      // Since our SearchFilters doesn't have dateAddedAfter directly,
-      // we'll filter the listings after applying other filters
-      setFilters({
-        ...filters,
-        // We'll handle the date filter in the rendering
-      });
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchListings();
+    } finally {
+      setRefreshing(false);
     }
-
+  };
+  const chooseCategory = (id: string) => {
+    setFilters({
+      ...filters,
+      propertyType: ['villa', 'apartment'].includes(id) ? [id] : undefined,
+      amenities: ['lake_view', 'furnished'].includes(id) ? [id] : undefined,
+      createdAfter: id === 'new' ? new Date(Date.now() - 30 * 86400000).toISOString() : undefined,
+    });
     applyFilters();
   };
-
-  const onResetFilters = () => {
+  const reset = () => {
+    setSearch('');
     resetFilters();
-    setActiveCategory('all');
-    setSearchText('');
   };
-
-  // Currency formatter
-  const formatCurrency = (price: number, currency: string) => {
-    switch (currency) {
-      case 'USD':
-        return `$${price}`;
-      case 'EUR':
-        return `€${price}`;
-      default:
-        return `${price.toLocaleString()} RWF`;
-    }
-  };
-
-  const renderCategoryItem = ({ item, index }: { item: typeof CUSTOM_CATEGORIES[0]; index: number }) => (
-    <Animated.View
-      entering={FadeInRight.delay(index * 30).duration(300)}
-      style={styles.categoryItem}
-    >
-      <TouchableOpacity
-        onPress={() => handleCategoryPress(item.id)}
-        style={[
-          styles.categoryButton,
-          activeCategory === item.id && styles.activeCategoryButton,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={t(item.labelKey)}
-        accessibilityState={{ selected: activeCategory === item.id }}
-      >
-        <MaterialIcons
-          name={item.icon as any}
-          size={20}
-          color={activeCategory === item.id ? themeColors.white : themeColors.inkMid}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        />
-      </TouchableOpacity>
-      <Text
-        style={[
-          styles.categoryLabel,
-          activeCategory === item.id && styles.activeCategoryLabel,
-        ]}
-        numberOfLines={1}
-      >
-        {t(item.labelKey)}
-      </Text>
-    </Animated.View>
-  );
-
-  const renderPropertyCard = ({ item, index }: { item: Property; index: number }) => {
-    const currentlyFavorite = isFavorite(item.id);
-    const isNew = new Date(item.createdAt).getTime() > Date.now() - (30 * 24 * 60 * 60 * 1000);
-
-    const handleToggleFavorite = () => {
-      if (currentlyFavorite) {
-        removeFavorite(item.id);
-      } else {
-        addFavorite(item);
-      }
-    };
-
-    return (
-      <View
-        style={[
-          styles.cardWrapper,
-          { width: numColumns === 1 ? '100%' : '50%' }
-        ]}
-      >
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
-          style={styles.propertyCard}
-        >
-          <Animated.View
-            entering={FadeInUp.delay(index * 50).duration(300)}
-            style={styles.imageContainer}
-          >
-            <Image
-              source={{ uri: Array.isArray(item.images) && item.images.length > 0 ?
-                item.images[0] : 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80'
-              }}
-              style={styles.propertyImage}
-              resizeMode="cover"
-            />
-            <TouchableOpacity
-              style={styles.favoriteButton}
-              onPress={handleToggleFavorite}
-              accessibilityRole="button"
-              accessibilityLabel={currentlyFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              accessibilityState={{ selected: currentlyFavorite }}
-            >
-              <MaterialIcons
-                name={currentlyFavorite ? 'favorite' : 'favorite-border'}
-                size={22}
-                color={currentlyFavorite ? themeColors.error : themeColors.white}
-              />
-            </TouchableOpacity>
-            {isNew && (
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>{t('common.new')}</Text>
-              </View>
-            )}
-          </Animated.View>
-
-          <View style={styles.propertyInfo}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.locationText}>
-                {item.location?.district || item.location?.city || ''}
-              </Text>
-              {item.rating && (
-                <View style={styles.ratingContainer}>
-                  <MaterialIcons name="star" size={14} color={themeColors.inkMid} />
-                  <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.titleText} numberOfLines={1}>{item.title}</Text>
-
-            <Text style={styles.detailsText}>
-              {item.bedrooms} {t('property.bedrooms')} · {item.bathrooms} {t('property.bathrooms')}
-              {item.size ? ` · ${item.size}m²` : ''}
-            </Text>
-
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>
-                <Text style={styles.priceBold}>
-                  {formatCurrency(item.price, item.currency)}
-                </Text>
-                <Text style={styles.priceUnit}> / {t('property.perMonth')}</Text>
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+  const initials =
+    user.fullName
+      ?.split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'L';
+  const header = (
+    <View>
+      <View style={s.intro}>
+        <Text accessibilityRole="header" style={s.heading}>
+          {t('explore.findYourHome')}
+        </Text>
+        <Text style={s.subtitle}>{t('explore.shortOrLongStay')}</Text>
       </View>
-    );
-  };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Animated.View entering={FadeIn.duration(400)} style={styles.emptyContent}>
-        <MaterialIcons name="search-off" size={56} color={themeColors.inkDisabled} />
-        <Text style={styles.emptyTitle}>{t('explore.noResults')}</Text>
-        <Text style={styles.emptySubtitle}>{t('explore.tryDifferent')}</Text>
-        <Button
-          mode="contained"
-          onPress={onResetFilters}
-          style={styles.resetButton}
-          buttonColor={themeColors.primary}
+      <View style={s.searchRow}>
+        <View style={[s.searchField, searchFocused && s.searchFocused]}>
+          <MaterialIcons name="search" size={22} color={colors.primary} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('explore.searchPlaceholder')}
+            placeholderTextColor={colors.inkSubtle}
+            accessibilityLabel={t('search.title')}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            onSubmitEditing={() => setQuery(search)}
+            returnKeyType="search"
+            style={s.input}
+          />
+          <Pressable
+            onPress={() => setQuery(search)}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.search')}
+            style={({ pressed }) => [s.searchSubmit, pressed && s.pressed]}
+          >
+            <MaterialIcons name="arrow-forward" size={23} color={colors.onAccent} />
+          </Pressable>
+        </View>
+        <Pressable
+          onPress={toggleFiltersModal}
+          accessibilityRole="button"
+          accessibilityLabel={t('search.filters')}
+          style={({ pressed }) => [s.filterButton, pressed && s.pressed]}
         >
-          {t('explore.resetFilters')}
-        </Button>
-      </Animated.View>
+          <MaterialIcons name="tune" size={23} color={colors.ink} />
+        </Pressable>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.categories}
+      >
+        {categories.map(item => (
+          <Pressable
+            key={item.id}
+            onPress={() => chooseCategory(item.id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: category === item.id }}
+            style={({ pressed }) => [
+              s.category,
+              category === item.id && s.categoryActive,
+              pressed && s.pressed,
+            ]}
+          >
+            <MaterialIcons
+              name={item.icon}
+              size={19}
+              color={category === item.id ? colors.onPrimary : colors.primary}
+            />
+            <Text style={[s.categoryLabel, category === item.id && s.categoryLabelActive]}>
+              {t(`explore.categories.${item.key}`)}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <View style={s.resultsRow}>
+        <View style={s.resultsSummary}>
+          <Text accessibilityRole="header" style={s.results}>
+            {t('design.homes')}
+          </Text>
+          <Text style={s.count}>{t('design.resultCount', { count: filteredListings.length })}</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('MapScreen')}
+          style={({ pressed }) => [s.mapButton, pressed && s.pressed]}
+        >
+          <MaterialIcons name="map" size={21} color={colors.onAccent} />
+          <Text style={s.mapLabel}>{t('map.title')}</Text>
+        </Pressable>
+      </View>
+      {!!(error || favoriteError) && (
+        <View style={s.error}>
+          <Text accessibilityRole="alert" style={s.errorText}>
+            {error || favoriteError}
+          </Text>
+          <Pressable
+            onPress={() => void fetchListings()}
+            accessibilityRole="button"
+            style={s.retry}
+          >
+            <Text style={s.retryText}>{t('common.retry')}</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
-
-  // Filter new items if the "new" category is selected
-  const displayedListings = activeCategory === 'new'
-    ? filteredListings.filter(
-        item => new Date(item.createdAt).getTime() > Date.now() - (30 * 24 * 60 * 60 * 1000)
-      )
-    : filteredListings;
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={themeColors.surface} />
-
-      {/* ── Header animé : nom de l'app + avatar ── */}
-      <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
-        {/* Nom LocaMap lettre par lettre */}
-        <View style={styles.headerLeft}>
-          <Animated.View style={[styles.appNameRow, appNameScaleStyle]}>
-            {APP_NAME_LETTERS.map((letter, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.delay(i * 45).duration(380).easing(Easing.out(Easing.quad))}
-              >
-                <Text style={styles.appNameLetter}>{letter}</Text>
-              </Animated.View>
-            ))}
-          </Animated.View>
-          <Animated.View style={subtitleOpacityStyle}>
-            <Text style={styles.headerSubtitle}>Gisenyi, Rwanda</Text>
-          </Animated.View>
-        </View>
-
-        {/* Actions droite : filtre + carte + avatar */}
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={toggleFiltersModal}
-            accessibilityRole="button"
-            accessibilityLabel="Filtres"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="tune" size={22} color={themeColors.inkMid} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={() => navigation.navigate('MapScreen')}
-            accessibilityRole="button"
-            accessibilityLabel="Carte"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="map" size={22} color={themeColors.inkMid} />
-          </TouchableOpacity>
-          <Animated.View entering={ZoomIn.delay(320).duration(400)} style={styles.avatarWrapper}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Profile' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Mon profil"
-              style={styles.avatarTouchable}
-            >
-              {user.photoURL ? (
-                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarInitials}>
-                  <Text style={styles.avatarInitialsText}>{avatarInitials}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Animated.View>
-
-      {/* Main Content */}
-      <Animated.ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => handleFetchListings(true)}
-            colors={[themeColors.primary]}
-            tintColor={themeColors.primary}
-            progressViewOffset={insets.top}
-          />
-        }
-      >
-        {/* Categories section */}
-        <View style={styles.categoriesSection}>
-          <FlatList
-            data={CUSTOM_CATEGORIES}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesList}
-          />
-        </View>
-
-        {/* Results Count */}
-        <View style={styles.resultsCountWrapper}>
-          <View style={styles.resultsSeparator} />
-          <View style={styles.resultsCountContainer}>
-            <Text style={styles.resultsCount}>
-              {displayedListings.length} {t('explore.results')}
-            </Text>
-          </View>
-        </View>
-
-        {/* Properties section */}
-        <View style={styles.propertiesSection}>
-          {isLoading ? (
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color={themeColors.primary} />
+    <SafeAreaView edges={['top', 'left', 'right']} style={s.screen}>
+      <View style={s.topBar}>
+        <View style={s.topInner}>
+          <View style={s.brand}>
+            <View style={s.brandMark}>
+              <MaterialIcons name="roofing" size={27} color={colors.onAccent} />
             </View>
-          ) : displayedListings.length === 0 ? (
-            renderEmptyState()
-          ) : (
-            <FlatList
-              data={displayedListings}
-              renderItem={renderPropertyCard}
-              keyExtractor={(item) => item.id}
-              numColumns={numColumns}
-              key={numColumns}
-              scrollEnabled={false}
-              columnWrapperStyle={numColumns > 1 ? styles.propertiesGrid : undefined}
-              maxToRenderPerBatch={8}
-              windowSize={5}
-              removeClippedSubviews
+            <View>
+              <Text style={s.wordmark}>
+                Loca<Text style={s.wordmarkGreen}>Map</Text>
+              </Text>
+              <Text style={s.city}>{t('explore.locationGisenyi')}</Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => navigation.navigate('Profile')}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.myProfile')}
+            style={s.avatar}
+          >
+            {user.photoURL ? (
+              <Image source={{ uri: user.photoURL }} style={s.avatarImage} />
+            ) : (
+              <Text style={s.initials}>{initials}</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+      <FlatList
+        key={columns}
+        data={filteredListings}
+        numColumns={columns}
+        keyExtractor={item => item.id}
+        style={s.list}
+        contentContainerStyle={s.listContent}
+        ListHeaderComponent={header}
+        columnWrapperStyle={columns > 1 ? s.columns : undefined}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshing={refreshing}
+        onRefresh={() => void refresh()}
+        renderItem={({ item }) => (
+          <View style={{ width: `${100 / columns}%`, padding: 8 }}>
+            <ListingCard
+              property={item}
+              favorite={isFavorite(item.id)}
+              onFavorite={() => void toggleSave(item)}
+              onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
             />
-          )}
-        </View>
-
-
-      </Animated.ScrollView>
-
-      {/* Map Floating Button */}
-      <TouchableOpacity
-        style={styles.mapButton}
-        activeOpacity={0.9}
-        onPress={() => navigation.navigate('MapScreen')}
-        accessibilityRole="button"
-        accessibilityLabel={t('map.title')}
-        accessibilityHint="Ouvre la vue carte des logements"
-      >
-        <View style={styles.mapButtonInner}>
-          <MaterialIcons name="map" size={20} color={themeColors.white} />
-          <Text style={styles.mapButtonText}>{t('map.title')}</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Filters Modal */}
-      <SearchFiltersModal
-        visible={showFiltersModal}
-        onDismiss={toggleFiltersModal}
+          </View>
+        )}
+        ListEmptyComponent={
+          isLoading ? (
+            !refreshing ? (
+              <View
+                style={s.skeleton}
+                accessibilityRole="progressbar"
+                accessibilityLabel={t('common.loading')}
+              >
+                <View style={s.skeletonImage} />
+                <View style={s.skeletonLine} />
+                <View style={[s.skeletonLine, { width: '45%' }]} />
+              </View>
+            ) : null
+          ) : !error ? (
+            <View style={s.empty}>
+              <MaterialIcons name="search-off" size={42} color={colors.primary} />
+              <Text style={s.emptyTitle}>{t('explore.noResults')}</Text>
+              <Text style={s.emptyText}>{t('explore.tryDifferent')}</Text>
+              <Pressable onPress={reset} accessibilityRole="button" style={s.reset}>
+                <Text style={s.resetText}>{t('explore.resetFilters')}</Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          hasMore && filteredListings.length > 0 ? (
+            <Pressable
+              disabled={isLoading}
+              onPress={() => void loadMore()}
+              accessibilityRole="button"
+              style={s.loadMore}
+            >
+              {isLoading && !refreshing ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={s.retryText}>{t('explore.loadMore')}</Text>
+              )}
+            </Pressable>
+          ) : null
+        }
       />
+
+      <SearchFiltersModal visible={showFiltersModal} onDismiss={toggleFiltersModal} />
     </SafeAreaView>
   );
-};
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: themeColors.background,
-  },
-
-  // ─── Header animé ────────────────────────────────────────────────────────
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: themeSpacing[5],
-    backgroundColor: themeColors.surface,
+}
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  topBar: {
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: themeColors.border,
-    zIndex: 100,
-    overflow: 'hidden',
+    borderBottomColor: colors.border,
   },
-  headerLeft: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  appNameLetter: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: themeColors.primary,
-    includeFontPadding: false,
-  },
-  appNameRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    alignSelf: 'flex-start',
-  },
-  headerSubtitle: {
-    color: themeColors.inkSubtle,
-    fontSize: themeTypo.fontSize.xs,
-    fontWeight: '500',
-    marginTop: 1,
-    overflow: 'hidden',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: themeSpacing[1],
-  },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: themeColors.surfaceSunken,
-  },
-  avatarWrapper: {
-    marginLeft: themeSpacing[1],
-  },
-  avatarTouchable: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  avatarInitials: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: themeColors.primaryLight,
-    borderWidth: 1.5,
-    borderColor: themeColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitialsText: {
-    fontSize: themeTypo.fontSize.sm,
-    fontWeight: '700',
-    color: themeColors.primary,
-  },
-
-  // ─── Scroll Container ─────────────────────────────────────────────────────
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 120,
-  },
-
-  // ─── Categories ───────────────────────────────────────────────────────────
-  categoriesSection: {
-    marginTop: themeSpacing[3],
-    marginBottom: themeSpacing[2],
-  },
-  categoriesList: {
-    paddingHorizontal: themeSpacing[5],
-  },
-  categoryItem: {
-    alignItems: 'center',
-    width: 70,
-    marginRight: themeSpacing[4],
-  },
-  categoryButton: {
-    width: 52,
-    height: 52,
-    borderRadius: themeBR.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: themeSpacing[2],
-    backgroundColor: themeColors.surface,
-    borderWidth: 1.5,
-    borderColor: themeColors.border,
-  },
-  activeCategoryButton: {
-    backgroundColor: themeColors.primary,
-    borderColor: themeColors.primary,
-  },
-  categoryLabel: {
-    fontSize: themeTypo.fontSize.xs,
-    color: themeColors.inkSubtle,
-    textAlign: 'center',
-    fontWeight: '400',
-  },
-  activeCategoryLabel: {
-    color: themeColors.primary,
-    fontWeight: '600',
-  },
-
-  // ─── Results Count ────────────────────────────────────────────────────────
-  resultsCountWrapper: {
-    marginBottom: themeSpacing[2],
-  },
-  resultsSeparator: {
-    height: 1,
-    backgroundColor: themeColors.border,
-  },
-  resultsCountContainer: {
-    paddingHorizontal: themeSpacing[5],
-    paddingTop: themeSpacing[3],
-  },
-  resultsCount: {
-    fontSize: themeTypo.fontSize.sm,
-    color: themeColors.inkSubtle,
-  },
-
-  // ─── Properties ───────────────────────────────────────────────────────────
-  propertiesSection: {
-    paddingHorizontal: themeSpacing[5],
-  },
-  propertiesGrid: {
-    justifyContent: 'space-between',
-  },
-  cardWrapper: {
-    paddingHorizontal: themeSpacing[1],
-    marginBottom: themeSpacing[5],
-  },
-  propertyCard: {
-    overflow: 'hidden',
-    borderRadius: themeBR.card,
-    backgroundColor: themeColors.surface,
-    borderWidth: 1,
-    borderColor: themeColors.border,
-  },
-  imageContainer: {
-    position: 'relative',
-    height: 190,
-    borderTopLeftRadius: themeBR.card,
-    borderTopRightRadius: themeBR.card,
-    overflow: 'hidden',
-  },
-  propertyImage: {
+  topInner: {
     width: '100%',
-    height: '100%',
+    maxWidth: 1120,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  favoriteButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(15,31,31,0.35)',
+  brand: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  brandMark: {
     width: 44,
     height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordmark: { fontSize: 24, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
+  wordmarkGreen: { color: colors.primary },
+  city: { fontSize: 12, color: colors.inkSubtle, marginTop: 1 },
+  avatar: {
+    height: 44,
+    width: 44,
     borderRadius: 22,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: { width: 44, height: 44 },
+  initials: { fontWeight: '700', color: colors.primaryDark, fontSize: 16 },
+  list: { flex: 1 },
+  listContent: {
+    width: '100%',
+    maxWidth: 1120,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingBottom: 100,
+  },
+  columns: { alignItems: 'stretch' },
+  intro: { paddingHorizontal: 8, paddingTop: 26, paddingBottom: 20, gap: 8 },
+  heading: {
+    fontSize: 28,
+    lineHeight: 35,
+    fontWeight: '700',
+    color: colors.ink,
+    maxWidth: 580,
+    letterSpacing: -0.5,
+  },
+  subtitle: { fontSize: 16, lineHeight: 23, color: colors.inkSubtle },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 8 },
+  searchField: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 56,
+    paddingLeft: 14,
+    paddingRight: 5,
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    backgroundColor: colors.surface,
+  },
+  searchFocused: { borderColor: colors.primary, borderWidth: 2, paddingLeft: 13, paddingRight: 4 },
+  input: { flex: 1, minWidth: 0, fontSize: 15, color: colors.ink, paddingVertical: 14 },
+  searchSubmit: {
+    width: 44,
+    height: 44,
+    borderRadius: 9,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  badgeContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: themeColors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: themeBR.md,
+  filterButton: {
+    width: 54,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badgeText: {
-    fontSize: themeTypo.fontSize.xs,
-    fontWeight: '700',
-    color: themeColors.white,
-    letterSpacing: 0.3,
-  },
-  propertyInfo: {
-    padding: themeSpacing[3],
-  },
-  ratingRow: {
+  categories: { gap: 8, paddingHorizontal: 8, paddingTop: 18, paddingBottom: 24 },
+  category: {
+    minHeight: 44,
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryLabel: { fontSize: 14, fontWeight: '500', color: colors.ink },
+  categoryLabelActive: { color: colors.onPrimary },
+  resultsRow: {
+    paddingHorizontal: 8,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: themeSpacing[1],
+    gap: 8,
   },
-  locationText: {
-    fontSize: themeTypo.fontSize.sm,
-    color: themeColors.inkSubtle,
-    fontWeight: '500',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: themeTypo.fontSize.sm,
-    fontWeight: '500',
-    color: themeColors.inkMid,
-    marginLeft: 2,
-  },
-  titleText: {
-    fontSize: themeTypo.fontSize.base,
-    fontWeight: '600',
-    color: themeColors.ink,
-    marginBottom: themeSpacing[1],
-  },
-  detailsText: {
-    fontSize: themeTypo.fontSize.xs,
-    color: themeColors.inkSubtle,
-    lineHeight: 17,
-  },
-  priceContainer: {
-    marginTop: themeSpacing[2],
-  },
-  priceText: {
-    fontSize: themeTypo.fontSize.base,
-  },
-  priceBold: {
-    fontWeight: '700',
-    color: themeColors.primary,
-  },
-  priceUnit: {
-    fontWeight: '400',
-    color: themeColors.inkSubtle,
-    fontSize: themeTypo.fontSize.sm,
-  },
-
-  // ─── Empty State ──────────────────────────────────────────────────────────
-  emptyContainer: {
-    paddingVertical: 48,
-    alignItems: 'center',
-  },
-  emptyContent: {
-    alignItems: 'center',
-    paddingHorizontal: themeSpacing[6],
-  },
-  emptyTitle: {
-    fontSize: themeTypo.fontSize.md,
-    fontWeight: '600',
-    color: themeColors.ink,
-    marginTop: themeSpacing[4],
+  results: { fontSize: 20, fontWeight: '700', color: colors.ink },
+  resultsSummary: { flex: 1, gap: 4 },
+  count: { fontSize: 14, color: colors.inkSubtle },
+  error: { margin: 8, padding: 16, backgroundColor: '#FFF0ED', borderRadius: 12 },
+  errorText: { color: colors.error, fontSize: 15, lineHeight: 22 },
+  retry: { minHeight: 44, justifyContent: 'center' },
+  retryText: { color: colors.primaryDark, fontSize: 15, fontWeight: '600' },
+  empty: { padding: 28, gap: 12, alignItems: 'center' },
+  emptyTitle: { fontSize: 20, fontWeight: '600', color: colors.ink, textAlign: 'center' },
+  emptyText: {
+    fontSize: 15,
+    lineHeight: 23,
+    color: colors.inkSubtle,
     textAlign: 'center',
+    maxWidth: 380,
   },
-  emptySubtitle: {
-    fontSize: themeTypo.fontSize.base,
-    color: themeColors.inkSubtle,
-    textAlign: 'center',
-    marginTop: themeSpacing[2],
-    marginBottom: themeSpacing[5],
-    lineHeight: 22,
+  reset: {
+    minHeight: 48,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  resetButton: {
-    borderRadius: themeBR.md,
+  resetText: { color: colors.primaryDark, fontWeight: '600', fontSize: 15 },
+  skeleton: { margin: 8, gap: 14 },
+  skeletonImage: {
+    aspectRatio: 1.55,
+    maxHeight: 280,
+    borderRadius: 16,
+    backgroundColor: colors.border,
   },
-  loaderContainer: {
-    paddingVertical: 48,
-    alignItems: 'center',
-  },
-
-  // ─── Floating Map Button ─────────────────────────────────────────────────
+  skeletonLine: { width: '75%', height: 18, backgroundColor: colors.border, borderRadius: 4 },
+  loadMore: { minHeight: 52, alignItems: 'center', justifyContent: 'center', margin: 12 },
   mapButton: {
-    position: 'absolute',
-    bottom: 24,
-    alignSelf: 'center',
-    borderRadius: themeBR.full,
-    backgroundColor: themeColors.primary,
-    shadowColor: themeColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  mapButtonInner: {
     flexDirection: 'row',
+    gap: 8,
     alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    gap: 6,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 16,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
   },
-  mapButtonText: {
-    color: themeColors.white,
-    fontWeight: '600',
-    fontSize: themeTypo.fontSize.sm,
-  },
+  mapLabel: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
+  pressed: { opacity: 0.8 },
 });
-
-export default ExplorerScreen;

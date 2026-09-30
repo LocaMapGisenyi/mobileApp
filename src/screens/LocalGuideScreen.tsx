@@ -1,18 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  ScrollView, 
-  TextInput as RNTextInput, 
-  TouchableOpacity, 
-  StatusBar, 
-  RefreshControl,
-  Platform,
-  Dimensions,
-  SectionList
-} from 'react-native';
+import { StyleSheet, View, ScrollView, TextInput as RNTextInput, TouchableOpacity, StatusBar, RefreshControl, Platform, Dimensions, SectionList, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, Searchbar, Divider, useTheme, ActivityIndicator, Chip, Button } from 'react-native-paper';
+import { Text, Searchbar, Divider, useTheme, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';

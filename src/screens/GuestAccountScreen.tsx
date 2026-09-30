@@ -1,5 +1,5 @@
 // src/screens/GuestAccountScreen.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator, StatusBar,
@@ -15,6 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
+import { guestAccountService, hostAccountService } from '../services/api/user.service';
+import { saveAccountExport } from '../lib/accountExport';
+import AccountProfileEditor from './AccountProfileEditor';
+import ResilientImage from '../components/ResilientImage';
+import { authService } from '../services/api/auth.service';
 import { SectionHeader, RowItem, NotifRow, DeleteAccountModal } from '../components/account';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'GuestAccount'>;
@@ -102,8 +107,9 @@ const AddPaymentModal = ({
             <TextInput
               style={pm.input}
               value={number}
-              onChangeText={setNumber}
-              placeholder={type === 'VISA' || type === 'MASTERCARD' ? '•••• •••• •••• ••••' : '078 XXX XXX'}
+              onChangeText={value => setNumber(value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="4 derniers chiffres uniquement"
+              maxLength={4}
               placeholderTextColor={colors.inkDisabled}
               keyboardType={type === 'VISA' || type === 'MASTERCARD' ? 'number-pad' : 'phone-pad'}
             />
@@ -155,6 +161,10 @@ const GuestAccountScreen = () => {
   const navigation = useNavigation<Nav>();
   const { user, actions } = useUserStore();
 
+  const [error, setError] = useState('');
+  const [profileEditorVisible, setProfileEditorVisible] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [ready, setReady] = useState(false);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [notifPrefs, setNotifPrefs] = useState<GuestNotifPrefs>({
     reservations: true,
@@ -170,44 +180,50 @@ const GuestAccountScreen = () => {
   const [exportRequested, setExportRequested] = useState(false);
   const [savingNotifs, setSavingNotifs] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    setPaymentAccounts([]); setReady(false); setError('');
+    Promise.all([guestAccountService.getPaymentPreference(), hostAccountService.getNotificationPrefs()])
+      .then(([payment, prefs]) => {
+        if (!active) return;
+        setPaymentAccounts(payment ? [{ id: payment.user_id, type: payment.provider as PaymentMethod, accountName: payment.account_label, accountNumber: payment.account_label, isDefault: true }] : []);
+        setNotifPrefs({ ...prefs, alerts: prefs.alertMatches });
+        setReady(true);
+      }).catch(failure => { if (active) setError(failure instanceof Error ? failure.message : 'Chargement du compte impossible.'); });
+    return () => { active = false; };
+  }, [user.id]);
   const handleNotifToggle = useCallback(async (key: keyof GuestNotifPrefs, value: boolean) => {
-    const prev = notifPrefs;
-    setNotifPrefs(p => ({ ...p, [key]: value }));
-    setSavingNotifs(true);
+    if (!ready || savingNotifs) return;
+    setSavingNotifs(true); setError('');
     try {
-      // API stub — brancher sur userService quand disponible
-    } catch {
-      setNotifPrefs(prev);
-    } finally {
-      setSavingNotifs(false);
-    }
-  }, [notifPrefs]);
-
-  const handleAddPayment = (data: Omit<PaymentAccount, 'id' | 'isDefault'>) => {
-    setAddPaymentVisible(false);
-    const optimistic: PaymentAccount = { ...data, id: `opt_${Date.now()}`, isDefault: paymentAccounts.length === 0 };
-    setPaymentAccounts(prev => [...prev, optimistic]);
+      await hostAccountService.updateNotificationPrefs({ [key === 'alerts' ? 'alertMatches' : key]: value });
+      setNotifPrefs(p => ({ ...p, [key]: value }));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Préférences non enregistrées.'); }
+    finally { setSavingNotifs(false); }
+  }, [ready, savingNotifs]);
+  const handleAddPayment = async (data: Omit<PaymentAccount, 'id' | 'isDefault'>) => {
+    setError('');
+    try {
+      const label = `${data.accountName.trim()} •••• ${data.accountNumber.slice(-4)}`;
+      await guestAccountService.savePaymentPreference(data.type, label);
+      setPaymentAccounts([{ ...data, id: user.id!, accountNumber: label, isDefault: true }]);
+      setAddPaymentVisible(false);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Préférence non enregistrée.'); }
   };
-
-  const handleDeletePayment = (id: string) => {
-    setPaymentAccounts(prev => prev.filter(p => p.id !== id));
+  const handleDeletePayment = async (_id: string) => {
+    try { await guestAccountService.deletePaymentPreference(); setPaymentAccounts([]); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Suppression impossible.'); }
   };
-
-  const handleExport = () => {
-    setExportRequested(true);
-    // API stub
+  const handleExport = async () => {
+    try { await saveAccountExport(await hostAccountService.requestDataExport()); setExportRequested(true); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Export impossible.'); }
   };
-
   const handleDeleteAccount = async () => {
-    setDeleting(true);
-    try {
-      await actions.logout();
-    } catch {/* silent */} finally {
-      setDeleting(false);
-      setDeleteVisible(false);
-    }
+    setDeleting(true); setError('');
+    try { await hostAccountService.deleteAccount(); await actions.logout(); setDeleteVisible(false); }
+    catch (failure) { setDeleteVisible(false); setError(failure instanceof Error ? failure.message : 'Compte non supprimé.'); }
+    finally { setDeleting(false); }
   };
-
   const initials = user.fullName
     ? user.fullName.trim().split(' ').map(p => p.charAt(0)).slice(0, 2).join('').toUpperCase()
     : 'G';
@@ -215,6 +231,8 @@ const GuestAccountScreen = () => {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
+      <AccountProfileEditor visible={profileEditorVisible} onClose={() => setProfileEditorVisible(false)} />
+      {!!notice && <Text accessibilityRole="alert" style={{ color: colors.primary, padding: 16 }} onPress={() => setNotice("")}>{notice}</Text>}
 
       {/* Header */}
       <View style={s.header}>
@@ -229,10 +247,11 @@ const GuestAccountScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
       >
+        {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 20 }}>{error}</Text>}
         {/* Avatar */}
         <Animated.View entering={FadeInDown.duration(320)} style={s.avatarSection}>
           <View style={s.avatar}>
-            <Text style={s.avatarTxt}>{initials}</Text>
+            {user.photoURL ? <ResilientImage accessibilityLabel={t('guestAccount.profilePhoto')} source={{uri:user.photoURL}} style={{width:64,height:64,borderRadius:32}} /> : <Text style={s.avatarTxt}>{initials}</Text>}
           </View>
           <Text style={s.profileName}>{user.fullName ?? '—'}</Text>
           <Text style={s.profileEmail}>{user.email ?? ''}</Text>
@@ -242,10 +261,10 @@ const GuestAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(50).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionProfile')} />
           <View style={s.card}>
-            <RowItem icon="person-outline" label={t('guestAccount.personalInfo')} value={user.fullName ?? undefined} onPress={() => {}} />
-            <RowItem icon="add-a-photo"    label={t('guestAccount.profilePhoto')}                                     onPress={() => {}} />
-            <RowItem icon="edit-note"      label={t('guestAccount.bio')}                                              onPress={() => {}} />
-            <RowItem icon="translate"      label={t('guestAccount.languages')}     value="Kinyarwanda, FR"            onPress={() => {}} last />
+            <RowItem icon="person-outline" label={t('guestAccount.personalInfo')} value={user.fullName ?? undefined} onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="add-a-photo"    label={t('guestAccount.profilePhoto')}                                     onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="edit-note"      label={t('guestAccount.bio')}                                              onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="translate"      label={t('guestAccount.languages')}                 onPress={() => setProfileEditorVisible(true)} last />
           </View>
         </Animated.View>
 
@@ -253,9 +272,9 @@ const GuestAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(80).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionSecurity')} />
           <View style={s.card}>
-            <RowItem icon="lock-outline" label={t('guestAccount.changePassword')}                                                                                      onPress={() => {}} />
-            <RowItem icon="phone-iphone" label={t('guestAccount.twoFactor')} badge={t('guestAccount.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => {}} />
-            <RowItem icon="devices"      label={t('guestAccount.connectedDevices')}                                                                                    onPress={() => {}} last />
+            <RowItem icon="lock-outline" label={t('guestAccount.changePassword')}                                                                                      onPress={() => { if (user.email) void authService.forgotPassword(user.email).then(() => setNotice("Lien de réinitialisation envoyé par email.")).catch(failure => setError(String(failure))); }} />
+            <RowItem icon="phone-iphone" label={t('guestAccount.twoFactor')} badge={t('guestAccount.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => setNotice("Cette fonction est indisponible actuellement.")} />
+            <RowItem icon="devices"      label={t('guestAccount.connectedDevices')}                                                                                    onPress={() => setNotice("Cette fonction est indisponible actuellement.")} last />
           </View>
         </Animated.View>
 
@@ -263,6 +282,7 @@ const GuestAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(110).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionPayments')} />
           <View style={s.card}>
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Préférence de paiement uniquement. Aucun paiement ni numéro complet de carte conservé.</Text>
             {paymentAccounts.length === 0 ? (
               <View style={s.emptyPayment}>
                 <MaterialIcons name="credit-card" size={28} color={colors.inkDisabled} />
@@ -270,7 +290,7 @@ const GuestAccountScreen = () => {
               </View>
             ) : (
               paymentAccounts.map((acc, i) => {
-                const cfg = PAYMENT_TYPES.find(p => p.type === acc.type)!;
+                const cfg = PAYMENT_TYPES.find(p => p.type === acc.type) ?? PAYMENT_TYPES[0];
                 return (
                   <View key={acc.id} style={[s.paymentRow, i < paymentAccounts.length - 1 && s.paymentRowBorder]}>
                     <View style={[s.paymentDot, { backgroundColor: cfg.color }]} />
@@ -306,14 +326,12 @@ const GuestAccountScreen = () => {
           <View style={s.card}>
             <NotifRow label={t('guestAccount.notifReservations')} value={notifPrefs.reservations} onChange={v => handleNotifToggle('reservations', v)} />
             <NotifRow label={t('guestAccount.notifMessages')}     value={notifPrefs.messages}     onChange={v => handleNotifToggle('messages', v)} />
-            <NotifRow label={t('guestAccount.notifAlerts')}       value={notifPrefs.alerts}        onChange={v => handleNotifToggle('alerts', v)} last />
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Les alertes de recherche ne sont pas encore distribuées.</Text>
           </View>
 
           <SectionHeader title={t('guestAccount.sectionDelivery')} />
           <View style={s.card}>
-            <NotifRow label={t('guestAccount.notifPush')}  value={notifPrefs.pushEnabled}  onChange={v => handleNotifToggle('pushEnabled', v)} />
-            <NotifRow label={t('guestAccount.notifEmail')} value={notifPrefs.emailEnabled} onChange={v => handleNotifToggle('emailEnabled', v)} />
-            <NotifRow label={t('guestAccount.notifSms')}   value={notifPrefs.smsEnabled}   onChange={v => handleNotifToggle('smsEnabled', v)} last />
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Notifications dans l’application uniquement. Les canaux push, email et SMS ne sont pas activés.</Text>
           </View>
         </Animated.View>
 
@@ -324,7 +342,7 @@ const GuestAccountScreen = () => {
             <RowItem
               icon="download"
               label={t('guestAccount.exportData')}
-              badge={exportRequested ? t('guestAccount.exportRequested') : undefined}
+              badge={exportRequested ? 'Export prêt' : undefined}
               badgeBg={colors.success + '14'} badgeColor={colors.success}
               onPress={handleExport}
             />

@@ -1,108 +1,54 @@
-# Design System — LocaMap · Direction Lac Kivu
+# Design System — LocaMap
 
-## Identité visuelle
+## Direction
 
-**Concept** : La couleur du lac Kivu à l'aube — sarcelle profonde, eau calme, air frais.
-Pas une palette de voyage générique. Une palette qui sait où elle est.
+Un locataire consulte LocaMap sur son téléphone, parfois dehors à Gisenyi, et doit comparer rapidement les logements. L’interface reste claire, lisible et calme : photos en premier, prix explicites, actions faciles à toucher. La même structure s’adapte au navigateur de bureau.
 
-## Couleurs
+Palette demandée par l’exploitant : **#F58F20, #467434, #363636**.
 
-### Primaire
-| Token | Valeur | Usage |
-|---|---|---|
-| `colors.primary` | `#0D6E6E` | Boutons, icônes actives, accents |
-| `colors.primaryLight` | `#E8F4F4` | Fond de chips, tags, inputs focus |
-| `colors.primaryMid` | `#1A9494` | Hover, icône active légère |
-| `colors.primaryDark` | `#084F4F` | Pressed, profondeur |
+## Couleurs et rôles
 
-### Fond & Surface
-| Token | Valeur | Usage |
-|---|---|---|
-| `colors.background` | `#FAFAFA` | Fond d'écran principal |
-| `colors.surface` | `#FFFFFF` | Cards, modals, inputs |
-| `colors.surfaceSunken` | `#F3F8F8` | Sections secondaires, fond de catégories |
+- `colors.accent` — `#F58F20` : action principale (rechercher, ouvrir la carte, se connecter, demander une réservation, publier).
+- `colors.onAccent` — `#363636` : texte et icônes sur l’orange. Contraste mesuré : 5,08:1. Le texte blanc sur cet orange n’est pas utilisé.
+- `colors.primary` — `#467434` : sélection, liens, navigation, repères cartographiques et confirmations. Blanc sur vert : 5,51:1.
+- `colors.ink` — `#363636` : titres et contenu principal. Contraste sur blanc : 12,08:1.
+- `colors.inkSubtle` — `#62685F` : informations secondaires et placeholders (5,38:1 sur le fond principal).
+- Surfaces : blanc `#FFFFFF`, fond neutre `#F7F8F6`, fond secondaire `#F1F4EF`. Bordures `#DFE5DB` et `#ADB5A7`.
+- Vert clair `#EDF3E9` et orange clair `#FFF0DD` : sélection douce, groupes utiles. Erreur `#B43C2E`, indépendante des couleurs de marque.
 
-### Texte — teinté sarcelle, pas le gris générique
-| Token | Valeur | Usage |
-|---|---|---|
-| `colors.ink` | `#0F1F1F` | Titres, labels principaux |
-| `colors.inkMid` | `#2E4A4A` | Corps de texte |
-| `colors.inkSubtle` | `#5A7878` | Métadonnées, labels secondaires |
-| `colors.inkDisabled` | `#9BB5B5` | Désactivé, inactif |
+Le token historique `primary` reste vert pour préserver le contraste des contrôles Paper et des anciens boutons. Les actions principales utilisent explicitement `accent` avec `onAccent`.
 
-### Bordures
-| Token | Valeur | Usage |
-|---|---|---|
-| `colors.border` | `#D0E8E8` | Bordure légère (cards, inputs) |
-| `colors.borderMid` | `#9BB5B5` | Bordure visible |
+## Typographie et espaces
 
-### États
-| Token | Valeur | Usage |
-|---|---|---|
-| `colors.success` | `#1A8A6E` | Confirmation |
-| `colors.warning` | `#C47C00` | Alerte |
-| `colors.error` | `#C1440E` | Erreur — latérite, contraste fort |
-| `colors.info` | `#0D6E6E` | Info |
+Police système native. Corps 16 px, informations secondaires 14 px, petits labels 12 px, sections 20 px, titres 24–30 px. Interlignage exprimé en pixels dans les styles React Native. Les textes traduits peuvent revenir à la ligne.
 
-## Typographie
+Marge mobile habituelle : 20–24 px. Espaces dans les groupes : 8–12 px ; entre sections : 24–32 px. Champs et boutons principaux : au moins 48 px ; boutons icônes : au moins 44 px.
 
-Scale compacte (ratio 1.15) — pas les titres géants d'Airbnb.
+Rayons : champs 10 px, boutons 12 px, cartes 16 px. Les catégories et boutons cartographiques peuvent être ovales. Une bordure ou une ombre courte suffit pour séparer une surface.
 
-| Token | Taille | Usage |
-|---|---|---|
-| `xs` | 11px | Micro-labels, badges |
-| `sm` | 13px | Métadonnées, captions |
-| `base` | 15px | Corps de texte, boutons |
-| `md` | 17px | Sous-titres importants |
-| `lg` | 20px | Titres de section |
-| `xl` | 24px | Titres d'écran |
-| `2xl` | 28px | Grands titres |
-| `3xl` | 32px | Display |
+## Disposition
 
-## Rayons de bordure
+- Accueil : marque et lieu, titre de recherche, champ avec bouton d’envoi, filtres, catégories horizontales, logements. Une liste virtualisée, 1/2/3 colonnes suivant la largeur, contenu plafonné à 1120 px. Le bouton Carte reste dans la barre des résultats, sans recouvrir les annonces.
+- Logements : photo, quartier et note, titre, caractéristiques, prix. Favori indépendant de la zone qui ouvre la fiche.
+- Navigation : quatre destinations, icône active sur fond orange clair, texte vert. Barre dans le flux de navigation, largeur maximale 720 px, respect de la zone sûre.
+- Fiche : photo proportionnelle, contenu plafonné à 960 px, prix et conditions lisibles, demande de réservation orange dans un pied fixe, contacts secondaires.
+- Profil : identité, accès hôte, groupes d’actions et préférences, déconnexion discrète en bas. Largeur maximale 760 px.
+- Connexion et inscription : formulaires centrés de 460–520 px au maximum, sans animation décorative répétée. Les champs restent accessibles au clavier.
+- Préférences initiales : options lisibles en lignes de 60 px, largeur réactive, contenu défilable sur les petits écrans et navigation respectant les zones sûres.
+- Création et réservation : les étapes restent inchangées ; leurs actions principales partagent la palette orange/gris.
 
-Plus serrés qu'Airbnb — différenciation par contexte :
+## États et mouvement
 
-| Token | Valeur | Usage |
-|---|---|---|
-| `borderRadius.md` / `button` / `input` | 6px | Inputs, boutons |
-| `borderRadius.card` / `lg` | 12px | Cards de logement |
-| `borderRadius.xl` | 16px | Modals, bottom sheets |
-| `borderRadius.searchBar` | 28px | Barre de recherche |
-| `borderRadius.full` | 9999px | Pills, badges, dots |
+Le contenu apparaît directement. Les séquences d’entrée décoratives de l’accueil, de la connexion, du profil et de la fiche sont retirées. Le premier chargement de la liste utilise un squelette statique ; le rafraîchissement conserve son indicateur natif. Une action occupée ne peut pas être envoyée deux fois. Les erreurs restent lisibles et les sélections ne reposent pas uniquement sur la couleur.
 
-## Ombres
+## Cartographie
 
-Teintées sarcelle — pas le noir générique :
-- Cards : `shadowColor: #0D6E6E`, opacité 0.08
-- Navbar pill : `shadowColor: #0D6E6E`, opacité 0.12
-- Modal : `shadowColor: #0D6E6E`, opacité 0.14
+Apple Maps sur iPhone, Google Maps sur Android, TomTom sur le web. La refonte ne modifie pas les fournisseurs. Les marqueurs web utilisent le vert de la marque et les mentions obligatoires restent visibles.
 
-## Composants — règles visuelles
+## Vérification du 30 septembre 2026
 
-### Cards de logement
-- **Pas de shadow Airbnb** → bordure `1px solid colors.border`
-- `borderRadius.card` (12px) — pas le `borderRadius: 8` générique
-- Prix affiché avec `colors.primary` (sarcelle), pas noir
+Contrôle dans le navigateur à 320, 390 et 1280 px : connexion, préférences, accueil, recherche vide et réinitialisation, filtres, fiche logement, formulaire de réservation, profil et éditeur, inscription. Utilisation du compte et du logement synthétiques de staging ; aucune réservation ni modification du profil envoyée.
 
-### Navbar (pill flottant)
-- Fond `colors.surface` + bordure `colors.border`
-- Ombre teintée sarcelle
-- Tab active : icône `colors.primary` + dot 4px sarcelle
-- Tab inactive : icône `colors.inkDisabled`
+TypeScript : aucune erreur. Suite complète exécutée pendant la refonte : 145 tests réussis ; après les derniers ajustements, les 13 tests de recherche, traductions immobilières et onboarding passent. ESLint ciblé : aucune erreur, un avertissement de type `any` préexistant dans les filtres. Les exports JavaScript web, iOS et Android réussissent ; le script web se parse et le worker cartographique est présent.
 
-### Boutons primaires
-- Fond `colors.primary`, texte blanc
-- `borderRadius.button` (6px) — pas le 8 générique
-
-### Chips / tags actifs
-- Fond `colors.primary`, texte blanc
-- Chips inactifs : bordure `colors.border`, fond `colors.surface`
-
-### Filter Modal
-- Bottom sheet, fond blanc, `borderRadius.xl` en haut
-- Handle pill gris clair
-- Bouton "Voir les résultats" : fond `colors.primary`
-
-### Filtre hôte (HostDashboard)
-- Bouton actif : fond `colors.primary` (sarcelle), pas noir
+Captures de recette conservées dans `.expo/design-*.png`, exports dans `.expo/design-export`. Le contrôle visuel natif de cette refonte reste à effectuer sur l’iPhone dans Expo Go ; les exports ne constituent pas des applications signées.

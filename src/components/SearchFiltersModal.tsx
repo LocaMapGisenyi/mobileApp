@@ -9,7 +9,10 @@ import {
   Modal,
   Pressable,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -38,13 +41,7 @@ const AMENITIES = [
   { id: 'security', name: 'Sécurité' },
   { id: 'lake_view', name: 'Vue sur le lac' },
 ];
-const POINTS_OF_INTEREST = [
-  { id: 'lake', name: 'Lac Kivu' },
-  { id: 'center', name: 'Centre-ville' },
-  { id: 'airport', name: 'Aéroport' },
-  { id: 'university', name: 'Université' },
-  { id: 'market', name: 'Marché' },
-];
+
 
 interface SearchFiltersModalProps {
   visible: boolean;
@@ -100,9 +97,9 @@ const PriceInput = ({ placeholder, value, onChange }: {
   placeholder: string; value: string; onChange: (v: string) => void;
 }) => (
   <View style={s.priceInputWrap}>
-    <Text style={s.pricePrefix}>$</Text>
     <TextInput
       style={s.priceInput}
+      accessibilityLabel={placeholder === 'Min' ? 'Prix minimum' : 'Prix maximum'}
       placeholder={placeholder}
       placeholderTextColor={colors.gray[400]}
       keyboardType="numeric"
@@ -116,7 +113,9 @@ const PriceInput = ({ placeholder, value, onChange }: {
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
 const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => {
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const wide = screenWidth >= 700;
+  const sheetHeight = wide ? Math.min(820, screenHeight - 48) : screenHeight;
   const { filters, setFilters, resetFilters, applyFilters } = useSearchStore();
 
   const [modalMounted, setModalMounted] = useState(false);
@@ -197,7 +196,6 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
     local.propertyType?.length,
     local.bedrooms,
     local.amenities?.length,
-    local.nearbyPointOfInterest,
     local.sortBy && local.sortBy !== 'price_asc',
   ].filter(Boolean).length;
 
@@ -225,7 +223,9 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
       </Animated.View>
 
       {/* Sheet */}
-      <Animated.View style={[s.sheet, { height: screenHeight }, sheetStyle]}>
+      <Animated.View style={[s.sheet, { height: sheetHeight, width: Math.min(screenWidth, 680), left: Math.max(0, (screenWidth - 680) / 2), bottom: wide ? (screenHeight - sheetHeight) / 2 : 0, borderRadius: wide ? 20 : undefined }, sheetStyle]}>
+        <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Handle */}
         <View style={s.handleWrap}>
           <View style={s.handle} />
@@ -237,7 +237,7 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
             <MaterialIcons name="close" size={22} color={colors.gray[700]} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Filtres</Text>
-          <TouchableOpacity onPress={handleReset} accessibilityRole="button" accessibilityLabel="Tout effacer">
+          <TouchableOpacity style={{ minHeight: 44, justifyContent: 'center' }} onPress={handleReset} accessibilityRole="button" accessibilityLabel="Tout effacer">
             <Text style={s.clearAll}>Tout effacer</Text>
           </TouchableOpacity>
         </View>
@@ -264,7 +264,7 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
           {/* Type */}
           <View style={s.section}>
             <SectionTitle>Type de logement</SectionTitle>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow}>
+            <View style={s.chipRow}>
               {PROPERTY_TYPES.map(t => (
                 <FilterChip
                   key={t.id}
@@ -273,7 +273,7 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
                   onPress={() => toggleArr('propertyType', t.id, local.propertyType)}
                 />
               ))}
-            </ScrollView>
+            </View>
           </View>
 
           <View style={s.sep} />
@@ -312,23 +312,6 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
 
           <View style={s.sep} />
 
-          {/* Proximité */}
-          <View style={s.section}>
-            <SectionTitle>À proximité de</SectionTitle>
-            <View style={s.amenityGrid}>
-              {POINTS_OF_INTEREST.map(p => (
-                <FilterChip
-                  key={p.id}
-                  label={p.name}
-                  selected={local.nearbyPointOfInterest === p.id}
-                  onPress={() => update('nearbyPointOfInterest', local.nearbyPointOfInterest === p.id ? undefined : p.id)}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={s.sep} />
-
           {/* Tri */}
           <View style={s.section}>
             <SectionTitle>Trier par</SectionTitle>
@@ -352,20 +335,18 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
             </View>
           </View>
 
-          <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Footer */}
         <View style={s.footer}>
-          <TouchableOpacity style={s.resetBtn} onPress={handleReset} activeOpacity={0.8} accessibilityRole="button">
-            <Text style={s.resetText}>Réinitialiser</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={s.applyBtn} onPress={handleApply} activeOpacity={0.8} accessibilityRole="button">
             <Text style={s.applyText}>
               Voir les résultats{activeCount > 0 ? ` (${activeCount})` : ''}
             </Text>
           </TouchableOpacity>
         </View>
+        </KeyboardAvoidingView>
+        </SafeAreaView>
       </Animated.View>
     </Modal>
   );
@@ -373,14 +354,13 @@ const SearchFiltersModal = ({ visible, onDismiss }: SearchFiltersModalProps) => 
 
 const s = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15,31,31,0.55)',
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(54,54,54,0.55)',
   },
   sheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
-    right: 0,
     backgroundColor: colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -408,8 +388,8 @@ const s = StyleSheet.create({
     borderBottomColor: colors.gray[100],
   },
   closeBtn: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 18,
     backgroundColor: colors.gray[50],
     justifyContent: 'center',
@@ -461,7 +441,8 @@ const s = StyleSheet.create({
     borderColor: colors.gray[200],
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[3],
-    height: 52,
+    minHeight: 52,
+    padding: 10,
     backgroundColor: colors.gray[50],
   },
   pricePrefix: {
@@ -482,10 +463,13 @@ const s = StyleSheet.create({
   // Chips
   chipRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing[2],
     paddingBottom: 4,
   },
   chip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: 10,
     borderRadius: borderRadius.full,
@@ -574,14 +558,15 @@ const s = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[5],
     paddingTop: spacing[4],
-    paddingBottom: spacing[8],
+    paddingBottom: spacing[4],
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
   },
   resetBtn: {
     flex: 1,
-    height: 52,
+    minHeight: 52,
+    padding: 10,
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
     borderColor: colors.gray[300],
@@ -596,16 +581,17 @@ const s = StyleSheet.create({
   },
   applyBtn: {
     flex: 2,
-    height: 52,
+    minHeight: 52,
+    padding: 10,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   applyText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.onAccent,
   },
 });
 

@@ -21,6 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
+import { saveAccountExport } from '../lib/accountExport';
+import AccountProfileEditor from './AccountProfileEditor';
+import ResilientImage from '../components/ResilientImage';
+import { authService } from '../services/api/auth.service';
 import {
   hostAccountService,
   PayoutAccount,
@@ -180,7 +184,11 @@ const HostAccountScreen = () => {
     pushEnabled:  true,
     emailEnabled: true,
     smsEnabled:   false,
+    alertMatches: true,
   });
+  const [error, setError] = useState('');
+  const [profileEditorVisible, setProfileEditorVisible] = useState(false);
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [addPayoutVisible, setAddPayoutVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
@@ -194,16 +202,16 @@ const HostAccountScreen = () => {
     const load = async () => {
       try {
         const [kyc, payouts, notifs] = await Promise.all([
-          hostAccountService.getKycStatus().catch(() => ({ status: 'NOT_VERIFIED' as KycStatus })),
-          hostAccountService.getPayoutAccounts().catch(() => [] as PayoutAccount[]),
-          hostAccountService.getNotificationPrefs().catch(() => null),
+          hostAccountService.getKycStatus(),
+          hostAccountService.getPayoutAccounts(),
+          hostAccountService.getNotificationPrefs(),
         ]);
         if (!isMounted) return;
         setKycStatus(kyc?.status ?? 'NOT_VERIFIED');
         setPayoutAccounts(Array.isArray(payouts) ? payouts : []);
         if (notifs) setNotifPrefs(notifs);
-      } catch {
-        // API non disponible — l'écran affiche les valeurs par défaut
+      } catch (failure) {
+        if (isMounted) setError(failure instanceof Error ? failure.message : 'Chargement impossible.');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -219,7 +227,8 @@ const HostAccountScreen = () => {
     setSavingNotifs(true);
     try {
       await hostAccountService.updateNotificationPrefs({ [key]: value });
-    } catch {
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Préférences non enregistrées.');
       setNotifPrefs(notifPrefs); // rollback
     } finally {
       setSavingNotifs(false);
@@ -234,35 +243,27 @@ const HostAccountScreen = () => {
     try {
       const created = await hostAccountService.addPayoutAccount(data);
       setPayoutAccounts(prev => prev.map(p => p.id === optimistic.id ? created : p));
-    } catch {
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Compte non enregistré.');
       setPayoutAccounts(prev => prev.filter(p => p.id !== optimistic.id));
     }
   };
 
   // ── Delete payout ──────────────────────────────────────────────────────────
   const handleDeletePayout = async (id: string) => {
-    setPayoutAccounts(prev => prev.filter(p => p.id !== id));
-    await hostAccountService.deletePayoutAccount(id).catch(() => {});
+    try { await hostAccountService.deletePayoutAccount(id); setPayoutAccounts(prev => prev.filter(p => p.id !== id)); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Suppression impossible.'); }
   };
-
-  // ── Data export ────────────────────────────────────────────────────────────
   const handleExport = async () => {
-    setExportRequested(true);
-    await hostAccountService.requestDataExport().catch(() => {});
+    try { await saveAccountExport(await hostAccountService.requestDataExport()); setExportRequested(true); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Export impossible.'); }
   };
-
-  // ── Delete account ─────────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
-    setDeleting(true);
-    try {
-      await hostAccountService.deleteAccount();
-      await actions.logout();
-    } catch {/* silent */} finally {
-      setDeleting(false);
-      setDeleteVisible(false);
-    }
+    setDeleting(true); setError('');
+    try { await hostAccountService.deleteAccount(); await actions.logout(); setDeleteVisible(false); }
+    catch (failure) { setDeleteVisible(false); setError(failure instanceof Error ? failure.message : 'Compte non supprimé.'); }
+    finally { setDeleting(false); }
   };
-
   const kyc = KYC_CONFIG[kycStatus];
   const initials = user.fullName
     ? user.fullName.trim().split(' ').map(p => p.charAt(0)).slice(0, 2).join('').toUpperCase()
@@ -288,6 +289,8 @@ const HostAccountScreen = () => {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
+      <AccountProfileEditor visible={profileEditorVisible} onClose={() => setProfileEditorVisible(false)} />
+      {!!notice && <Text accessibilityRole="alert" style={{ color: colors.primary, padding: 16 }} onPress={() => setNotice("")}>{notice}</Text>}
 
       {/* Header */}
       <View style={s.header}>
@@ -302,10 +305,11 @@ const HostAccountScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
       >
+        {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 20 }}>{error}</Text>}
         {/* Avatar + KYC badge */}
         <Animated.View entering={FadeInDown.duration(320)} style={s.avatarSection}>
           <View style={s.avatar}>
-            <Text style={s.avatarTxt}>{initials}</Text>
+            {user.photoURL ? <ResilientImage accessibilityLabel={t('editProfile.profilePhoto')} source={{uri:user.photoURL}} style={{width:64,height:64,borderRadius:32}} /> : <Text style={s.avatarTxt}>{initials}</Text>}
           </View>
           <Text style={s.profileName}>{user.fullName ?? '—'}</Text>
           <TouchableOpacity
@@ -321,10 +325,10 @@ const HostAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(50).duration(300)}>
           <SectionHeader title={t('editProfile.sectionProfile')} />
           <View style={s.card}>
-            <RowItem icon="person-outline" label={t('editProfile.personalInfo')}  value={user.fullName ?? undefined} onPress={() => {}} />
-            <RowItem icon="add-a-photo"    label={t('editProfile.profilePhoto')}                                     onPress={() => {}} />
-            <RowItem icon="edit-note"      label={t('editProfile.bio')}                                              onPress={() => {}} />
-            <RowItem icon="translate"      label={t('editProfile.languages')}     value="Kinyarwanda, FR"            onPress={() => {}} last />
+            <RowItem icon="person-outline" label={t('editProfile.personalInfo')}  value={user.fullName ?? undefined} onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="add-a-photo"    label={t('editProfile.profilePhoto')}                                     onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="edit-note"      label={t('editProfile.bio')}                                              onPress={() => setProfileEditorVisible(true)} />
+            <RowItem icon="translate"      label={t('editProfile.languages')}                 onPress={() => setProfileEditorVisible(true)} last />
           </View>
         </Animated.View>
 
@@ -332,9 +336,9 @@ const HostAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(80).duration(300)}>
           <SectionHeader title={t('editProfile.sectionSecurity')} />
           <View style={s.card}>
-            <RowItem icon="lock-outline" label={t('editProfile.changePassword')}                                                                                  onPress={() => {}} />
-            <RowItem icon="phone-iphone" label={t('editProfile.twoFactor')} badge={t('editProfile.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => {}} />
-            <RowItem icon="devices"      label={t('editProfile.connectedDevices')}                                                                                onPress={() => {}} last />
+            <RowItem icon="lock-outline" label={t('editProfile.changePassword')}                                                                                  onPress={() => { if (user.email) void authService.forgotPassword(user.email).then(() => setNotice("Lien de réinitialisation envoyé par email.")).catch(failure => setError(String(failure))); }} />
+            <RowItem icon="phone-iphone" label={t('editProfile.twoFactor')} badge={t('editProfile.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => setNotice("Cette fonction est indisponible actuellement.")} />
+            <RowItem icon="devices"      label={t('editProfile.connectedDevices')}                                                                                onPress={() => setNotice("Cette fonction est indisponible actuellement.")} last />
           </View>
         </Animated.View>
 
@@ -392,15 +396,12 @@ const HostAccountScreen = () => {
           <View style={s.card}>
             <NotifRow label={t('editProfile.notifReservations')} value={notifPrefs.reservations} onChange={v => handleNotifToggle('reservations', v)} />
             <NotifRow label={t('editProfile.notifMessages')}     value={notifPrefs.messages}     onChange={v => handleNotifToggle('messages', v)} />
-            <NotifRow label={t('editProfile.notifPromotions')}   value={notifPrefs.promotions}   onChange={v => handleNotifToggle('promotions', v)} />
-            <NotifRow label={t('editProfile.notifNewsletter')}   value={notifPrefs.newsletter}   onChange={v => handleNotifToggle('newsletter', v)} last />
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Promotions et newsletter : distribution indisponible.</Text>
           </View>
 
           <SectionHeader title={t('editProfile.sectionDelivery')} />
           <View style={s.card}>
-            <NotifRow label={t('editProfile.notifPush')}  value={notifPrefs.pushEnabled}  onChange={v => handleNotifToggle('pushEnabled', v)} />
-            <NotifRow label={t('editProfile.notifEmail')} value={notifPrefs.emailEnabled} onChange={v => handleNotifToggle('emailEnabled', v)} />
-            <NotifRow label={t('editProfile.notifSms')}   value={notifPrefs.smsEnabled}   onChange={v => handleNotifToggle('smsEnabled', v)} last />
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Notifications dans l’application uniquement. Les canaux push, email et SMS ne sont pas activés.</Text>
           </View>
         </Animated.View>
 
@@ -411,7 +412,7 @@ const HostAccountScreen = () => {
             <RowItem
               icon="download"
               label={t('editProfile.exportData')}
-              badge={exportRequested ? t('editProfile.exportRequested') : undefined}
+              badge={exportRequested ? 'Export prêt' : undefined}
               badgeBg={colors.success + '14'} badgeColor={colors.success}
               onPress={handleExport}
             />

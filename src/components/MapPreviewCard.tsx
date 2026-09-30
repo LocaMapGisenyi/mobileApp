@@ -4,8 +4,7 @@ import {
   View, 
   Text, 
   Image, 
-  TouchableOpacity, 
-  Dimensions 
+  TouchableOpacity
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp, FadeOut } from 'react-native-reanimated';
@@ -17,8 +16,6 @@ interface MapPreviewCardProps {
   onClose: () => void;
   onViewDetails: (propertyId: string) => void;
 }
-
-const { width } = Dimensions.get('window');
 
 const MapPreviewCard: React.FC<MapPreviewCardProps> = ({ 
   property, 
@@ -37,6 +34,7 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
     >
       <TouchableOpacity 
         style={styles.closeButton}
+        accessibilityRole="button" accessibilityLabel="Fermer cet aperçu"
         onPress={onClose}
       >
         <Ionicons name="close" size={20} color={colors.gray[700]} />
@@ -45,7 +43,7 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
       <View style={styles.cardContent}>
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: property.images[0] as string }}
+            source={property.images[0] ? { uri: property.images[0] } : require('../assets/images/house-logo.png')}
             style={styles.image}
             resizeMode="cover"
           />
@@ -62,7 +60,7 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
           
           <View style={styles.detailsRow}>
             <Text style={styles.price}>{formatPrice()}</Text>
-            {property.bedrooms && (
+            {!!property.bedrooms && (
               <Text style={styles.details}>
                 · {property.bedrooms} ch. {property.bathrooms && `· ${property.bathrooms} sdb`}
               </Text>
@@ -73,6 +71,7 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
 
       <TouchableOpacity 
         style={styles.viewButton}
+        accessibilityRole="button" accessibilityLabel="Voir les détails du logement"
         onPress={() => onViewDetails(property.id)}
       >
         <Text style={styles.viewButtonText}>Voir détails</Text>
@@ -85,7 +84,7 @@ const MapPreviewCard: React.FC<MapPreviewCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 32,
     left: 20,
     right: 20,
     backgroundColor: colors.white,
@@ -95,11 +94,11 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 4,
+    right: 4,
     zIndex: 10,
-    width: 30,
-    height: 30,
+    width: 44,
+    height: 44,
     borderRadius: 15,
     backgroundColor: colors.white,
     alignItems: 'center',
@@ -122,6 +121,8 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     flex: 1,
+    minWidth: 0,
+    paddingRight: 32,
     justifyContent: 'center',
   },
   location: {
@@ -137,6 +138,7 @@ const styles = StyleSheet.create({
   },
   detailsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
   },
   price: {
@@ -150,6 +152,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   viewButton: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

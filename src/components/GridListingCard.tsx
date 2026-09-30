@@ -10,45 +10,28 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { useFavoritesStore } from '../store/favorites';
 import { Property } from '../types';
 
 interface GridListingCardProps {
   listing: Property;
   onPress: (listingId: string) => void;
   index: number;
-  displayMode?: 'nightly' | 'monthly';
 }
 
 const GridListingCard: React.FC<GridListingCardProps> = ({
   listing,
   onPress,
   index,
-  displayMode = 'monthly',
 }) => {
   const { width } = useWindowDimensions();
+  const { isFavorite, toggleSave } = useFavoritesStore();
   const cardWidth = (width - spacing[4] * 2 - spacing[3]) / 2;
-  // Calcul du prix mensuel (approximatif, en pratique viendrait de l'API)
-  const calculateMonthlyPrice = (nightlyPrice: number) => {
-    return Math.round(nightlyPrice * 25); // Approximation simple: 25 jours par mois
-  };
-  
-  const formatPrice = () => {
-    const price = displayMode === 'monthly' 
-      ? calculateMonthlyPrice(listing.price) 
-      : listing.price;
-    
-    return `${price.toLocaleString()} ${listing.currency}`;
-  };
-  
+  const formatPrice = () => `${listing.price.toLocaleString()} ${listing.currency}`;
+
   // Déterminer l'icône et le texte à afficher pour le badge
   const handlePress = useCallback(() => onPress(listing.id), [listing.id, onPress]);
 
-  const getBadgeInfo = () => {
-    return null;
-  };
-  
-  const badgeInfo = getBadgeInfo();
-  
   return (
     <Animated.View
       entering={FadeInDown.delay(100 + index * 100).duration(400)}
@@ -62,51 +45,52 @@ const GridListingCard: React.FC<GridListingCardProps> = ({
         accessibilityLabel={`${listing.title}, ${listing.location?.district}`}
       >
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: listing.images[0] }} 
+          <Image
+            source={{ uri: listing.images[0] }}
             style={styles.image}
             resizeMode="cover"
           />
-          
+
           <TouchableOpacity
             style={styles.heartButton}
+            onPress={() => { void toggleSave(listing); }}
             accessibilityRole="button"
             accessibilityLabel="Ajouter aux favoris"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialIcons name="favorite-border" size={20} color={colors.white} />
+            <MaterialIcons name={isFavorite(listing.id) ? "favorite" : "favorite-border"} size={20} color={colors.white} />
           </TouchableOpacity>
-          
+
         </View>
-        
+
         <View style={styles.contentContainer}>
           <View style={styles.topRow}>
             <Text style={styles.location} numberOfLines={1}>
               {listing.location?.district}, {listing.location?.city}
             </Text>
-            
+
             <View style={styles.ratingContainer}>
               <MaterialIcons name="star" size={12} color={colors.black} />
               <Text style={styles.ratingText}>{listing.rating}</Text>
             </View>
           </View>
-          
+
           <Text style={styles.title} numberOfLines={2}>
             {listing.title}
           </Text>
-          
+
           <Text style={styles.propertyType}>
             {listing.type} · {listing.bedrooms} ch. · {listing.size} m²
           </Text>
-          
+
           <View style={styles.priceContainer}>
             <Text style={styles.price}>
               <Text style={styles.priceBold}>{formatPrice()}</Text>
               <Text style={styles.priceUnit}>
-                {displayMode === 'monthly' ? '/mois' : '/nuit'}
+                /mois
               </Text>
             </Text>
-            
+
           </View>
         </View>
       </TouchableOpacity>
@@ -224,4 +208,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(GridListingCard); 
+export default React.memo(GridListingCard);

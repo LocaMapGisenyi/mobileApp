@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StatusBar,
   Platform,
   Text as RNText,
@@ -16,15 +15,18 @@ import { RootStackParamList } from '../types';
 import {
   Avatar,
   Text,
+  Portal,
+  Dialog,
+  Button,
   useTheme,
 } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useUser, useUserActions } from '../store/user';
+import { useUser, useUserActions, useUserStore } from '../store/user';
 import { usePreferences } from '../store/preferences';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
 import { useSyncLanguage } from '../hooks/useLanguage';
-import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -56,6 +58,7 @@ const ActionItem = ({
   return (
     <>
       <TouchableOpacity
+        accessibilityRole="button"
         style={[styles.actionItem, comingSoon && styles.actionItemDisabled]}
         onPress={onPress}
         activeOpacity={comingSoon ? 1 : 0.7}
@@ -100,6 +103,7 @@ const PreferenceItem = ({
   return (
     <>
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.preferenceItem}
         onPress={onPress}
         activeOpacity={0.7}
@@ -135,9 +139,8 @@ const ProfileScreen = () => {
   useSyncLanguage();
 
   // Calculate member since date from user id
-  const memberSinceDate = user.isLoggedIn && user.id
-    ? new Date(parseInt(user.id.split('-')[1])).toLocaleDateString(preferences.language, { year: 'numeric', month: 'long' })
-    : 'August 2024'; // Fallback date for demo
+  const createdAt = useUserStore(state => state.authUser?.created_at);
+  const memberSinceDate = createdAt ? new Date(createdAt).toLocaleDateString(preferences.language, { year: 'numeric', month: 'long' }) : '—';
 
   // Languages and currencies options
   const languageOptions = [
@@ -149,8 +152,6 @@ const ProfileScreen = () => {
 
   const currencyOptions = [
     { value: 'RWF', label: t('currencies.RWF'), icon: 'FRw' },
-    { value: 'USD', label: t('currencies.USD'), icon: '$' },
-    { value: 'EUR', label: t('currencies.EUR'), icon: '€' },
   ];
 
   // Navigate to edit profile screen
@@ -173,27 +174,10 @@ const ProfileScreen = () => {
     navigation.navigate('LocalGuide');
   };
 
-  // Navigate to viewed properties history (placeholder)
-  const navigateToHistory = () => {
-    // Placeholder - this screen might not exist yet
-    Alert.alert('Coming Soon', 'This feature will be available in a future update.');
-  };
-
-  // Show terms and conditions (placeholder)
-  const showTermsConditions = () => {
-    // Placeholder for terms and conditions
-    Alert.alert('Terms and Conditions', 'This will show the terms and conditions in a future update.');
-  };
-
-  // Show support screen (placeholder)
-  const showSupport = () => {
-    Alert.alert('Support', 'This will show the support screen in a future update.');
-  };
-
-  // Show about screen (placeholder)
-  const showAbout = () => {
-    Alert.alert('About LocaMap', 'This will show information about LocaMap in a future update.');
-  };
+  const navigateToHistory = () => navigation.navigate('RecentlyViewed');
+  const showTermsConditions = () => navigation.navigate('Legal');
+  const showSupport = () => navigation.navigate('Support');
+  const showAbout = () => navigation.navigate('About');
 
   // Navigate to become host screen
   const navigateToBecomeHost = () => {
@@ -201,25 +185,18 @@ const ProfileScreen = () => {
   };
 
   // Handle logout
-  const handleLogout = () => {
-    Alert.alert(
-      t('profile.logoutConfirmTitle'),
-      t('profile.logoutConfirmMessage'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('profile.logout'),
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            await preferences.resetPreferences(); // Reset preferences on logout
-          },
-        },
-      ]
-    );
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
+  const handleLogout = () => setLogoutVisible(true);
+  const confirmLogout = async () => {
+    setLogoutPending(true);
+    try {
+      await logout();
+      await preferences.resetPreferences();
+    } finally {
+      setLogoutPending(false);
+      setLogoutVisible(false);
+    }
   };
 
   // Helper functions to get display names
@@ -254,9 +231,8 @@ const ProfileScreen = () => {
     }));
 
     // Show language selector
-    Platform.OS === 'ios'
-      ? showIOSActionSheet(t('preferences.chooseLanguage'), options)
-      : showAndroidOptionDialog(t('preferences.chooseLanguage'), options);
+    if (Platform.OS === 'ios') showIOSActionSheet(t('preferences.chooseLanguage'), options);
+    else showAndroidOptionDialog(t('preferences.chooseLanguage'), options);
   };
 
   // Function to handle currency selection directly
@@ -270,9 +246,8 @@ const ProfileScreen = () => {
     }));
 
     // Show currency selector
-    Platform.OS === 'ios'
-      ? showIOSActionSheet(t('preferences.chooseCurrency'), options)
-      : showAndroidOptionDialog(t('preferences.chooseCurrency'), options);
+    if (Platform.OS === 'ios') showIOSActionSheet(t('preferences.chooseCurrency'), options);
+    else showAndroidOptionDialog(t('preferences.chooseCurrency'), options);
   };
 
   // Helper functions for selectors
@@ -330,7 +305,7 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <StatusBar
         barStyle="dark-content"
         backgroundColor={colors.background}
@@ -341,7 +316,7 @@ const ProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Profile Header — full-width flush block, no card elevation */}
-        <Animated.View entering={FadeIn.duration(400)} style={styles.profileHeader}>
+        <Animated.View style={styles.profileHeader}>
           {/* Avatar */}
           <View style={styles.avatarContainer}>
             {user.photoURL ? (
@@ -374,6 +349,7 @@ const ProfileScreen = () => {
             </Text>
 
             <TouchableOpacity
+        accessibilityRole="button"
               style={styles.editButton}
               onPress={navigateToEditProfile}
               activeOpacity={0.7}
@@ -384,13 +360,26 @@ const ProfileScreen = () => {
           </View>
         </Animated.View>
 
+      {/* Become a Host action stays in the scrollable content. */}
+      <TouchableOpacity
+        accessibilityRole="button"
+        style={styles.becomeHostButton}
+        onPress={navigateToBecomeHost}
+        activeOpacity={0.88}
+      >
+        <MaterialIcons name="add-home" size={20} color={colors.onAccent} style={styles.becomeHostIcon} />
+        <RNText style={styles.becomeHostText}>{t('host.become')}</RNText>
+      </TouchableOpacity>
+
         {/* Quick Actions Section */}
-        <Animated.View entering={FadeInUp.delay(100).duration(350)} style={styles.sectionContainer}>
+        <Animated.View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>
             {t('profile.actionsTitle')}
           </Text>
 
           <SectionCard>
+            <ActionItem title={t('bookingFlow.myStays', 'Mes séjours')} icon="event" onPress={() => navigation.navigate('Bookings')} />
+            <ActionItem title={t('preferences.notifications', 'Notifications')} icon="notifications" onPress={() => navigation.navigate('Notifications')} />
             <ActionItem
               title={t('profile.myFavorites')}
               icon="favorite-border"
@@ -404,8 +393,7 @@ const ProfileScreen = () => {
             <ActionItem
               title={t('profile.myGuides') || 'Guides locaux'}
               icon="menu-book"
-              onPress={() => {}}
-              comingSoon
+              onPress={navigateToGuides}
             />
             <ActionItem
               title={t('profile.viewHistory')}
@@ -417,7 +405,7 @@ const ProfileScreen = () => {
         </Animated.View>
 
         {/* Preferences Section */}
-        <Animated.View entering={FadeInUp.delay(180).duration(350)} style={styles.sectionContainer}>
+        <Animated.View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>
             {t('profile.preferencesTitle')}
           </Text>
@@ -437,16 +425,16 @@ const ProfileScreen = () => {
             />
             <PreferenceItem
               title={t('profile.notifications')}
-              value={getNotificationStatus()}
+              value={t('guestAccount.title', 'Paramètres du compte')}
               icon="notifications"
-              onPress={toggleNotifications}
+              onPress={() => navigation.navigate('GuestAccount')}
               isLast
             />
           </SectionCard>
         </Animated.View>
 
         {/* App & Info Section */}
-        <Animated.View entering={FadeInUp.delay(260).duration(350)} style={styles.sectionContainer}>
+        <Animated.View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>
             {t('profile.appInfoTitle')}
           </Text>
@@ -472,30 +460,31 @@ const ProfileScreen = () => {
         </Animated.View>
 
         {/* Logout Button */}
-        <Animated.View entering={FadeInUp.delay(340).duration(350)} style={styles.logoutContainer}>
+        <Animated.View style={styles.logoutContainer}>
           <TouchableOpacity
+        accessibilityRole="button"
             style={styles.logoutButton}
             onPress={handleLogout}
             activeOpacity={0.85}
           >
-            <MaterialIcons name="logout" size={20} color={colors.white} style={styles.logoutIcon} />
+            <MaterialIcons name="logout" size={20} color={colors.inkSubtle} style={styles.logoutIcon} />
             <RNText style={styles.logoutButtonLabel}>{t('profile.logout')}</RNText>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Bottom padding — space for floating button + navbar pill */}
-        <View style={{ height: 140 }} />
-      </ScrollView>
 
-      {/* Floating Become a Host button */}
-      <TouchableOpacity
-        style={styles.becomeHostButton}
-        onPress={navigateToBecomeHost}
-        activeOpacity={0.88}
-      >
-        <MaterialIcons name="add-home" size={20} color={colors.white} style={styles.becomeHostIcon} />
-        <RNText style={styles.becomeHostText}>{t('host.become')}</RNText>
-      </TouchableOpacity>
+
+      </ScrollView>
+      <Portal>
+        <Dialog visible={logoutVisible} dismissable={!logoutPending} onDismiss={() => setLogoutVisible(false)}>
+          <Dialog.Title>{t('profile.logoutConfirmTitle')}</Dialog.Title>
+          <Dialog.Content><Text>{t('profile.logoutConfirmMessage')}</Text></Dialog.Content>
+          <Dialog.Actions>
+            <Button disabled={logoutPending} onPress={() => setLogoutVisible(false)}>{t('common.cancel')}</Button>
+            <Button disabled={logoutPending} onPress={() => void confirmLogout()}>{t('profile.logout')}</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -507,19 +496,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingBottom: 140,
+    width: '100%', maxWidth: 760, alignSelf: 'center', paddingBottom: 32,
   },
 
   // ─── Profile header — flush, no elevation ────────────────────────────────────
   profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[5],
-    paddingBottom: spacing[5],
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 24, marginHorizontal: 16, marginTop: 20, borderRadius: 16, gap: 4,
   },
   avatarContainer: {
     marginRight: spacing[4],
@@ -547,12 +529,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   editButton: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,      // 6px
+    borderRadius: borderRadius.button,
     paddingVertical: 5,
     paddingHorizontal: spacing[3],
     backgroundColor: colors.surface,
@@ -572,13 +555,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
   },
   sectionTitle: {
-    fontSize: typography.fontSize.xs,   // 11px
-    fontWeight: '700',
-    color: colors.inkSubtle,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: spacing[2],
-    marginLeft: 2,
+    fontSize: 18, fontWeight: '700', color: colors.ink, marginBottom: 12, marginLeft: 2,
   },
 
   // ─── Section card ────────────────────────────────────────────────────────────
@@ -607,9 +584,7 @@ const styles = StyleSheet.create({
     marginRight: spacing[3],
   },
   actionTitle: {
-    fontSize: typography.fontSize.base, // 15px
-    fontWeight: '500',
-    color: colors.ink,
+    fontSize: 16, lineHeight: 23, fontWeight: '500', color: colors.ink, flexShrink: 1,
   },
   actionTitleDisabled: {
     color: colors.inkSubtle,
@@ -664,9 +639,7 @@ const styles = StyleSheet.create({
     marginRight: spacing[3],
   },
   preferenceTitle: {
-    fontSize: typography.fontSize.base, // 15px
-    fontWeight: '500',
-    color: colors.ink,
+    fontSize: 16, lineHeight: 23, fontWeight: '500', color: colors.ink, flexShrink: 1,
   },
   preferenceValueContainer: {
     flexDirection: 'row',
@@ -685,48 +658,24 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
   },
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.error,
-    borderRadius: borderRadius.md,      // 6px
-    height: 52,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderMid, backgroundColor: colors.surface, borderRadius: 12, minHeight: 50,
   },
   logoutIcon: {
     marginRight: spacing[2],
   },
   logoutButtonLabel: {
-    fontSize: typography.fontSize.base, // 15px
-    fontWeight: '700',
-    color: colors.white,
+    fontSize: 15, fontWeight: '600', color: colors.inkMid,
   },
 
-  // ─── Floating "Become a Host" pill ───────────────────────────────────────────
+  // ─── "Become a Host" pill ───────────────────────────────────────────
   becomeHostButton: {
-    position: 'absolute',
-    bottom: 110,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    // Tinted teal shadow per design system
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 10,
+    marginHorizontal: 16, marginTop: 16, minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20,
   },
   becomeHostIcon: {
     marginRight: spacing[2],
   },
   becomeHostText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: typography.fontSize.sm,  // 13px
+    color: colors.onAccent, fontWeight: '700', fontSize: 16, flexShrink: 1,
   },
 });
 

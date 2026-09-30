@@ -1,3 +1,5 @@
+> Document historique : cette migration REST a été remplacée par Supabase. Voir le README à la racine et docs/BACKEND-DEPLOYMENT.md.
+
 # 🔁 Migration de LocaMap vers l'API REST
 
 Ce document décrit la migration de l'application LocaMap des données mockées vers l'utilisation d'une API REST.
@@ -39,7 +41,7 @@ Des hooks et composants ont été créés pour faciliter l'utilisation de l'API:
 ```typescript
 // Utilisation avec le hook générique
 const { data: properties, loading, error, refetch } = useApi(
-  propertyService.getAll, 
+  propertyService.getAll,
   []
 );
 
@@ -101,4 +103,4 @@ Les écrans suivants utilisent désormais l'API:
 
 - [Documentation de l'API](./api-endpoints.md)
 - [React Query](https://react-query.tanstack.com/) (alternative à considérer pour la gestion d'état API)
-- [Axios Interceptors](https://axios-http.com/docs/interceptors) 
+- [Axios Interceptors](https://axios-http.com/docs/interceptors)

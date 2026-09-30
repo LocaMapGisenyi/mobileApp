@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,12 +23,14 @@ import Animated, {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { useUserStore } from '../store/user';
 import {
   hostService,
   CalendarDay,
   CalendarDayStatus,
   BlockReason,
   HostListing,
+  CalendarBulkPatch,
 } from '../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ const toKey = (year: number, month: number, day: number): string => {
 };
 
 const formatFC = (n: number | undefined | null) =>
-  (typeof n === 'number' ? n : 0).toLocaleString('fr-FR') + ' FC';
+  (typeof n === 'number' ? n : 0).toLocaleString('fr-FR') + ' RWF';
 
 const getDayCells = (year: number, month: number): (number | null)[] => {
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -86,10 +88,66 @@ const formatSelectionLabel = (dates: string[]): string => {
   return `${dates.length} dates`;
 };
 
+interface CalendarState {
+  scope: string;
+  dayMap: Record<string, CalendarDay>;
+  loading: boolean;
+  saving: boolean;
+  ready: boolean;
+  error: string | null;
+}
+const emptyCalendar: CalendarState = { scope: '', dayMap: {}, loading: false, saving: false, ready: false, error: null };
+const calendarError = (error: unknown): string =>
+  error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+
+// One generation covers both reads and writes; an older response cannot update a new view.
+export function createCalendarSession(
+  onChange: (state: CalendarState) => void,
+  service: Pick<typeof hostService, 'getCalendar' | 'bulkUpdateCalendar'> = hostService,
+) {
+  let generation = 0;
+  let state = emptyCalendar;
+  const publish = (next: CalendarState) => { state = next; onChange(next); };
+  const readDays = async (propertyId: string, month: string) => {
+    const days = await service.getCalendar(propertyId, month);
+    return Object.fromEntries(days.map(day => [day.date, day]));
+  };
+  return {
+    invalidate() { ++generation; state = emptyCalendar; },
+    async load(scope: string, propertyId: string, month: string) {
+      const request = ++generation;
+      publish({ ...emptyCalendar, scope, loading: true });
+      try {
+        const dayMap = await readDays(propertyId, month);
+        if (request === generation) publish({ ...state, dayMap, loading: false, ready: true });
+      } catch (error) {
+        if (request === generation) publish({ ...state, loading: false, ready: false, error: calendarError(error) });
+      }
+    },
+    async save(scope: string, propertyId: string, month: string, patch: CalendarBulkPatch): Promise<boolean> {
+      if (state.scope !== scope || !state.ready || state.loading || state.saving) return false;
+      const request = ++generation;
+      publish({ ...state, saving: true, error: null });
+      try {
+        await service.bulkUpdateCalendar(propertyId, patch);
+        if (request !== generation) return false;
+        const dayMap = await readDays(propertyId, month);
+        if (request !== generation) return false;
+        publish({ ...state, dayMap, saving: false, ready: true });
+        return true;
+      } catch (error) {
+        if (request === generation) publish({ ...state, saving: false, ready: false, error: calendarError(error) });
+        return false;
+      }
+    },
+  };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
-const HostCalendarScreen = () => {
+const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}}) => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const userId = useUserStore(state => state.authUser?.id ?? null);
 
   // ── View state ─────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(() => {
@@ -102,21 +160,33 @@ const HostCalendarScreen = () => {
   // ── Data state ─────────────────────────────────────────────────────────────
   const [listings, setListings] = useState<HostListing[]>([]);
   const [selectedListing, setSelectedListing] = useState<HostListing | null>(null);
-  const [dayMap, setDayMap] = useState<Record<string, CalendarDay>>({});
+  const [calendar, setCalendar] = useState<CalendarState>(emptyCalendar);
+  const session = useRef<ReturnType<typeof createCalendarSession> | null>(null);
+  if (!session.current) session.current = createCalendarSession(setCalendar);
+  const [listingsUserId, setListingsUserId] = useState<string | null>(null);
   const [loadingListings, setLoadingListings] = useState(true);
-  const [loadingCalendar, setLoadingCalendar] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [listingsError, setListingsError] = useState<string | null>(null);
+  const [listingsRetry, setListingsRetry] = useState(0);
+  const [calendarRetry, setCalendarRetry] = useState(0);
+  const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const calendarScope = `${userId}:${selectedListing?.id}:${monthStr}`;
+  const currentScope = useRef(calendarScope);
+  currentScope.current = calendarScope;
+  const calendarMatches = calendar.scope === calendarScope;
+  const calendarReady = calendarMatches && calendar.ready;
+  const loadingCalendar = !calendarMatches || calendar.loading;
+  const saving = calendarMatches && calendar.saving;
+  const calendarFailure = calendarMatches && calendar.error !== null;
+  const dayMap = calendarMatches ? calendar.dayMap : {};
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [tooltipKey, setTooltipKey] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [applySuccess, setApplySuccess] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
 
   // Edit panel state
-  const [priceInput, setPriceInput] = useState('25000');
+  const [priceInput, setPriceInput] = useState('');
   const [minNights, setMinNights] = useState(1);
   const [actionMode, setActionMode] = useState<ActionMode>('available');
   const [blockReason, setBlockReason] = useState<BlockReason>('personal');
@@ -136,38 +206,46 @@ const HostCalendarScreen = () => {
 
   // ── Load listings on mount ─────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+    setLoadingListings(true);
+    setListings([]);
+    setSelectedListing(null);
+    setListingsError(null);
+    session.current?.invalidate();
     (async () => {
       try {
-        setListingsError(null);
+        if (!userId) return;
         const data = await hostService.getHostListings();
-        setListings(Array.isArray(data) ? data : []);
-        if (data.length > 0) setSelectedListing(data[0]);
-      } catch {
-        setListingsError(t('hostCalendar.errorListings'));
+        if (cancelled) return;
+        setListings(data);
+        if (data.length > 0) setSelectedListing(data.find(item=>item.id===route?.params?.propertyId) ?? data[0]);
+      } catch (error) {
+        if (!cancelled) setListingsError(calendarError(error) || t('hostCalendar.errorListings'));
       } finally {
-        setLoadingListings(false);
+        if (!cancelled) { setListingsUserId(userId); setLoadingListings(false); }
       }
     })();
-  }, []);
+    return () => { cancelled = true; session.current?.invalidate(); };
+  }, [userId, listingsRetry, route?.params?.propertyId, t]);
 
   // ── Load calendar when listing or month changes ────────────────────────────
   useEffect(() => {
-    if (!selectedListing) return;
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    setLoadingCalendar(true);
-    setDayMap({});
     setSelectedDates([]);
     setTooltipKey(null);
+    setApplySuccess(false);
+    setPriceInput('');
+    setMinNights(1);
+    if (selectedListing && userId && listingsUserId === userId) {
+      void session.current?.load(calendarScope, selectedListing.id, monthStr);
+    }
+    return () => session.current?.invalidate();
+  }, [calendarScope, selectedListing, monthStr, userId, listingsUserId, calendarRetry]);
 
-    hostService.getCalendar(selectedListing.id, monthStr)
-      .then(days => {
-        const map: Record<string, CalendarDay> = {};
-        (Array.isArray(days) ? days : []).forEach(d => { map[d.date] = d; });
-        setDayMap(map);
-      })
-      .catch(() => {/* calendar load error — show empty grid */})
-      .finally(() => setLoadingCalendar(false));
-  }, [selectedListing, year, month]);
+  useEffect(() => {
+    if (!applySuccess) return;
+    const timeout = setTimeout(() => setApplySuccess(false), 2200);
+    return () => clearTimeout(timeout);
+  }, [applySuccess]);
 
   // ── Month navigation ───────────────────────────────────────────────────────
   const goToPrevMonth = () =>
@@ -180,6 +258,7 @@ const HostCalendarScreen = () => {
 
   const handleDayPress = useCallback(
     (day: number) => {
+      if (!calendarReady || saving) return;
       const key = toKey(year, month, day);
       const data = dayMap[key];
       if (data?.status === 'booked') {
@@ -192,52 +271,29 @@ const HostCalendarScreen = () => {
         prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key],
       );
     },
-    [year, month, dayMap],
+    [year, month, dayMap, calendarReady, saving],
   );
 
   // ── Apply changes ──────────────────────────────────────────────────────────
   const applyChanges = async () => {
-    if (!selectedListing || selectedDates.length === 0) return;
-    setSaving(true);
-    setApplyError(null);
+    if (!selectedListing || selectedDates.length === 0 || !calendarReady || saving) return;
+    const scope = calendarScope;
+    setApplySuccess(false);
 
     const patch = {
       dates: selectedDates,
       status: actionMode === 'blocked' ? 'blocked' as CalendarDayStatus : 'available' as CalendarDayStatus,
-      ...(actionMode === 'available' && parseInt(priceInput) >= MIN_PRICE
+      ...(actionMode === 'available' && selectedListing?.canSetPricing && parseInt(priceInput) >= MIN_PRICE
         ? { priceOverride: parseInt(priceInput) }
         : {}),
-      ...(actionMode === 'available' && minNights > 1 ? { minNights } : {}),
+      ...(actionMode === 'available' && selectedListing?.canSetPricing && minNights > 1 ? { minNights } : {}),
       ...(actionMode === 'blocked' ? { blockReason } : {}),
     };
 
-    // Optimistic update
-    setDayMap(prev => {
-      const next = { ...prev };
-      selectedDates.forEach(k => {
-        next[k] = { ...(prev[k] ?? { date: k }), ...patch, date: k };
-      });
-      return next;
-    });
-    setSelectedDates([]);
-
-    try {
-      await hostService.bulkUpdateCalendar(selectedListing.id, patch);
-      setApplySuccess(true);
-      setTimeout(() => setApplySuccess(false), 2200);
-    } catch {
-      setApplyError(t('hostCalendar.saveError'));
-      // Rollback: refetch
-      const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-      hostService.getCalendar(selectedListing.id, monthStr)
-        .then(days => {
-          const map: Record<string, CalendarDay> = {};
-          (Array.isArray(days) ? days : []).forEach(d => { map[d.date] = d; });
-          setDayMap(map);
-        })
-        .catch(() => {});
-    } finally {
-      setSaving(false);
+    const saved = await session.current?.save(scope, selectedListing.id, monthStr, patch);
+    if (currentScope.current === scope) {
+      setSelectedDates([]);
+      if (saved) setApplySuccess(true);
     }
   };
 
@@ -271,7 +327,7 @@ const HostCalendarScreen = () => {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (loadingListings) {
+  if (loadingListings || listingsUserId !== userId) {
     return (
       <View style={s.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -286,6 +342,9 @@ const HostCalendarScreen = () => {
         <Text style={s.emptyText}>
           {listingsError ?? t('hostCalendar.publishFirst')}
         </Text>
+        {listingsError && <TouchableOpacity onPress={() => setListingsRetry(value => value + 1)} accessibilityRole="button">
+          <Text style={s.hint}>{t('common.retry')}</Text>
+        </TouchableOpacity>}
       </View>
     );
   }
@@ -309,6 +368,7 @@ const HostCalendarScreen = () => {
             <Text style={s.headerTitle}>{t('hostCalendar.title')}</Text>
             <TouchableOpacity
               style={s.listingPicker}
+              disabled={saving}
               onPress={() => setDropdownOpen(true)}
               activeOpacity={0.8}
             >
@@ -320,7 +380,7 @@ const HostCalendarScreen = () => {
           </Animated.View>
 
           {/* ── Stats strip ── */}
-          <Animated.View entering={FadeInDown.delay(60).duration(320)} style={s.statsStrip}>
+          {calendarReady && <Animated.View entering={FadeInDown.delay(60).duration(320)} style={s.statsStrip}>
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.primary }]} />
               <Text style={s.statText}>{monthStats.booked} {t('hostCalendar.booked')}</Text>
@@ -337,15 +397,15 @@ const HostCalendarScreen = () => {
                 {monthStats.total - monthStats.booked - monthStats.blocked} {t('hostCalendar.free')}
               </Text>
             </View>
-          </Animated.View>
+          </Animated.View>}
 
           {/* ── Month navigator ── */}
           <Animated.View entering={FadeInDown.delay(100).duration(320)} style={s.monthNav}>
-            <TouchableOpacity onPress={goToPrevMonth} style={s.monthNavBtn} activeOpacity={0.7}>
+            <TouchableOpacity onPress={goToPrevMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
               <MaterialIcons name="chevron-left" size={26} color={colors.inkMid} />
             </TouchableOpacity>
             <Text style={s.monthLabel}>{MONTHS_FR[month]} {year}</Text>
-            <TouchableOpacity onPress={goToNextMonth} style={s.monthNavBtn} activeOpacity={0.7}>
+            <TouchableOpacity onPress={goToNextMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
               <MaterialIcons name="chevron-right" size={26} color={colors.inkMid} />
             </TouchableOpacity>
           </Animated.View>
@@ -367,6 +427,13 @@ const HostCalendarScreen = () => {
             <View style={s.gridLoader}>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
+          ) : calendarFailure ? (
+            <View style={s.centered}>
+              <Text accessibilityRole="alert" style={{ color: colors.error }}>{calendar.error || t('common.error')}</Text>
+              <TouchableOpacity onPress={() => setCalendarRetry(value => value + 1)} accessibilityRole="button">
+                <Text style={s.hint}>{t('common.retry')}</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <Animated.View entering={FadeInDown.delay(140).duration(320)} style={s.calendarGrid}>
               {cells.map((day, idx) => {
@@ -378,6 +445,7 @@ const HostCalendarScreen = () => {
                   <TouchableOpacity
                     key={key}
                     onPress={() => handleDayPress(day)}
+                    disabled={saving || !calendarReady}
                     activeOpacity={0.75}
                     style={cell}
                   >
@@ -402,7 +470,7 @@ const HostCalendarScreen = () => {
           )}
 
           {/* ── Booking tooltip ── */}
-          {tooltipKey && dayMap[tooltipKey] && (
+          {calendarReady && tooltipKey && dayMap[tooltipKey] && (
             <Animated.View entering={FadeInDown.duration(240)} style={s.tooltip}>
               <View style={s.tooltipHeader}>
                 <MaterialIcons name="event" size={14} color={colors.primary} />
@@ -446,7 +514,7 @@ const HostCalendarScreen = () => {
             </View>
           </Animated.View>
 
-          {selectedDates.length === 0 && !tooltipKey && (
+          {calendarReady && selectedDates.length === 0 && !tooltipKey && (
             <Text style={s.hint}>{t('hostCalendar.tapHint')}</Text>
           )}
 
@@ -456,16 +524,10 @@ const HostCalendarScreen = () => {
               <Text style={s.toastText}>{t('hostCalendar.saved')}</Text>
             </Animated.View>
           )}
-          {applyError && (
-            <Animated.View entering={FadeIn.duration(200)} style={[s.toast, s.toastError]}>
-              <MaterialIcons name="error-outline" size={15} color={colors.error} />
-              <Text style={[s.toastText, { color: colors.error }]}>{applyError}</Text>
-            </Animated.View>
-          )}
         </ScrollView>
 
         {/* ── Action panel ── */}
-        <Animated.View style={[s.actionPanel, panelStyle]}>
+        {calendarReady && <Animated.View pointerEvents={saving ? 'none' : 'auto'} style={[s.actionPanel, panelStyle]}>
           <View style={s.actionHandle} />
 
           <View style={s.actionHeaderRow}>
@@ -481,7 +543,7 @@ const HostCalendarScreen = () => {
           {/* Mode toggle */}
           <View style={s.modeToggle}>
             <TouchableOpacity
-              style={[s.modeBtn, actionMode === 'available' && s.modeBtnActive]}
+              style={[s.modeBtn, actionMode === 'available' && selectedListing?.canSetPricing && s.modeBtnActive]}
               onPress={() => setActionMode('available')}
               activeOpacity={0.8}
             >
@@ -490,7 +552,7 @@ const HostCalendarScreen = () => {
                 size={14}
                 color={actionMode === 'available' ? colors.primary : colors.inkDisabled}
               />
-              <Text style={[s.modeBtnText, actionMode === 'available' && s.modeBtnTextActive]}>
+              <Text style={[s.modeBtnText, actionMode === 'available' && selectedListing?.canSetPricing && s.modeBtnTextActive]}>
                 {t('hostCalendar.available')}
               </Text>
             </TouchableOpacity>
@@ -513,7 +575,7 @@ const HostCalendarScreen = () => {
           </View>
 
           {/* Available fields */}
-          {actionMode === 'available' && (
+          {actionMode === 'available' && selectedListing?.canSetPricing && (
             <View style={s.fieldsRow}>
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>{t('hostCalendar.priceNight')}</Text>
@@ -526,7 +588,7 @@ const HostCalendarScreen = () => {
                     placeholder={String(MIN_PRICE)}
                     placeholderTextColor={colors.inkDisabled}
                   />
-                  <Text style={s.priceSuffix}>FC</Text>
+                  <Text style={s.priceSuffix}>RWF</Text>
                 </View>
                 {priceInput !== '' && parseInt(priceInput) < MIN_PRICE && (
                   <Text style={s.priceWarning}>{t('hostCalendar.minPrice')} {formatFC(MIN_PRICE)}</Text>
@@ -591,7 +653,7 @@ const HostCalendarScreen = () => {
             disabled={
               selectedDates.length === 0 ||
               saving ||
-              (actionMode === 'available' &&
+              (actionMode === 'available' && selectedListing?.canSetPricing &&
                 priceInput !== '' &&
                 parseInt(priceInput) < MIN_PRICE)
             }
@@ -607,11 +669,11 @@ const HostCalendarScreen = () => {
               </Text>
             )}
           </TouchableOpacity>
-        </Animated.View>
+        </Animated.View>}
 
         {/* ── Listing picker modal ── */}
         <Modal
-          visible={dropdownOpen}
+          visible={dropdownOpen && !saving}
           transparent
           animationType="fade"
           onRequestClose={() => setDropdownOpen(false)}

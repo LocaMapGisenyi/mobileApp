@@ -52,13 +52,9 @@ export const bookingService = {
   create: async (bookingData: Omit<Booking, 'id' | 'status' | 'totalPrice' | 'createdAt'>): Promise<Booking> => {
     const row = await bookSvc.createBooking({
       property_id: bookingData.propertyId,
-      guest_id: bookingData.guestId,
-      host_id: '',
       start_date: bookingData.startDate.toISOString().split('T')[0],
       end_date: bookingData.endDate.toISOString().split('T')[0],
       guest_count: bookingData.guestCount,
-      total_price: 0,
-      currency: bookingData.currency,
       message: bookingData.message,
     });
     return toBooking(row);
@@ -84,5 +80,7 @@ export const bookingService = {
     return rows.map(r => ({ date: new Date(r.date), available: r.status === 'available' }));
   },
 
-  setAvailability: async (): Promise<void> => {},
+  setAvailability: async (): Promise<void> => {
+    throw new Error('Modifiez les disponibilités depuis le calendrier de l’annonce.');
+  },
 };

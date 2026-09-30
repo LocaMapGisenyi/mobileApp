@@ -6,10 +6,7 @@ import {
   getUserReviews,
 } from '../services/review.service';
 
-type ReviewWithMeta = Tables<'reviews'> & {
-  author: Tables<'profiles'> | null;
-  reply: Tables<'review_replies'> | null;
-};
+type ReviewWithMeta = import('../services/review.service').ReviewRow;
 
 export function useReviews(propertyId: string | null): {
   reviews: ReviewWithMeta[];

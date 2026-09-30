@@ -75,7 +75,7 @@ export const CONTACT_REGEX =
 export const maskContacts = (text: string): string =>
   text.replace(CONTACT_REGEX, '[INFO MASQUÉE]');
 
-export const hasContacts = (text: string): boolean => CONTACT_REGEX.test(text);
+export const hasContacts = (text: string): boolean => new RegExp(CONTACT_REGEX.source).test(text);
 
 const getCurrentUserId = async (): Promise<string> => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -89,35 +89,22 @@ export const messageService = {
     const rows = await msgSvc.getConversations(userId);
     return rows.map(r => ({
       id: r.id,
-      participants: Array.isArray((r as any).participant_profiles)
-        ? (r as any).participant_profiles.map((p: any) => ({ id: p.id, name: p.full_name, avatar: p.avatar_url }))
-        : [],
+      participants: r.participant_profiles.map(p => ({ id: p.id, name: p.full_name, avatar: p.avatar_url ?? undefined })),
       lastMessage: r.last_message_text
         ? { text: r.last_message_text, senderId: r.last_message_sender_id ?? '', createdAt: new Date(r.last_message_at ?? r.updated_at), read: true }
         : undefined,
       propertyId: r.property_id ?? undefined,
-      unreadCount: (r as any).unread_count ?? 0,
+      propertyTitle: r.property_title,
+      unreadCount: r.unread_count,
       updatedAt: new Date(r.updated_at),
     }));
   },
 
   getConversationById: async (conversationId: string): Promise<Conversation> => {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*, conversation_participants(user_id, unread_count)')
-      .eq('id', conversationId)
-      .single();
-    if (error) throw error;
-    return {
-      id: data.id,
-      participants: [],
-      unreadCount: 0,
-      updatedAt: new Date(data.updated_at),
-      propertyId: data.property_id ?? undefined,
-      lastMessage: data.last_message_text
-        ? { text: data.last_message_text, senderId: data.last_message_sender_id ?? '', createdAt: new Date(data.last_message_at!), read: true }
-        : undefined,
-    };
+    const conversations = await messageService.getConversations();
+    const conversation = conversations.find(row => row.id === conversationId);
+    if (!conversation) throw new Error('Conversation introuvable ou accès refusé.');
+    return conversation;
   },
 
   getMessages: async (conversationId: string): Promise<Message[]> => {
@@ -176,21 +163,21 @@ export const messageService = {
       filter === 'archived'
         ? rows.filter(r => r.status === 'ARCHIVED')
         : filter === 'unread'
-        ? rows.filter(r => (r as any).unread_count > 0)
+        ? rows.filter(r => r.unread_count > 0)
         : rows.filter(r => r.status !== 'ARCHIVED');
     return filtered.map(r => ({
       id: r.id,
       status: r.status as ConvStatus,
-      guestId: '',
-      guestName: 'Locataire',
-      guestAvatar: null,
+      guestId: r.participant_profiles.find(p => p.id !== userId)?.id ?? '',
+      guestName: r.participant_profiles.find(p => p.id !== userId)?.full_name ?? 'Utilisateur',
+      guestAvatar: r.participant_profiles.find(p => p.id !== userId)?.avatar_url ?? null,
       listingId: r.property_id ?? '',
-      listingTitle: '',
-      reservationId: null,
+      listingTitle: r.property_title,
+      reservationId: r.booking_id,
       lastMessageText: r.last_message_text,
       lastMessageAt: r.last_message_at,
       lastMessageSenderId: r.last_message_sender_id,
-      unreadCount: (r as any).unread_count ?? 0,
+      unreadCount: r.unread_count,
     }));
   },
 
@@ -200,11 +187,11 @@ export const messageService = {
   ): Promise<{ messages: HostMessage[]; nextCursor: string | null }> => {
     const { messages, nextCursor } = await msgSvc.getMessages(conversationId, cursor);
     return {
-      messages: messages.map(m => ({
+      messages: [...messages].reverse().map(m => ({
         id: m.id,
         conversationId: m.conversation_id,
         senderId: m.sender_id,
-        senderName: (m as any).sender?.full_name ?? 'Utilisateur',
+        senderName: m.sender?.full_name ?? 'Utilisateur',
         content: m.content,
         isRead: m.is_read,
         createdAt: m.created_at,
@@ -247,10 +234,7 @@ export const messageService = {
     _category: ReportCategory,
     _description?: string,
   ): Promise<void> => {
-    const { error } = await supabase
-      .from('conversations')
-      .update({ status: 'REPORTED' })
-      .eq('id', conversationId);
+    const { error } = await supabase.rpc('set_conversation_status', { p_conversation_id: conversationId, p_status: 'REPORTED' });
     if (error) throw error;
   },
 

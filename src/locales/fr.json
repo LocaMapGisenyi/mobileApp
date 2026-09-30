@@ -25,7 +25,8 @@
     "ok": "OK",
     "refreshing": "Actualisation...",
     "unknownError": "Une erreur est survenue",
-    "unknownLocation": "Emplacement inconnu"
+    "unknownLocation": "Emplacement inconnu",
+    "retry": "Réessayer"
   },
   "tabs": {
     "explorer": "Explorer",
@@ -151,6 +152,7 @@
     "EUR": "Euro (EUR)"
   },
   "property": {
+    "requestBooking": "Demander à réserver",
     "price": "Prix",
     "location": "Emplacement",
     "bedrooms": "chambres",
@@ -216,7 +218,8 @@
       "villa": "Villa",
       "studio": "Studio",
       "room": "Chambre"
-    }
+    },
+    "shareMessage": "{{title}} — {{price}}"
   },
   "profile": {
     "myProfile": "Mon profil",
@@ -296,7 +299,9 @@
     "searchThisArea": "Rechercher dans cette zone",
     "listView": "Vue liste",
     "mapView": "Vue carte",
-    "currentLocation": "Position actuelle"
+    "currentLocation": "Position actuelle",
+    "networkError": "Carte indisponible. La liste des logements reste accessible.",
+    "locationMarker": "Position du logement"
   },
   "favorites": {
     "title": "Favoris",
@@ -357,7 +362,8 @@
     "notificationsDisabled": "Notifications désactivées",
     "availableProperties": "{{count}} logements correspondent à vos critères",
     "availablePropertiesSingular": "1 logement correspond à vos critères",
-    "noAvailableProperties": "Aucun logement ne correspond à vos critères"
+    "noAvailableProperties": "Aucun logement ne correspond à vos critères",
+    "savedSearches": "Recherches enregistrées"
   },
   "messages": {
     "title": "Messages",
@@ -430,7 +436,9 @@
       "commentRequired": "Veuillez partager votre expérience dans un commentaire",
       "commentTooShort": "Votre commentaire doit contenir au moins 10 caractères",
       "ownerRatingRequired": "Veuillez attribuer une note au propriétaire"
-    }
+    },
+    "seeAll": "Voir les {{count}} avis",
+    "errorCommentTooShort": "Votre commentaire doit contenir au moins {{minLength}} caractères."
   },
   "guides": {
     "title": "Guides locaux",
@@ -505,7 +513,14 @@
     "studentActivities": "Activités et loisirs pour étudiants",
     "studentActivitiesSummary": "Profiter de Gisenyi avec un budget étudiant",
     "studentCommunity": "Intégration dans la communauté",
-    "studentCommunitySummary": "S'intégrer en tant qu'étudiant international"
+    "studentCommunitySummary": "S'intégrer en tant qu'étudiant international",
+    "shareError": "Impossible de partager le guide",
+    "neighborhoods": "Quartiers recommandés",
+    "transportation": "Se déplacer à Gisenyi",
+    "costOfLiving": "Coût de la vie",
+    "safety": "Sécurité",
+    "expatTips": "Conseils aux expatriés",
+    "studentLife": "Vie étudiante"
   },
   "discover": {
     "title": "Découvrir Gisenyi",
@@ -590,7 +605,22 @@
       "villas": "Villas",
       "apartments": "Appartements",
       "new": "Nouveau"
-    }
+    },
+    "findYourHome": "Trouvez votre logement à Gisenyi",
+    "shortOrLongStay": "Séjour court ou long",
+    "explore": "Explorer maintenant",
+    "priceDisplay": "Affichage des prix",
+    "discoverGisenyi": "Découvrez Gisenyi",
+    "qualityMonthlyPrice": "Des logements de qualité à un prix mensuel abordable",
+    "discoverBestHomes": "Découvrez les logements à Gisenyi",
+    "noResultsInCategory": "Aucun logement dans cette catégorie",
+    "longTermRentals": "Locations de longue durée",
+    "longTermDescription": "Des logements pour plusieurs mois",
+    "studentHousing": "Logements étudiants",
+    "studentHousingDescription": "Des logements abordables près des établissements",
+    "discoverGisenyiInfo": "En savoir plus sur Gisenyi",
+    "cityGuidesDescription": "Découvrez les quartiers, activités et services",
+    "loadMore": "Charger plus de logements"
   },
   "hostDashboard": {
     "greeting": "Bonjour, {{name}}",
@@ -733,16 +763,15 @@
   },
   "hostOnboarding": {
     "step1Title": "Bienvenue chez vous, en tant qu'hôte",
-    "step1Subtitle": "Publiez votre logement à Gisenyi et commencez à accueillir des locataires dès aujourd'hui.",
-    "benefit1": "Recevez vos paiements en RWF, MTN ou Airtel",
-    "benefit2": "Locataires vérifiés par LocaMap",
-    "benefit3": "Support disponible 7j/7",
+    "step1Subtitle": "Préparez votre dossier pour proposer votre logement à Gisenyi après vérification.",
+    "benefit1": "Recevez et gérez les demandes de réservation",
+    "benefit2": "Échangez avec les locataires dans la messagerie",
+    "benefit3": "Contactez le support par ticket",
     "stepWelcome": "Bienvenue",
     "stepIdentity": "Identité",
     "stepKyc": "Vérification",
-    "stepProperty": "Logements",
-    "stepPayment": "Paiement",
-    "stepConfirmed": "Terminé",
+    "stepProperty": "Logement",
+    "stepConfirmed": "Confirmé",
     "step2Title": "Votre identité complète",
     "step2Subtitle": "Ces informations seront utilisées pour vérifier votre compte.",
     "fullName": "Nom complet *",
@@ -761,29 +790,14 @@
     "kycIdBack": "Carte d'identité — verso",
     "kycIdBackDesc": "Verso de votre carte nationale",
     "kycSecurityInfo": "Vos documents sont chiffrés et stockés en sécurité. Ils ne sont utilisés que pour la vérification d'identité.",
-    "submitKyc": "Soumettre pour vérification",
-    "kycPending": "Vérification KYC en cours",
+    "kycPending": "Dossier en attente de vérification",
     "step3Title": "Vos types de logements",
     "step3Subtitle": "Sélectionnez tous les types de biens que vous proposez à la location.",
-    "step4Title": "Recevez vos paiements",
-    "step4Subtitle": "Choisissez comment vous souhaitez recevoir vos loyers. Vous pouvez en sélectionner plusieurs.",
-    "mtnName": "MTN MoMo",
-    "mtnSub": "Mobile Money Rwanda",
-    "airtelName": "Airtel Money",
-    "airtelSub": "Mobile Money Airtel",
-    "bankName": "Virement bancaire",
-    "bankSub": "Banque rwandaise",
-    "mtnNumber": "Numéro MTN MoMo",
-    "airtelNumber": "Numéro Airtel Money",
-    "bankNameField": "Nom de la banque",
-    "bankNamePlaceholder": "Ex: BK, Equity, I&M…",
-    "bankAccount": "Numéro de compte",
-    "bankNote": "Vos informations bancaires sont chiffrées et sécurisées. Elles ne seront jamais partagées avec les locataires.",
-    "step5Title": "Vous êtes hôte LocaMap !",
-    "step5Subtitle": "Votre profil d'hôte a été configuré avec succès. Publiez votre première annonce et commencez à recevoir des locataires.",
+    "step5Title": "Dossier envoyé",
+    "step5Subtitle": "Vos justificatifs doivent être vérifiés avant la publication de vos annonces.",
     "goToDashboard": "Accéder au tableau de bord",
     "continue": "Continuer",
-    "finish": "Finaliser",
+    "finish": "Envoyer mon dossier",
     "skip": "Ignorer cette étape",
     "typeVilla": "Villa",
     "typeMaison": "Maison",
@@ -797,15 +811,14 @@
     "typeChambreDesc": "Chambre privée",
     "headerTitle": "Devenir hôte",
     "back": "Retour",
-    "stepWelcome": "Bienvenue",
-    "stepIdentity": "Identité",
-    "stepProperty": "Logement",
-    "stepPayment": "Paiement",
-    "stepConfirmed": "Confirmé",
-    "phoneInfo": "Votre téléphone sera utilisé pour les paiements et les notifications de réservation.",
+    "phoneInfo": "Votre téléphone est utilisé pour votre compte et les coordonnées de contact liées aux réservations.",
     "step3Info": "Vous pouvez en sélectionner plusieurs. Les détails de chaque annonce (capacité, photos, prix) seront configurés lors de la publication.",
     "selectionCount": "{{count}} type(s) sélectionné(s)",
-    "paymentSecurityInfo": "Vos informations bancaires sont chiffrées et sécurisées. Elles ne seront jamais partagées avec les locataires."
+    "stepLaunch": "Lancement",
+    "launchTitle": "Des réservations sans paiement intégré",
+    "launchDescription": "Au lancement, LocaMap vous permet de recevoir et d’accepter les demandes de réservation. L’application n’encaisse aucun paiement et n’effectue aucun versement.",
+    "launchPaymentInfo": "Le paiement intégré pourra être ajouté après validation d’un prestataire. Aucune coordonnée financière n’est demandée pour ce dossier.",
+    "submitting": "Envoi du dossier…"
   },
   "hostCoHost": {
     "title": "Co-hôtes",
@@ -899,17 +912,17 @@
     "tabTickets": "Mes tickets",
     "chatTitle": "Chat en direct",
     "chatAvailable": "Disponible",
-    "chatWait": "Attente ~{{min}} min",
+    "chatWait": "Disponibilité à confirmer",
     "chatUnavailable": "Indisponible actuellement",
-    "chatHours": "Disponible 07h – 22h (heure locale)",
+    "chatHours": "Consultez la disponibilité du support",
     "chatStart": "Démarrer le chat",
     "whatsappTitle": "WhatsApp",
-    "whatsappSub": "Réponse < 2h en heures ouvrées",
+    "whatsappSub": "Contact par WhatsApp",
     "whatsappBtn": "Écrire sur WhatsApp",
     "emailTitle": "Email",
-    "emailSub": "Réponse sous 24h",
+    "emailSub": "Contact par email",
     "urgentTitle": "Urgences uniquement",
-    "urgentSub": "Voyageur bloqué, sécurité · SLA 1h",
+    "urgentSub": "Voyageur bloqué ou problème de sécurité",
     "urgentBtn": "Appeler maintenant",
     "complexTitle": "Problème plus complexe ?",
     "complexSub": "Créez un ticket pour un suivi structuré et un historique des échanges.",
@@ -932,10 +945,10 @@
     "priorityHigh": "Haute",
     "priorityNormal": "Normale",
     "priorityLow": "Faible",
-    "priorityUrgentDesc": "Voyageur bloqué, urgence sécurité — réponse en 1h",
-    "priorityHighDesc": "Paiement manquant, litige actif — réponse en 4h",
-    "priorityNormalDesc": "Questions générales — réponse en 24h",
-    "priorityLowDesc": "Suggestions, feedback — réponse en 72h",
+    "priorityUrgentDesc": "Voyageur bloqué ou urgence de sécurité",
+    "priorityHighDesc": "Réservation en cours ou litige actif",
+    "priorityNormalDesc": "Questions générales",
+    "priorityLowDesc": "Suggestions et retours",
     "statusOpen": "Ouvert",
     "statusInProgress": "En traitement",
     "statusWaiting": "Votre réponse",
@@ -1053,7 +1066,7 @@
     "photoAdd": "Ajouter",
     "photoHint": "Min. 5 photos recommandées · Première photo = couverture",
     "save": "Enregistrer",
-    "publish": "Publier l'annonce",
+    "publish": "Soumettre pour validation",
     "continueStep": "Continuer — {{stepName}}",
     "submitError": "Une erreur est survenue. Réessayez.",
     "errorTitle": "Minimum 10 caractères",
@@ -1088,7 +1101,7 @@
     "amenityGarden": "Jardin",
     "amenityWasher": "Laveuse",
     "amenityFurnished": "Meublé",
-    "amenityRegideso": "Connexion eau REGIDESO",
+    "amenityRegideso": "Raccordement au réseau d'eau",
     "ruleSmoking": "Fumeurs acceptés",
     "ruleSmokingSub": "Autoriser de fumer dans le logement",
     "rulePets": "Animaux acceptés",
@@ -1237,5 +1250,57 @@
     "becomeHostTitle": "Devenir hôte",
     "becomeHostSubtitle": "Publiez votre logement et commencez à gagner",
     "becomeHostCta": "Commencer"
+  },
+  "bookingFlow": {
+    "error": "Impossible de traiter cette demande.",
+    "unavailable": "Logement indisponible.",
+    "month": "mois",
+    "minimum": "Durée minimale : {{days}} jours. Le jour de départ est exclu.",
+    "start": "Arrivée (AAAA-MM-JJ)",
+    "end": "Départ (AAAA-MM-JJ)",
+    "guests": "Nombre de personnes",
+    "message": "Message à l'hôte (facultatif)",
+    "quote": "Loyer total pour {{days}} jours, selon le calendrier de l'hôte.",
+    "deposit": "Caution indiquée séparément : {{amount}} {{currency}}.",
+    "paymentNote": "Cette demande attendra l'accord de l'hôte. Aucun paiement n'est effectué dans l'application.",
+    "confirm": "Envoyer la demande",
+    "check": "Vérifier les dates et le prix",
+    "pending": "En attente",
+    "approved": "Acceptée",
+    "rejected": "Refusée",
+    "cancelled": "Annulée",
+    "completed": "Terminée",
+    "myStays": "Mes séjours",
+    "received": "Demandes reçues",
+    "empty": "Aucune réservation pour le moment.",
+    "view": "Voir le logement",
+    "accept": "Accepter",
+    "reject": "Refuser",
+    "cancel": "Annuler la réservation",
+    "complete": "Marquer terminée",
+    "review": "Laisser un avis"
+  },
+  "recent": {
+    "partial": "Certains logements ne sont plus accessibles.",
+    "error": "Impossible de charger l'historique.",
+    "local": "Les 30 derniers logements consultés sur cet appareil.",
+    "empty": "Aucun logement consulté.",
+    "clear": "Effacer l'historique"
+  },
+  "about": {
+    "description": "Recherchez un logement, échangez avec son propriétaire et suivez vos demandes de location au Rwanda.",
+    "version": "Version"
+  },
+  "design": {
+    "homes": "Les logements",
+    "addFavorite": "Ajouter aux favoris",
+    "removeFavorite": "Retirer des favoris",
+    "resultCount_one": "{{count}} résultat",
+    "resultCount_other": "{{count}} résultats",
+    "bedrooms_one": "{{count}} chambre",
+    "bedrooms_other": "{{count}} chambres"
+  },
+  "readiness": {
+    "recovery": "Une erreur empêche d’afficher cette page. Vous pouvez réessayer."
   }
 }

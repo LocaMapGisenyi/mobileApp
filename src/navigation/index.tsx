@@ -4,7 +4,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from 'react-native-paper';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +34,15 @@ import GuestAccountScreen from '../screens/GuestAccountScreen';
 import HostDashboardScreen from '../screens/HostDashboardScreen';
 import HostOnboardingScreen from '../screens/HostOnboardingScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
+
+import BookingRequestScreen from '../screens/BookingRequestScreen';
+import BookingsScreen from '../screens/BookingsScreen';
+import RecentlyViewedScreen from '../screens/RecentlyViewedScreen';
+import AboutScreen from '../screens/AboutScreen';
+import HostSupportScreen from '../screens/HostSupportScreen';
+import HostLegalScreen from '../screens/HostLegalScreen';
+import HostCalendarScreen from '../screens/HostCalendarScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 // Navigators
 import AuthNavigator from './AuthNavigator';
@@ -80,7 +89,7 @@ const TAB_CONFIGS = [
   { name: 'Profile',      icon: 'account-circle',    labelKey: 'tabs.profile' },
 ] as const;
 
-const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
   const { t } = useTranslation();
   const { totalUnreadCount } = useMessagesStore();
   const { favoriteIds } = useFavoritesStore();
@@ -92,7 +101,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   };
 
   return (
-    <View style={tabStyles.wrapper} pointerEvents="box-none">
+    <View style={[tabStyles.wrapper, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
       <View style={tabStyles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -115,11 +124,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               accessibilityLabel={t(cfg.labelKey) as string}
             >
               {/* Icon + badge */}
-              <View style={tabStyles.iconWrap}>
+              <View style={[tabStyles.iconWrap, isFocused && tabStyles.iconWrapActive]}>
                 <MaterialIcons
                   name={cfg.icon as any}
                   size={26}
-                  color={isFocused ? colors.primary : colors.inkDisabled}
+                  color={isFocused ? colors.primary : colors.inkSubtle}
                 />
                 {badge && (
                   <View style={tabStyles.badge}>
@@ -132,7 +141,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 {t(cfg.labelKey) as string}
               </Text>
               {/* Active dot */}
-              {isFocused && <View style={tabStyles.dot} />}
+
             </TouchableOpacity>
           );
         })}
@@ -143,41 +152,33 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
 
 const tabStyles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: colors.background,
     alignItems: 'center',
   },
   bar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 28,
+    borderRadius: 16,
+    maxWidth: 720,
     paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingVertical: 6,
     width: '100%',
     borderWidth: 1,
     borderColor: colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
-      },
-      android: { elevation: 10 },
-    }),
+
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
     paddingVertical: 4,
     gap: 2,
   },
-  iconWrap: {
-    position: 'relative',
-  },
+  iconWrap: { position: 'relative', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 14 },
+  iconWrapActive: { backgroundColor: colors.accentLight },
   badge: {
     position: 'absolute',
     top: -5,
@@ -194,12 +195,12 @@ const tabStyles = StyleSheet.create({
   },
   badgeTxt: {
     color: colors.white,
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
   },
   label: {
-    fontSize: 10,
-    color: colors.inkDisabled,
+    fontSize: 12,
+    color: colors.inkSubtle,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
@@ -274,8 +275,8 @@ const AppNavigator = () => {
         ) : (
           // Flux après authentification
           !hasCompletedOnboarding ? (
-            <Stack.Screen 
-              name="PreferenceCarousel" 
+            <Stack.Screen
+              name="PreferenceCarousel"
               component={PreferenceCarouselScreen}
               options={{ headerShown: false }}
             />
@@ -287,13 +288,19 @@ const AppNavigator = () => {
                 component={TabNavigator}
                 options={{ headerShown: false }}
               />
+              <Stack.Screen name="BookingRequest" component={BookingRequestScreen} options={{title:'Demande de réservation'}} />
+              <Stack.Screen name="Bookings" component={BookingsScreen} options={{title:'Réservations'}} />
+              <Stack.Screen name="RecentlyViewed" component={RecentlyViewedScreen} options={{title:'Historique'}} />
+              <Stack.Screen name="About" component={AboutScreen} options={{title:'À propos'}} />
+              <Stack.Screen name="Support" component={HostSupportScreen} options={{title:'Assistance'}} />
+              <Stack.Screen name="Legal" component={HostLegalScreen} options={{title:'Documents légaux'}} />
+              <Stack.Screen name="HostCalendar" component={HostCalendarScreen} options={{title:'Calendrier'}} />
+              <Stack.Screen name="Notifications" component={NotificationsScreen} options={{headerShown:false}} />
               <Stack.Screen
                 name="PropertyDetails"
                 component={LogementDetailScreen}
                 options={{
-                  headerTransparent: true,
-                  headerTitle: '',
-                  headerBackVisible: true,
+                  headerShown: false,
                   animation: 'slide_from_right',
                 }}
               />
@@ -406,4 +413,4 @@ const AppNavigator = () => {
 
 const styles = StyleSheet.create({});
 
-export default AppNavigator; 
+export default AppNavigator;

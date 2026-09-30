@@ -1,0 +1,21 @@
+name: Availability probe
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+permissions:
+  contents: read
+jobs:
+  health:
+    if: vars.LOCAMAP_MONITORING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/operations/health.mjs
+        env:
+          LOCAMAP_HEALTH_URL: ${{ vars.LOCAMAP_HEALTH_URL }}
+          LOCAMAP_HEALTH_ANON_KEY: ${{ secrets.LOCAMAP_HEALTH_ANON_KEY }}

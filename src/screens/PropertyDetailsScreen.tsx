@@ -1,20 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  Dimensions, 
-  TouchableOpacity, 
-  StatusBar,
-  Platform,
-  Share,
-  Linking
-} from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity, StatusBar, Platform, Share, Linking, ActivityIndicator } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAppStore } from '../store/useAppStore';
-import { Text, Button, Chip, IconButton, Divider, ActivityIndicator, Snackbar } from 'react-native-paper';
+import { Text, Button, Chip, IconButton, Divider, Snackbar } from 'react-native-paper';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import ImageCarousel from '../components/ImageCarousel';
 import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInRight } from 'react-native-reanimated';

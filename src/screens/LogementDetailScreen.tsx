@@ -1,24 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Linking, Share, Platform, StatusBar, Image, FlatList, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Linking, Share, StatusBar, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import { Text, Button, Chip, ActivityIndicator, IconButton, Divider, Surface, useTheme, SegmentedButtons } from 'react-native-paper';
+import { Text, Button, Surface } from 'react-native-paper';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInUp, FadeInDown, SlideInUp, SlideInDown } from 'react-native-reanimated';
-import MapView, { Marker } from 'react-native-maps';
+import Animated from 'react-native-reanimated';
+import PropertyMap from '../components/PropertyMap';
 import { useTranslation } from 'react-i18next';
 
 // Hooks et composants personnalisés
+import {recordViewedProperty} from '../services/history.service';
 import useListingById from '../hooks/useListingById';
-import { usePreferences } from '../store/preferences';
 import ImageCarousel from '../components/ImageCarousel';
 import AmenityTag from '../components/AmenityTag';
 import SectionTitle from '../components/SectionTitle';
 import FavoriteButton from '../components/FavoriteButton';
 import { useFavoritesStore } from '../store/favorites';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { useUserStore } from '../store/user';
+import { colors, spacing, typography, borderRadius } from '../theme';
 import useReviewsStore from '../store/reviews';
 import ReviewCard from '../components/ReviewCard';
 import RatingStars from '../components/RatingStars';
@@ -26,33 +27,20 @@ import RatingStars from '../components/RatingStars';
 type LogementDetailRouteProp = RouteProp<RootStackParamList, 'PropertyDetails'>;
 type LogementDetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const screenWidth = Dimensions.get('window').width;
-
-// Map des amenités pour les icônes et les traductions
-const amenityIcons: Record<string, { icon: string; label: string }> = {
-  wifi: { icon: 'wifi', label: 'amenities.wifi' },
-  parking: { icon: 'car', label: 'amenities.parking' },
-  garden: { icon: 'leaf', label: 'amenities.garden' },
-  securityGuard: { icon: 'shield-checkmark', label: 'amenities.security' },
-  waterTank: { icon: 'water', label: 'amenities.waterTank' },
-  generator: { icon: 'flash', label: 'amenities.generator' },
-  ac: { icon: 'snow', label: 'amenities.ac' },
-  kitchen: { icon: 'restaurant', label: 'amenities.kitchen' },
-  tv: { icon: 'tv', label: 'amenities.tv' },
-};
-
 const LogementDetailScreen = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<LogementDetailNavigationProp>();
   const route = useRoute<LogementDetailRouteProp>();
   const { propertyId } = route.params;
-  const { currency } = usePreferences();
+  const userId = useUserStore(state => state.user.id);
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
-  const { getAverageRating, getReviewsForProperty, getSortedReviews } = useReviewsStore();
+  const { getAverageRating, getSortedReviews, fetchReviews, error: reviewError } = useReviewsStore();
+  const favoriteError = useFavoritesStore(state => state.error);
+  useEffect(() => { void fetchReviews(propertyId); void useFavoritesStore.getState().fetchFavorites(); }, [propertyId, fetchReviews]);
 
   // États locaux
-  const [priceMode, setPriceMode] = useState('monthly'); // 'nightly' ou 'monthly'
+
 
   // États pour les avis
   const [reviewSortOrder, setReviewSortOrder] = useState<'recent' | 'highest' | 'lowest'>('recent');
@@ -60,6 +48,7 @@ const LogementDetailScreen = () => {
 
   // Récupération des données du logement
   const { listing, isLoading, error } = useListingById(propertyId);
+  useEffect(() => { if (listing?.id && userId) void recordViewedProperty(listing.id,userId).catch(() => {}); }, [listing?.id,userId]);
 
   // Gestion des favoris
   const handleFavoriteToggle = () => {
@@ -72,51 +61,7 @@ const LogementDetailScreen = () => {
     }
   };
 
-  // Formatage du prix avec la devise choisie
-  const formatPrice = (price: number, originalCurrency: string) => {
-    let convertedPrice = price;
-    let symbol = '';
-
-    // Simuler la conversion de devise
-    if (originalCurrency !== currency) {
-      // Taux de conversion simulés
-      const rates = {
-        RWF: { USD: 0.00085, EUR: 0.00079 },
-        USD: { RWF: 1176.47, EUR: 0.93 },
-        EUR: { RWF: 1265.82, USD: 1.07 }
-      };
-
-      // Convertir depuis la devise originale vers la devise choisie
-      const ratesTyped = rates as Record<string, Record<string, number>>;
-      if (originalCurrency in ratesTyped && currency in (ratesTyped[originalCurrency] || {})) {
-        const rate = ratesTyped[originalCurrency][currency];
-        convertedPrice = Math.round(price * rate);
-      }
-    }
-
-    // Symbole de la devise
-    switch (currency) {
-      case 'RWF':
-        symbol = 'FRw';
-        break;
-      case 'USD':
-        symbol = '$';
-        break;
-      case 'EUR':
-        symbol = '€';
-        break;
-    }
-
-    // Format du prix selon la devise
-    return currency === 'RWF'
-      ? `${convertedPrice.toLocaleString()} ${symbol}`
-      : `${symbol}${convertedPrice.toLocaleString()}`;
-  };
-
-  // Calcul du prix mensuel (pour l'exemple - dans un cas réel, cela viendrait de l'API)
-  const calculateMonthlyPrice = (nightlyPrice: number) => {
-    return Math.round(nightlyPrice * 25); // Approximation
-  };
+  const formatPrice = (price: number, originalCurrency: string) => `${price.toLocaleString()} ${originalCurrency}`;
 
   // Partager l'annonce
   const handleShare = async () => {
@@ -127,7 +72,7 @@ const LogementDetailScreen = () => {
         title: listing.title,
         message: t('property.shareMessage', {
           title: listing.title,
-          price: `${formatPrice(listing.price, listing.currency)}/${priceMode === 'monthly' ? 'mois' : 'nuit'} - LocaMap`,
+          price: `${formatPrice(listing.price, listing.currency)}/mois - LocaMap`,
         }),
       });
     } catch (error) {
@@ -220,6 +165,7 @@ const LogementDetailScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
+          accessibilityRole="button" accessibilityLabel="Retour"
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.ink} />
@@ -227,18 +173,20 @@ const LogementDetailScreen = () => {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerActionButton}
+            accessibilityRole="button" accessibilityLabel="Partager ce logement"
             onPress={handleShare}
           >
             <Ionicons name="share-outline" size={22} color={colors.ink} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerActionButton}>
+          <View style={styles.headerActionButton}>
             <FavoriteButton
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
               propertyId={propertyId}
               onPress={handleFavoriteToggle}
               size={22}
               showBackground={false}
             />
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -246,37 +194,38 @@ const LogementDetailScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {(reviewError || favoriteError) && <Text accessibilityRole="alert">{reviewError || favoriteError}</Text>}
         {/* Carousel d'images */}
         <View style={styles.carouselContainer}>
           <ImageCarousel
+            key={propertyId}
             images={listing.images.length > 0 ? listing.images : []}
-            height={280}
+            height={Math.min(440, width * 0.72)}
           />
 
           {/* Badge disponibilité */}
           <Animated.View
-            entering={SlideInUp ? SlideInUp.duration(400).delay(200) : undefined}
             style={styles.availabilityBadgeContainer}
           >
             <Surface style={[
               styles.availabilityBadge,
               {
                 backgroundColor: listing.available
-                  ? '#e6f7ed'
+                  ? colors.primaryLight
                   : '#ffeded',
                 borderColor: listing.available
-                  ? '#4acf8c'
+                  ? colors.primary
                   : '#f27272'
               }
             ]}>
               <MaterialIcons
                 name={listing.available ? "check-circle" : "cancel"}
                 size={18}
-                color={listing.available ? '#4acf8c' : '#f27272'}
+                color={listing.available ? colors.primary : '#f27272'}
               />
               <Text style={[
                 styles.availabilityText,
-                { color: listing.available ? '#1f9d58' : '#d42e2e' }
+                { color: listing.available ? colors.primaryDark : '#d42e2e' }
               ]}>
                 {listing.available ? t('property.available') : t('property.unavailable')}
               </Text>
@@ -286,7 +235,6 @@ const LogementDetailScreen = () => {
 
         {/* Informations principales */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400) : undefined}
           style={styles.mainInfoContainer}
         >
           <Text style={styles.title}>{listing.title}</Text>
@@ -303,40 +251,25 @@ const LogementDetailScreen = () => {
           <View style={styles.contractTypeContainer}>
             <View style={styles.typeChip}>
               <Text style={styles.typeChipText}>
-                {listing.type || 'Logement'}
+                {t(`property.types.${listing.type}`, { defaultValue: listing.type || 'Logement' })}
               </Text>
             </View>
 
             <View style={[styles.typeChip, styles.contractChip]}>
               <MaterialIcons name="date-range" size={12} color={colors.inkMid} style={{ marginRight: 4 }} />
               <Text style={styles.typeChipText}>
-                Court et long terme
+                Location mensuelle
               </Text>
             </View>
-          </View>
-
-          {/* Options de prix (nuit/mois) */}
-          <View style={styles.priceOptionsContainer}>
-            <SegmentedButtons
-              value={priceMode}
-              onValueChange={setPriceMode}
-              buttons={[
-                { value: 'nightly', label: t('property.perNight') },
-                { value: 'monthly', label: t('property.perMonth') }
-              ]}
-              style={styles.segmentedButtons}
-            />
           </View>
 
           {/* Affichage du prix */}
           <View style={styles.priceContainer}>
             <Text style={styles.price}>
-              {priceMode === 'nightly'
-                ? formatPrice(listing.price, listing.currency)
-                : formatPrice(calculateMonthlyPrice(listing.price), listing.currency)}
+              {formatPrice(listing.price, listing.currency)}
             </Text>
             <Text style={styles.priceUnit}>
-              {priceMode === 'nightly' ? '/nuit' : '/mois'}
+              /mois
             </Text>
           </View>
 
@@ -372,16 +305,15 @@ const LogementDetailScreen = () => {
               </Text>
             </View>
 
-            <View style={styles.infoItem}>
+            {!!listing.size && <View style={styles.infoItem}>
               <MaterialIcons name="straighten" size={22} color={colors.primary} />
               <Text style={styles.infoText}>{listing.size} m²</Text>
-            </View>
+            </View>}
           </View>
         </Animated.View>
 
         {/* Description */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(100) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -395,7 +327,6 @@ const LogementDetailScreen = () => {
 
         {/* Conditions de location */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(150) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -409,7 +340,7 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="timer" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.minDuration')}</Text>
-                <Text style={styles.contractDetailText}>{t('property.contract.oneMonthRecommended')}</Text>
+                <Text style={styles.contractDetailText}>{listing.minDurationMonths ?? 1} mois</Text>
               </View>
             </View>
 
@@ -417,7 +348,7 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="account-balance-wallet" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.deposit')}</Text>
-                <Text style={styles.contractDetailText}>{formatPrice(listing.price * 2, listing.currency)}</Text>
+                <Text style={styles.contractDetailText}>{formatPrice(listing.deposit ?? 0, listing.currency)}</Text>
               </View>
             </View>
 
@@ -425,7 +356,7 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="event-available" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.notice')}</Text>
-                <Text style={styles.contractDetailText}>{t('property.contract.noticeDetails')}</Text>
+                <Text style={styles.contractDetailText}>{listing.noticePeriodDays ?? 30} jours</Text>
               </View>
             </View>
 
@@ -433,7 +364,6 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="attach-money" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.included')}</Text>
-                <Text style={styles.contractDetailText}>{t('property.contract.utilities')}</Text>
               </View>
             </View>
           </View>
@@ -441,7 +371,6 @@ const LogementDetailScreen = () => {
 
         {/* Commodités */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(200) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -460,7 +389,6 @@ const LogementDetailScreen = () => {
         {/* Localisation sur la carte */}
         {listing.location?.coordinates && (
           <Animated.View
-            entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
             style={styles.section}
           >
             <View style={styles.sectionSeparator} />
@@ -471,7 +399,7 @@ const LogementDetailScreen = () => {
 
             <View style={styles.mapContainer}>
               <View style={styles.mapWrapper}>
-                <MapView
+                <PropertyMap
                   style={styles.map}
                   initialRegion={{
                     latitude: listing.location?.coordinates.latitude,
@@ -479,19 +407,14 @@ const LogementDetailScreen = () => {
                     latitudeDelta: 0.01,
                     longitudeDelta: 0.01,
                   }}
-                  zoomEnabled={false}
-                  rotateEnabled={false}
-                  scrollEnabled={false}
-                >
-                  <Marker
-                    coordinate={{
-                      latitude: listing.location?.coordinates.latitude,
-                      longitude: listing.location?.coordinates.longitude,
-                    }}
-                    title={listing.title}
-                    description={listing.location?.address}
-                  />
-                </MapView>
+                  interactive={false}
+                  markers={[{
+                    id: listing.id,
+                    latitude: listing.location.coordinates.latitude,
+                    longitude: listing.location.coordinates.longitude,
+                    title: listing.title,
+                  }]}
+                />
               </View>
 
               <TouchableOpacity
@@ -505,43 +428,8 @@ const LogementDetailScreen = () => {
           </Animated.View>
         )}
 
-        {/* Services à proximité */}
-        <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(350) : undefined}
-          style={styles.section}
-        >
-          <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.nearbyServices')}
-            icon="location-city"
-          />
-
-          <View style={styles.nearbyServicesContainer}>
-            <View style={styles.nearbyService}>
-              <MaterialIcons name="school" size={18} color={colors.inkSubtle} />
-              <Text style={styles.nearbyServiceText}>{t('property.nearby.university', { distance: 500 })}</Text>
-            </View>
-
-            <View style={styles.nearbyService}>
-              <MaterialIcons name="shopping-cart" size={18} color={colors.inkSubtle} />
-              <Text style={styles.nearbyServiceText}>{t('property.nearby.market', { distance: 800 })}</Text>
-            </View>
-
-            <View style={styles.nearbyService}>
-              <MaterialIcons name="local-hospital" size={18} color={colors.inkSubtle} />
-              <Text style={styles.nearbyServiceText}>{t('property.nearby.hospital', { distance: 1200 })}</Text>
-            </View>
-
-            <View style={styles.nearbyService}>
-              <MaterialIcons name="restaurant" size={18} color={colors.inkSubtle} />
-              <Text style={styles.nearbyServiceText}>{t('property.nearby.restaurants', { distance: 300 })}</Text>
-            </View>
-          </View>
-        </Animated.View>
-
         {/* Informations pratiques */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(400) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -563,14 +451,13 @@ const LogementDetailScreen = () => {
 
             <View style={styles.infoItem}>
               <MaterialIcons name="people" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>{t('property.occupancy', { max: (listing.bedrooms || 0) * 2 })}</Text>
+              <Text style={styles.infoText}>{t('property.occupancy', { max: listing.maxGuests ?? 1 })}</Text>
             </View>
           </View>
         </Animated.View>
 
         {/* Coordonnées du propriétaire */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(500) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -599,7 +486,6 @@ const LogementDetailScreen = () => {
 
         {/* Section des avis */}
         <Animated.View
-          entering={FadeInUp ? FadeInUp.duration(400).delay(450) : undefined}
           style={styles.section}
         >
           <View style={styles.sectionSeparator} />
@@ -703,28 +589,29 @@ const LogementDetailScreen = () => {
           )}
         </Animated.View>
 
-        {/* Espace pour le bouton fixed en bas */}
-        <View style={{ height: 80 }} />
+
       </ScrollView>
 
       {/* Boutons de contact */}
-      <Animated.View
-        entering={FadeInUp ? FadeInUp.duration(400).delay(300) : undefined}
-        style={styles.footerContainer}
-      >
+      <View style={styles.footerContainer}>
+        {listing.available && listing.owner?.id !== userId && (
+          <Button mode="contained" buttonColor={colors.accent} textColor={colors.onAccent} contentStyle={{ minHeight: 52 }} style={{ marginBottom: 8, borderRadius: borderRadius.button }} onPress={() => navigation.navigate('BookingRequest', { propertyId: listing.id })}>{t('property.requestBooking')}</Button>
+        )}
         <View style={styles.contactContainer}>
           <TouchableOpacity
             style={styles.contactButton}
+            accessibilityRole="button"
             onPress={handleContact}
             activeOpacity={0.85}
           >
-            <MaterialIcons name="message" size={18} color={colors.white} style={{ marginRight: 8 }} />
+            <MaterialIcons name="message" size={18} color={colors.primary} style={{ marginRight: 8 }} />
             <Text style={styles.contactButtonText}>{t('property.contactOwner')}</Text>
           </TouchableOpacity>
 
           {listing.owner?.phone && (
             <TouchableOpacity
               style={styles.callButton}
+              accessibilityRole="button"
               onPress={() => Linking.openURL(`tel:${listing.owner?.phone}`)}
               activeOpacity={0.85}
             >
@@ -733,7 +620,7 @@ const LogementDetailScreen = () => {
             </TouchableOpacity>
           )}
         </View>
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -744,15 +631,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[4],
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 + spacing[2] : spacing[2],
-    zIndex: 10,
+    width: '100%', maxWidth: 960, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8,
   },
   backButton: {
     width: 44,
@@ -778,7 +657,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   scrollContent: {
-    paddingBottom: 16,
+    width: '100%', maxWidth: 960, alignSelf: 'center', paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -805,10 +684,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   availabilityBadgeContainer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    zIndex: 10,
+    alignSelf: 'flex-start',
+    marginHorizontal: 20,
+    marginTop: 12,
   },
   availabilityBadge: {
     flexDirection: 'row',
@@ -824,10 +702,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   mainInfoContainer: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[5],
-    paddingBottom: spacing[4],
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8,
   },
   title: {
     fontSize: typography.fontSize['2xl'],
@@ -877,9 +752,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: spacing[3],
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', paddingVertical: 14, marginBottom: 16, gap: 4, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   price: {
     fontSize: typography.fontSize.xl,
@@ -916,6 +789,8 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 12,
     justifyContent: 'space-between',
     marginBottom: spacing[2],
   },
@@ -1060,15 +935,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.surface,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    width: '100%', maxWidth: 960, alignSelf: 'center', backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 20, borderTopWidth: 1, borderTopColor: colors.border,
   },
   contactContainer: {
     flexDirection: 'row',
@@ -1078,12 +945,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryLight,
     borderRadius: borderRadius.md,
-    height: 52,
+    minHeight: 48,
+    padding: 8,
   },
   contactButtonText: {
-    color: colors.white,
+    flexShrink: 1,
+    textAlign: 'center',
+    color: colors.primary,
     fontSize: typography.fontSize.base,
     fontWeight: '600',
   },
@@ -1095,8 +965,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: borderRadius.md,
-    height: 52,
-    paddingHorizontal: spacing[4],
+    minHeight: 48,
+    paddingHorizontal: spacing[3],
   },
   callButtonText: {
     color: colors.inkMid,

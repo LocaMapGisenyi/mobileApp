@@ -8,23 +8,24 @@ import {
   Text,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 const T = {
-  labelDefault: '#2E4A4A',
-  labelFocus:   '#0D6E6E',
-  labelError:   '#C1440E',
-  borderDefault:'#D0E8E8',
-  borderFocus:  '#0D6E6E',
-  borderError:  '#C1440E',
-  bgDefault:    '#F3F8F8',
-  bgFocus:      '#FFFFFF',
+  labelDefault: colors.inkMid,
+  labelFocus:   colors.primary,
+  labelError:   colors.error,
+  borderDefault:colors.borderMid,
+  borderFocus:  colors.primary,
+  borderError:  colors.error,
+  bgDefault:    colors.surface,
+  bgFocus:      colors.surface,
   bgError:      '#FDF2EF',
-  iconDefault:  '#5A7878',
-  iconFocus:    '#0D6E6E',
-  iconError:    '#C1440E',
-  inputText:    '#0F1F1F',
-  placeholder:  '#5A7878',
-  errorText:    '#C1440E',
+  iconDefault:  colors.inkSubtle,
+  iconFocus:    colors.primary,
+  iconError:    colors.error,
+  inputText:    colors.ink,
+  placeholder:  colors.inkSubtle,
+  errorText:    colors.error,
 };
 
 interface TextInputFieldProps extends TextInputProps {
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.1,
@@ -121,19 +122,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     paddingHorizontal: 13,
-    height: 52,
+    minHeight: 54,
   },
   icon: {
     marginRight: 9,
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: T.inputText,
     paddingVertical: 0,
   },
   toggleButton: {
-    padding: 4,
+    width: 44,
+    minHeight: 44,
     marginLeft: 4,
     justifyContent: 'center',
     alignItems: 'center',

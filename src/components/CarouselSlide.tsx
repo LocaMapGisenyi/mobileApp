@@ -1,12 +1,8 @@
 import React from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
-import { Switch, TouchableRipple } from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Switch } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import LottieView from 'lottie-react-native';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
-
-const { width } = Dimensions.get('window');
+import { colors } from '../theme';
 
 interface OptionItem {
   key: string;
@@ -14,215 +10,121 @@ interface OptionItem {
   value: string | boolean;
   icon?: string;
 }
-
-interface CarouselSlideProps {
+interface Props {
   title: string;
   description: string;
-  lottieSource: object;
   options?: OptionItem[];
   selectedValue?: string | boolean;
   onSelect?: (value: string | boolean) => void;
   type: 'radio' | 'switch';
   index: number;
 }
-
-const AnimatedTouchableRipple = Animated.createAnimatedComponent(TouchableRipple);
-
-const CarouselSlide = ({
+export default function CarouselSlide({
   title,
   description,
-  lottieSource,
   options = [],
   selectedValue,
   onSelect,
   type,
   index,
-}: CarouselSlideProps) => {
+}: Props) {
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={styles.illustrationContainer}
-        entering={FadeIn.delay(200 * index).duration(600)}
-      >
-        <LottieView source={lottieSource} autoPlay loop style={styles.illustration} />
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(100 * index).duration(800).springify()}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.description}>{description}</Text>
-      </Animated.View>
-
-      <Animated.View 
-        style={styles.optionsContainer}
-        entering={FadeInDown.delay(300 * index).duration(800).springify()}
-      >
-        {options.map((option, i) => (
+    <ScrollView
+      style={s.scroll}
+      contentContainerStyle={s.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={s.symbol}>
+        <Ionicons
+          name={index === 0 ? 'language' : index === 1 ? 'cash-outline' : 'notifications-outline'}
+          size={32}
+          color={colors.primary}
+        />
+      </View>
+      <Text accessibilityRole="header" style={s.title}>
+        {title}
+      </Text>
+      <Text style={s.description}>{description}</Text>
+      <View style={s.options}>
+        {options.map(option =>
           type === 'radio' ? (
-            <AnimatedTouchableRipple
+            <Pressable
               key={option.key}
-              style={[
-                styles.optionItem,
-                selectedValue === option.value && styles.selectedOptionItem,
+              onPress={() => onSelect?.(option.value)}
+              accessibilityRole="radio"
+              accessibilityLabel={option.label}
+              accessibilityState={{ checked: selectedValue === option.value }}
+              style={({ pressed }) => [
+                s.option,
+                selectedValue === option.value && s.selected,
+                pressed && { opacity: 0.8 },
               ]}
-              onPress={() => onSelect && onSelect(option.value)}
-              rippleColor="rgba(255, 56, 92, 0.1)"
-              entering={FadeInDown.delay(100 * i + 400).duration(800).springify()}
             >
-              <View style={styles.optionContent}>
-                {option.icon && (
-                  <Ionicons
-                    name={option.icon as any}
-                    size={24}
-                    color={selectedValue === option.value ? colors.primary : colors.gray[500]}
-                    style={styles.optionIcon}
-                  />
-                )}
-                <Text style={[
-                  styles.optionLabel,
-                  selectedValue === option.value && styles.selectedOptionLabel,
-                ]}>
-                  {option.label}
-                </Text>
-                <View style={[
-                  styles.radioCircle,
-                  selectedValue === option.value && styles.selectedRadioCircle,
-                ]}>
-                  {selectedValue === option.value && <View style={styles.radioInnerCircle} />}
-                </View>
+              <Text style={s.label}>{option.label}</Text>
+              <View style={[s.radio, selectedValue === option.value && s.radioSelected]}>
+                {selectedValue === option.value && <View style={s.radioDot} />}
               </View>
-            </AnimatedTouchableRipple>
+            </Pressable>
           ) : (
-            <Animated.View
-              key={option.key}
-              style={styles.switchContainer}
-              entering={FadeInDown.delay(100 * i + 400).duration(800).springify()}
-            >
-              <View style={styles.switchLabelContainer}>
-                {option.icon && (
-                  <Ionicons
-                    name={option.icon as any}
-                    size={24}
-                    color={selectedValue ? colors.primary : colors.gray[500]}
-                    style={styles.optionIcon}
-                  />
-                )}
-                <Text style={styles.switchLabel}>{option.label}</Text>
-              </View>
+            <View key={option.key} style={s.option}>
+              <Text style={s.label}>{option.label}</Text>
               <Switch
+                accessibilityLabel={option.label}
                 value={selectedValue === true}
-                onValueChange={(value) => onSelect && onSelect(value)}
+                onValueChange={value => onSelect?.(value)}
                 color={colors.primary}
               />
-            </Animated.View>
-          )
-        ))}
-      </Animated.View>
-    </View>
+            </View>
+          ),
+        )}
+      </View>
+    </ScrollView>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    width,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[5],
-    justifyContent: 'flex-start',
+}
+const s = StyleSheet.create({
+  scroll: { flex: 1, width: '100%' },
+  content: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 44,
+    paddingBottom: 24,
   },
-  illustrationContainer: {
+  symbol: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.accentLight,
     alignItems: 'center',
-    marginBottom: spacing[6],
-    height: 200,
+    justifyContent: 'center',
+    marginBottom: 28,
   },
-  illustration: {
-    width: '80%',
-    height: '100%',
-  },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: '700',
-    color: colors.gray[800],
-    textAlign: 'center',
-    marginBottom: spacing[2],
-  },
-  description: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[600],
-    textAlign: 'center',
-    marginBottom: spacing[8],
-    paddingHorizontal: spacing[6],
-  },
-  optionsContainer: {
-    marginTop: spacing[2],
-  },
-  optionItem: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    marginBottom: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    ...shadows.xs,
-  },
-  selectedOptionItem: {
-    backgroundColor: 'rgba(255, 56, 92, 0.05)',
-    borderColor: colors.primary,
-  },
-  optionContent: {
+  title: { fontSize: 28, lineHeight: 35, fontWeight: '700', color: colors.ink, marginBottom: 12 },
+  description: { fontSize: 16, lineHeight: 24, color: colors.inkSubtle, marginBottom: 28 },
+  options: { gap: 12 },
+  option: {
+    minHeight: 60,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
   },
-  optionIcon: {
-    marginRight: spacing[3],
-  },
-  optionLabel: {
-    flex: 1,
-    fontSize: typography.fontSize.base,
-    color: colors.gray[800],
-    fontWeight: '500',
-  },
-  selectedOptionLabel: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  radioCircle: {
+  selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  label: { flex: 1, fontSize: 16, lineHeight: 23, fontWeight: '500', color: colors.ink },
+  radio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.gray[400],
+    borderColor: colors.inkSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedRadioCircle: {
-    borderColor: colors.primary,
-  },
-  radioInnerCircle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.primary,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    marginBottom: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    ...shadows.xs,
-  },
-  switchLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  switchLabel: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[800],
-    fontWeight: '500',
-  },
+  radioSelected: { borderColor: colors.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
 });
-
-export default CarouselSlide; 

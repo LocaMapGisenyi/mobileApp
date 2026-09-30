@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, StyleSheet, StyleProp, TextStyle, ViewStyle, View } from 'react-native';
 import { usePreferences } from '../store/preferences';
-import { convertPrice, formatPrice } from '../utils/currency';
+import { formatPrice } from '../utils/currency';
 import { colors, typography } from '../theme';
 import { useTranslation } from 'react-i18next';
 
@@ -25,13 +25,13 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   isPerMonth = false,
   isPerNight = false,
 }) => {
-  const { currency } = usePreferences();
+  const currency: string = 'RWF';
   const { t } = useTranslation();
-  
+
   // Convertir le prix dans la devise sélectionnée
-  const convertedPrice = convertPrice(priceInRwf, currency);
-  const formattedPrice = formatPrice(convertedPrice, currency);
-  
+  const convertedPrice = priceInRwf;
+  const formattedPrice = formatPrice(convertedPrice, 'RWF');
+
   // Déterminer les styles en fonction de la taille
   const priceStyle = [
     styles.price,
@@ -39,26 +39,26 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
     size === 'large' && styles.largePrice,
     style,
   ];
-  
+
   const originalStyle = [
     styles.originalPrice,
     size === 'small' && styles.smallOriginalPrice,
     size === 'large' && styles.largeOriginalPrice,
   ];
-  
+
   const periodText = isPerMonth
     ? t('property.perMonth')
     : isPerNight
     ? t('property.perNight')
     : '';
-  
+
   return (
     <View style={styles.container}>
       <Text style={priceStyle}>
         {formattedPrice}
         {periodText && <Text style={styles.periodText}> {periodText}</Text>}
       </Text>
-      
+
       {showOriginal && currency !== 'RWF' && (
         <Text style={originalStyle}>
           {`${priceInRwf.toLocaleString()} RWF`}
@@ -102,4 +102,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PriceDisplay; 
+export default PriceDisplay;

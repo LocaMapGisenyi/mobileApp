@@ -4,13 +4,6 @@ import { supabase } from '../../lib/supabase';
 export type TicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type TicketStatus   = 'OPEN' | 'IN_PROGRESS' | 'WAITING_HOST' | 'RESOLVED' | 'CLOSED';
 
-export const SLA_HOURS: Record<TicketPriority, number> = {
-  URGENT: 1,
-  HIGH:   4,
-  NORMAL: 24,
-  LOW:    72,
-};
-
 export interface SupportTicket {
   id: string;
   category: string;
@@ -101,6 +94,9 @@ export const supportService = {
         .order('created_at'),
     ]);
     if (ticketRes.error) throw ticketRes.error;
+    if (msgsRes.error) throw msgsRes.error;
+    const { error: readError } = await supabase.rpc('mark_support_ticket_read', { p_ticket_id: id });
+    if (readError) throw readError;
     const t = ticketRes.data;
     const ticket: SupportTicket = {
       id: t.id,
@@ -140,7 +136,6 @@ export const supportService = {
         subject: payload.subject,
         description: payload.description,
         reservation_id: payload.reservationId ?? null,
-        status: 'OPEN',
       })
       .select()
       .single();
@@ -179,13 +174,6 @@ export const supportService = {
       .select()
       .single();
     if (error) throw error;
-    await supabase
-      .from('support_tickets')
-      .update({
-        last_reply_at: new Date().toISOString(),
-        status: 'WAITING_HOST',
-      })
-      .eq('id', id);
     return {
       id: data.id,
       senderId: data.sender_id ?? '',
@@ -202,22 +190,19 @@ export const supportService = {
     messageId: string,
     rating: 1 | -1,
   ): Promise<void> => {
-    const { error } = await supabase
-      .from('support_ticket_messages')
-      .update({ rating })
-      .eq('id', messageId)
-      .eq('ticket_id', ticketId);
+    const { error } = await supabase.rpc('rate_support_message', { p_ticket_id: ticketId, p_message_id: messageId, p_rating: rating });
     if (error) throw error;
   },
 
   searchFaq: async (q: string, category?: string): Promise<FaqItem[]> => {
+    const search = q.replace(/[%_(),.]/g, ' ').trim().slice(0, 200);
     let query = supabase
       .from('faq_items')
       .select('*')
-      .or(`question.ilike.%${q}%,answer.ilike.%${q}%`);
+      .or(`question.ilike.%${search}%,answer.ilike.%${search}%`);
     if (category) query = query.eq('category', category);
     const { data, error } = await query.limit(20);
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(f => ({
       id: f.id,
       question: f.question,

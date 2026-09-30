@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import type { PropertyRow } from '../services/property.service';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useUserStore } from '../store/user';
 import type { Tables } from '../types/database';
 import {
   getProperties,
@@ -8,19 +10,19 @@ import {
 } from '../services/property.service';
 
 interface PropertiesState {
-  properties: Tables<'properties'>[];
+  properties: PropertyRow[];
   loading: boolean;
   error: string | null;
 }
 
 interface PropertyState {
-  property: (Tables<'properties'> & { images: Tables<'property_images'>[] }) | null;
+  property: (PropertyRow & { images: Tables<'property_images'>[] }) | null;
   loading: boolean;
   error: string | null;
 }
 
 interface SearchState {
-  results: Tables<'properties'>[];
+  results: PropertyRow[];
   loading: boolean;
   error: string | null;
 }
@@ -38,20 +40,23 @@ export function useProperties(filters?: {
     error: null,
   });
 
+  const generation = useRef(0);
   const filtersKey = JSON.stringify(filters ?? null);
 
   const fetch = useCallback(async () => {
+    const request = ++generation.current;
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const properties = await getProperties(filters);
-      setState({ properties, loading: false, error: null });
+      if (request === generation.current) setState({ properties, loading: false, error: null });
     } catch (err) {
-      setState({ properties: [], loading: false, error: (err as Error).message });
+      if (request === generation.current) setState(prev => ({ ...prev, loading: false, error: (err as Error).message }));
     }
   }, [filtersKey]);
 
   useEffect(() => {
-    fetch();
+    void fetch();
+    return () => { generation.current++; };
   }, [fetch]);
 
   return { ...state, refetch: fetch };
@@ -91,6 +96,8 @@ export function useProperty(id: string | null) {
 }
 
 export function useMyProperties(ownerId: string | null) {
+  const generation = useRef(0);
+  const accountId = useUserStore(state => state.user.id);
   const [state, setState] = useState<PropertiesState>({
     properties: [],
     loading: false,
@@ -98,28 +105,32 @@ export function useMyProperties(ownerId: string | null) {
   });
 
   const fetch = useCallback(async () => {
-    if (!ownerId) {
+    const request = ++generation.current;
+    if (!ownerId || ownerId !== accountId) {
       setState({ properties: [], loading: false, error: null });
       return;
     }
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState({ properties: [], loading: true, error: null });
     try {
       const properties = await getMyProperties(ownerId);
-      setState({ properties, loading: false, error: null });
+      if (request === generation.current) setState({ properties, loading: false, error: null });
     } catch (err) {
-      setState({ properties: [], loading: false, error: (err as Error).message });
+      if (request === generation.current) setState({ properties: [], loading: false, error: (err as Error).message });
     }
-  }, [ownerId]);
+  }, [ownerId, accountId]);
 
   useEffect(() => {
-    fetch();
+    void fetch();
+    return () => { generation.current++; };
   }, [fetch]);
 
   return { ...state, refetch: fetch };
 }
 
 export function usePropertySearch() {
+  const generation = useRef(0);
+  useEffect(() => () => { generation.current++; }, []);
   const [state, setState] = useState<SearchState>({
     results: [],
     loading: false,
@@ -136,12 +147,13 @@ export function usePropertySearch() {
         propertyType?: string[];
       }
     ) => {
+      const request = ++generation.current;
       setState((prev) => ({ ...prev, loading: true, error: null }));
       try {
         const results = await searchProperties(query, filters);
-        setState({ results, loading: false, error: null });
+        if (request === generation.current) setState({ results, loading: false, error: null });
       } catch (err) {
-        setState({ results: [], loading: false, error: (err as Error).message });
+        if (request === generation.current) setState({ results: [], loading: false, error: (err as Error).message });
       }
     },
     []

@@ -3,11 +3,9 @@ import {
   StyleSheet, 
   View, 
   TouchableOpacity, 
-  Text, 
-  Platform 
+  Text
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows, typography, borderRadius, spacing } from '../theme';
 
 interface MapScreenHeaderProps {
@@ -21,16 +19,13 @@ const MapScreenHeader: React.FC<MapScreenHeaderProps> = ({
   onFilterPress,
   listingsCount
 }) => {
-  const insets = useSafeAreaInsets();
   
   return (
-    <View style={[
-      styles.container,
-      { paddingTop: insets.top + (Platform.OS === 'ios' ? 10 : 15) }
-    ]}>
+    <View style={styles.container}>
       <View style={styles.content}>
         <TouchableOpacity
           style={styles.iconButton}
+          accessibilityRole="button" accessibilityLabel="Retour"
           onPress={onBackPress}
         >
           <Ionicons name="arrow-back" size={22} color={colors.gray[800]} />
@@ -46,6 +41,7 @@ const MapScreenHeader: React.FC<MapScreenHeaderProps> = ({
         
         <TouchableOpacity
           style={styles.filterButton}
+          accessibilityRole="button" accessibilityLabel="Filtrer les logements"
           onPress={onFilterPress}
         >
           <Ionicons name="options-outline" size={18} color={colors.gray[800]} />
@@ -58,12 +54,8 @@ const MapScreenHeader: React.FC<MapScreenHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: 'transparent',
+    paddingTop: 8,
+    backgroundColor: colors.surface,
   },
   content: {
     flexDirection: 'row',
@@ -82,8 +74,8 @@ const styles = StyleSheet.create({
     color: colors.gray[800],
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 20,
     backgroundColor: colors.white,
     alignItems: 'center',
@@ -91,6 +83,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   filterButton: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,

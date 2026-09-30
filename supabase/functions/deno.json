@@ -1,0 +1,10 @@
+{
+  "nodeModulesDir": "none",
+  "compilerOptions": {
+    "strict": true
+  },
+  "tasks": {
+    "check": "deno check get-upload-url/index.ts finalize-upload/index.ts account-export/index.ts account-delete/index.ts storage-cleanup/index.ts health/index.ts report-client-error/index.ts",
+    "test": "deno test --allow-env _shared/"
+  }
+}

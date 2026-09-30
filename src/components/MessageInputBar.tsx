@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  Platform, 
+import {
+  StyleSheet,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Platform,
   Keyboard,
   Animated as RNAnimated
 } from 'react-native';
@@ -13,20 +13,21 @@ import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 import { useTranslation } from 'react-i18next';
 
 interface MessageInputBarProps {
-  onSend: (text: string) => void;
+  onSend: (text: string) => void | Promise<void>;
   placeholder?: string;
   sendButtonText?: string;
 }
 
-const MessageInputBar: React.FC<MessageInputBarProps> = ({ 
-  onSend, 
-  placeholder, 
-  sendButtonText 
+const MessageInputBar: React.FC<MessageInputBarProps> = ({
+  onSend,
+  placeholder,
+  sendButtonText
 }) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
   const scaleAnim = useRef(new RNAnimated.Value(1)).current;
-  
+
   const handlePressIn = () => {
     RNAnimated.spring(scaleAnim, {
       toValue: 0.95,
@@ -35,7 +36,7 @@ const MessageInputBar: React.FC<MessageInputBarProps> = ({
       useNativeDriver: true
     }).start();
   };
-  
+
   const handlePressOut = () => {
     RNAnimated.spring(scaleAnim, {
       toValue: 1,
@@ -44,15 +45,18 @@ const MessageInputBar: React.FC<MessageInputBarProps> = ({
       useNativeDriver: true
     }).start();
   };
-  
-  const handleSend = () => {
-    if (text.trim().length === 0) return;
-    
-    onSend(text.trim());
-    setText('');
-    Keyboard.dismiss();
+
+  const handleSend = async () => {
+    if (text.trim().length === 0 || sending) return;
+    setSending(true);
+    try {
+      await onSend(text.trim());
+      setText('');
+      Keyboard.dismiss();
+    } catch { /* The conversation displays the service error; retain the draft for retry. */ }
+    finally { setSending(false); }
   };
-  
+
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
@@ -63,11 +67,12 @@ const MessageInputBar: React.FC<MessageInputBarProps> = ({
           value={text}
           onChangeText={setText}
           multiline
+          editable={!sending}
           maxLength={500}
           returnKeyType="default"
         />
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[
             styles.sendButton,
             text.trim().length === 0 && styles.sendButtonDisabled
@@ -75,14 +80,14 @@ const MessageInputBar: React.FC<MessageInputBarProps> = ({
           onPress={handleSend}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          disabled={text.trim().length === 0}
+          disabled={sending || text.trim().length === 0}
           activeOpacity={0.8}
         >
           <RNAnimated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <Ionicons 
-              name="paper-plane" 
-              size={20} 
-              color={text.trim().length === 0 ? colors.gray[400] : colors.white} 
+            <Ionicons
+              name="paper-plane"
+              size={20}
+              color={text.trim().length === 0 ? colors.gray[400] : colors.white}
             />
           </RNAnimated.View>
         </TouchableOpacity>
@@ -138,4 +143,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessageInputBar; 
+export default MessageInputBar;

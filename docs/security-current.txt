@@ -1,0 +1,56 @@
+
+> locamap@1.0.0 test:security
+> node supabase/tests/run-security.mjs
+
+PASS private profiles are not readable across accounts
+PASS safe profile projection excludes contact fields
+PASS public profile view cannot be used to elevate verification
+PASS cannot self verify or grant host role
+PASS cannot mint referral credits
+PASS cannot spoof payout verification
+PASS cannot publish own unmoderated property
+PASS cannot create a booking with client supplied price/host
+PASS conversation creation is idempotent
+PASS stranger cannot join conversation
+PASS stranger cannot read messages
+PASS stranger cannot mark messages read
+PASS message trigger increments recipient unread count and sends notification
+PASS read RPC updates receipt
+PASS server derives booking host and monthly price
+PASS rejects invalid dates
+PASS rejects oversized party
+PASS cannot submit fake verified review
+PASS unrelated host cannot approve booking
+PASS approval rejects overlapping reservation
+PASS host cannot overwrite booked calendar day
+PASS host cannot mutate reservation total
+PASS favorites isolated between users
+PASS private KYC submission rejects unowned keys
+PASS cannot invoke administrative erasure RPC
+PASS anonymous sees no private profiles
+PASS anonymous cannot call booking RPC
+PASS server quote includes daily overrides
+PASS quote RPC is read only and matches authoritative amount
+PASS creation rejects a stale expected quote
+PASS server enforces calendar minimum stay
+PASS completed guest review receives server verification
+PASS same stay cannot be reviewed twice
+PASS deletion blocks active reservations
+PASS account export contains only requested private profile
+PASS account erasure removes auth identity and queues private media cleanup
+PASS editing active property resubmits moderation
+PASS unsupported cohost permissions are rejected
+PASS pending cohost cannot modify calendar
+PASS accepted cohost can block an unreserved day
+PASS calendar delegation cannot change prices
+PASS permission amendment requires renewed consent
+PASS outsider cannot accept another cohost invitation
+PASS consent rejects a stale document version
+PASS consent records are immutable and idempotent
+PASS users cannot impersonate support staff
+PASS stranger cannot rate a private support conversation
+PASS ticket owner can rate an actual support reply
+PASS referral code issuance is idempotent
+PASS referral credits cannot be self-awarded
+PASS unqualified referral cannot receive a credit
+51 security checks passed. PGlite does not exercise parallel connections, GoTrue, R2, Edge or hosted Realtime.

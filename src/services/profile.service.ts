@@ -1,7 +1,14 @@
 import { supabase } from '../lib/supabase';
 import type { Tables } from '../types/database';
 
-export async function getProfile(userId: string): Promise<Tables<'profiles'> | null> {
+export type Profile = Omit<Tables<'profiles'>, 'languages'> & { languages: string[] };
+
+function normalizeProfile(profile: Tables<'profiles'>): Profile {
+  // Signup leaves languages NULL in SQL; older profiles can also have no name.
+  return { ...profile, full_name: profile.full_name ?? '', languages: profile.languages ?? [] };
+}
+
+export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -12,22 +19,23 @@ export async function getProfile(userId: string): Promise<Tables<'profiles'> | n
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  return data;
+  return data ? normalizeProfile(data) : null;
 }
 
 export async function updateProfile(
   userId: string,
-  updates: Partial<Omit<Tables<'profiles'>, 'id' | 'created_at'>>
-): Promise<Tables<'profiles'>> {
+  updates: Partial<Pick<Tables<'profiles'>, 'full_name' | 'phone_number' | 'avatar_url' | 'bio' | 'languages' | 'preferred_currency' | 'preferred_language'>>
+): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    // The database trigger maintains updated_at; clients may only edit profile fields.
+    .update(updates)
     .eq('id', userId)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizeProfile(data);
 }
 
 export async function getPayoutAccounts(userId: string): Promise<Tables<'payout_accounts'>[]> {
@@ -43,7 +51,7 @@ export async function getPayoutAccounts(userId: string): Promise<Tables<'payout_
 
 export async function addPayoutAccount(
   userId: string,
-  account: { type: string; account_number: string; account_name: string; is_default: boolean }
+  account: { type: Tables<'payout_accounts'>['type']; account_number: string; account_name: string; is_default: boolean }
 ): Promise<Tables<'payout_accounts'>> {
   if (account.is_default) {
     const { error: unsetError } = await supabase

@@ -28,11 +28,12 @@ import {
   TicketStatus,
   CreateTicketPayload,
   ChatAvailability,
-  SLA_HOURS,
 } from '../services/api';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const WHATSAPP_NUMBER = '250788000000'; // Rwanda +250
+const WHATSAPP_NUMBER = process.env.EXPO_PUBLIC_SUPPORT_WHATSAPP ?? '';
+const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '';
+const SUPPORT_PHONE = process.env.EXPO_PUBLIC_SUPPORT_PHONE ?? '';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (iso: string) =>
@@ -122,7 +123,7 @@ const TicketRow = ({ ticket, onPress }: { ticket: SupportTicket; onPress: () => 
       </View>
       <Text style={tr.subject} numberOfLines={1}>{ticket.subject}</Text>
       <Text style={tr.meta}>
-        {formatTimeAgo(ticket.createdAt)} · SLA {SLA_HOURS[ticket.priority]}h
+        {formatTimeAgo(ticket.createdAt)}
       </Text>
     </View>
     <MaterialIcons name="chevron-right" size={20} color={colors.inkDisabled} />
@@ -155,6 +156,7 @@ const TicketDetailModal = ({
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const flatRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -163,7 +165,7 @@ const TicketDetailModal = ({
         setTicket(tk);
         setMessages(Array.isArray(m) ? m : []);
       })
-      .catch(() => {})
+      .catch(failure => setError(failure instanceof Error ? failure.message : 'Chargement du ticket impossible.'))
       .finally(() => setLoading(false));
   }, [ticketId]);
 
@@ -186,7 +188,8 @@ const TicketDetailModal = ({
     try {
       const sent = await supportService.replyTicket(ticketId, content);
       setMessages(prev => prev.map(m => m.id === optimistic.id ? sent : m));
-    } catch {
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Réponse non envoyée.');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
       setReply(content);
     } finally {
@@ -195,13 +198,16 @@ const TicketDetailModal = ({
   };
 
   const handleRate = async (msgId: string, rating: 1 | -1) => {
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, rating } : m));
-    await supportService.rateMessage(ticketId, msgId, rating).catch(() => {});
+    try {
+      await supportService.rateMessage(ticketId, msgId, rating);
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, rating } : m));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Évaluation non enregistrée.'); }
   };
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[tdm.root, { paddingTop: insets.top }]}>
+        {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
         <View style={tdm.bar}>
           <TouchableOpacity style={tdm.closeBtn} onPress={onClose} activeOpacity={0.7}>
             <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
@@ -537,6 +543,8 @@ type Tab = 'contact' | 'faq' | 'tickets';
 const HostSupportScreen = () => {
   const insets = useSafeAreaInsets();
   const fullName = useUserStore(s => s.user.fullName);
+  const currentUserId = useUserStore(s => s.user.id);
+  const [error, setError] = useState('');
   const { t } = useTranslation();
 
   const FAQ_CATEGORIES = [
@@ -563,18 +571,21 @@ const HostSupportScreen = () => {
   useEffect(() => {
     supportService.getChatAvailability()
       .then(a => setChatAvail(a ?? null))
-      .catch(() => {});
+      .catch(failure => setError(failure instanceof Error ? failure.message : 'Disponibilité indisponible.'));
   }, []);
 
   // ── Load tickets ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (tab !== 'tickets') return;
+    let active = true;
+    setTickets([]);
     setLoadingTickets(true);
     supportService.getTickets()
-      .then(data => setTickets(data))
-      .catch(() => {})
-      .finally(() => setLoadingTickets(false));
-  }, [tab]);
+      .then(data => { if (active) setTickets(data); })
+      .catch(failure => { if (active) setError(failure instanceof Error ? failure.message : 'Chargement des tickets impossible.'); })
+      .finally(() => { if (active) setLoadingTickets(false); });
+    return () => { active = false; };
+  }, [tab, currentUserId]);
 
   // ── Search FAQ ─────────────────────────────────────────────────────────────
   const searchFaq = useCallback(async () => {
@@ -583,8 +594,8 @@ const HostSupportScreen = () => {
     try {
       const data = await supportService.searchFaq(faqQuery, faqCategory || undefined);
       setFaqItems(data);
-    } catch {
-      setFaqItems([]);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Recherche indisponible.');
     } finally {
       setLoadingFaq(false);
     }
@@ -597,8 +608,14 @@ const HostSupportScreen = () => {
   }, [faqQuery, faqCategory, tab, searchFaq]);
 
   const handleWhatsApp = () => {
+    if (!/^\d{7,15}$/.test(WHATSAPP_NUMBER)) { setError('Le contact WhatsApp est indisponible. Ouvrez un ticket.'); return; }
     const msg = buildWhatsAppMsg(fullName);
-    Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`).catch(() => {});
+    void Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`).catch(failure => setError(String(failure)));
+  };
+  const openContact = (kind: 'email' | 'phone') => {
+    const contact = kind === 'email' ? SUPPORT_EMAIL : SUPPORT_PHONE;
+    if (!contact) { setError('Ce contact est indisponible. Ouvrez un ticket.'); return; }
+    void Linking.openURL(`${kind === 'email' ? 'mailto' : 'tel'}:${contact}`).catch(failure => setError(String(failure)));
   };
 
   const handleTicketCreated = (ticket: SupportTicket) => {
@@ -610,6 +627,7 @@ const HostSupportScreen = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+      {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
       {/* Header */}
       <Animated.View entering={FadeInDown.duration(300)} style={s.header}>
         <Text style={s.title}>{t('hostSupport.title')}</Text>
@@ -681,7 +699,9 @@ const HostSupportScreen = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.channelTitle}>{t('hostSupport.whatsappTitle')}</Text>
-                  <Text style={s.channelSub}>+250 788 000 000 · {t('hostSupport.whatsappSub')}</Text>
+                  <Text style={s.channelSub}>
+                    {WHATSAPP_NUMBER ? `+${WHATSAPP_NUMBER} · ${t('hostSupport.whatsappSub')}` : t('hostSupport.chatUnavailable')}
+                  </Text>
                 </View>
                 <MaterialIcons name="open-in-new" size={16} color={colors.inkSubtle} />
               </View>
@@ -695,7 +715,7 @@ const HostSupportScreen = () => {
           <Animated.View entering={FadeInDown.delay(140).duration(280)}>
             <TouchableOpacity
               style={s.channelCard}
-              onPress={() => Linking.openURL('mailto:support@locamap.rw')}
+              onPress={() => openContact('email')}
               activeOpacity={0.85}
             >
               <View style={s.channelHeader}>
@@ -704,7 +724,7 @@ const HostSupportScreen = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.channelTitle}>{t('hostSupport.emailTitle')}</Text>
-                  <Text style={s.channelSub}>support@locamap.rw · {t('hostSupport.emailSub')}</Text>
+                  <Text style={s.channelSub}>{SUPPORT_EMAIL || 'Contact indisponible'}</Text>
                 </View>
                 <MaterialIcons name="open-in-new" size={16} color={colors.inkSubtle} />
               </View>
@@ -725,7 +745,7 @@ const HostSupportScreen = () => {
               </View>
               <TouchableOpacity
                 style={[s.channelBtn, { backgroundColor: colors.error }]}
-                onPress={() => Linking.openURL('tel:+250788000000')}
+                onPress={() => openContact('phone')}
                 activeOpacity={0.85}
               >
                 <Text style={s.channelBtnTxt}>{t('hostSupport.urgentBtn')}</Text>
@@ -899,7 +919,7 @@ const HostSupportScreen = () => {
       {activeTicketId && (
         <TicketDetailModal
           ticketId={activeTicketId}
-          currentUserId=""
+          currentUserId={currentUserId ?? ''}
           onClose={() => setActiveTicketId(null)}
         />
       )}

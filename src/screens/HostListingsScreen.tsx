@@ -39,7 +39,7 @@ const STATUS_KEYS: Record<
 };
 
 const formatFC = (n: number | null | undefined) =>
-  typeof n === 'number' ? n.toLocaleString('fr-FR') + ' FC' : '—';
+  typeof n === 'number' ? n.toLocaleString('fr-FR') + ' RWF' : '—';
 
 // ─── Completion bar ───────────────────────────────────────────────────────────
 const CompletionBar = ({ score }: { score: number }) => (
@@ -167,10 +167,10 @@ const ListingCardView = ({
         ) : (
           /* Active/Paused: price + stats row */
           <View style={lc.statsRow}>
-            {item.pricePerNight != null && (
+            {item.pricePerMonth != null && (
               <View style={lc.statChip}>
-                <Text style={lc.statValue}>{formatFC(item.pricePerNight)}</Text>
-                <Text style={lc.statUnit}>{t('hostListings.perNight')}</Text>
+                <Text style={lc.statValue}>{formatFC(item.pricePerMonth)}</Text>
+                <Text style={lc.statUnit}>{t('common.perMonth')}</Text>
               </View>
             )}
             {item.avgRating != null && (
@@ -494,8 +494,8 @@ const HostListingsScreen = () => {
               item={item}
               onToggleStatus={handleToggleStatus}
               onArchive={setDeleteTarget}
-              onEdit={() => navigation.navigate('CreateListing')}
-              onCalendar={() => {/* switch calendar tab — handled by parent */}}
+              onEdit={(id) => navigation.navigate('CreateListing', {propertyId:id})}
+              onCalendar={(id) => navigation.navigate('HostCalendar', {propertyId:id})}
               toggling={togglingId === item.id}
             />
           </Animated.View>

@@ -1,13 +1,3 @@
-declare module '@gorhom/bottom-sheet' {
-  const BottomSheet: any;
-  const BottomSheetView: any;
-  const BottomSheetModal: any;
-  const BottomSheetModalProvider: any;
-  const useBottomSheet: any;
-  export default BottomSheet;
-  export { BottomSheet, BottomSheetView, BottomSheetModal, BottomSheetModalProvider, useBottomSheet };
-}
-
 // Allow axios if not installed (will use any types)
 declare module 'axios' {
   const axios: any;
@@ -31,6 +21,8 @@ declare module '*.svg' {
   export default content;
 }
 
+declare module '*.css';
+
 declare module "*.png" {
   const value: any;
   export default value;
@@ -44,4 +36,4 @@ declare module "*.jpg" {
 declare module "*.jpeg" {
   const value: any;
   export default value;
-} 
+}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,28 +11,31 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import PropertyMap, { PropertyMapHandle, Region } from '../components/PropertyMap';
+import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, borderRadius } from '../theme';
 import { RootStackParamList } from '../types';
-import { NewListingFormData, useHostListingsStore } from '../store/hostListings';
+import { NewListingFormData, useHostListingsStore, toForm } from '../store/hostListings';
+
+import { getPropertyById } from '../services/property.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CreateListing'>;
 
 // ─── Static constants (no i18n needed) ────────────────────────────────────────
 const PROPERTY_TYPE_VALUES = [
-  { value: 'appartement', icon: 'apartment' as const },
-  { value: 'maison',      icon: 'home' as const },
+  { value: 'apartment', icon: 'apartment' as const },
+  { value: 'house',      icon: 'home' as const },
   { value: 'studio',      icon: 'single-bed' as const },
   { value: 'villa',       icon: 'villa' as const },
-  { value: 'chambre',     icon: 'bed' as const },
+  { value: 'room',     icon: 'bed' as const },
 ];
 
 const ACCOMMODATION_TYPE_VALUES = [
@@ -55,9 +58,9 @@ const AMENITY_ICONS: { key: string; icon: React.ComponentProps<typeof MaterialIc
   { key: 'parking',           icon: 'local-parking' },
   { key: 'security',          icon: 'security' },
   { key: 'balcony',           icon: 'balcony' },
-  { key: 'lakeView',          icon: 'water' },
+  { key: 'lake_view',          icon: 'water' },
   { key: 'garden',            icon: 'grass' },
-  { key: 'washer',            icon: 'local-laundry-service' },
+  { key: 'washing_machine',            icon: 'local-laundry-service' },
   { key: 'furnished',         icon: 'chair' },
   { key: 'regideso',          icon: 'plumbing' },
 ];
@@ -75,7 +78,6 @@ const NOTICE_PERIOD_VALUES = [
   { value: 60 },
 ];
 
-const COMMISSION = 0.12;
 
 const HOUSE_RULE_KEYS: { key: string; ruleKey: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
   { key: 'smoking',   ruleKey: 'smokingAllowed',  icon: 'smoking-rooms' },
@@ -233,8 +235,10 @@ const MAP_HEIGHT = Dimensions.get('window').width * 0.55;
 const CreateListingScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const { addListing } = useHostListingsStore();
-  const mapRef = useRef<MapView>(null);
+  const { addListing, resetDraft } = useHostListingsStore();
+  const route = useRoute<RouteProp<RootStackParamList, 'CreateListing'>>();
+  const propertyId = route.params?.propertyId;
+  const mapRef = useRef<PropertyMapHandle>(null);
   const { t } = useTranslation();
 
   // ── Translated dynamic data (computed inside component) ───────────────────
@@ -246,11 +250,11 @@ const CreateListingScreen: React.FC = () => {
   ], [t]);
 
   const PROPERTY_TYPES = useMemo(() => [
-    { label: t('createListing.propAppartement'), value: 'appartement', icon: 'apartment' as const },
-    { label: t('createListing.propMaison'),      value: 'maison',      icon: 'home' as const },
+    { label: t('createListing.propAppartement'), value: 'apartment', icon: 'apartment' as const },
+    { label: t('createListing.propMaison'),      value: 'house',      icon: 'home' as const },
     { label: t('createListing.propStudio'),      value: 'studio',      icon: 'single-bed' as const },
     { label: t('createListing.propVilla'),       value: 'villa',       icon: 'villa' as const },
-    { label: t('createListing.propChambre'),     value: 'chambre',     icon: 'bed' as const },
+    { label: t('createListing.propChambre'),     value: 'room',     icon: 'bed' as const },
   ], [t]);
 
   const ACCOMMODATION_TYPES = useMemo(() => [
@@ -302,6 +306,7 @@ const CreateListingScreen: React.FC = () => {
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [locating, setLocating] = useState(false);
 
@@ -309,12 +314,12 @@ const CreateListingScreen: React.FC = () => {
     title: '',
     description: '',
     price: 0,
-    currency: 'CDF',
+    currency: 'RWF',
     bedrooms: 1,
     bathrooms: 1,
     size: 0,
     amenities: [],
-    type: 'appartement',
+    type: 'apartment',
     accommodationType: 'entier',
     address: '',
     city: 'Gisenyi',
@@ -332,6 +337,29 @@ const CreateListingScreen: React.FC = () => {
     visitorsAllowed: true,
     noiseAfter22: false,
   } as any);
+
+  useEffect(() => {
+    resetDraft();
+    let cancelled = false;
+    if (propertyId) {
+      setLoadFailed(false);
+      setSaving(true);
+      getPropertyById(propertyId).then(row => {
+        if (!cancelled && row) setForm({ ...toForm(row), accommodationType: row.accommodation_type ?? 'entier' });
+        if (!row) throw new Error('Brouillon introuvable.');
+      }).catch(error => { if (!cancelled) { setLoadFailed(true); setErrors({ submit: error.message }); } })
+        .finally(() => { if (!cancelled) setSaving(false); });
+    }
+    return () => { cancelled = true; };
+  }, [propertyId, resetDraft]);
+
+  const pickPhotos = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 10 - form.images.length, quality: 0.85 });
+    if (!result.canceled) setForm(previous => ({ ...previous,
+      images: [...new Set([...previous.images, ...result.assets.map(asset => asset.uri)])].slice(0, 10),
+      imageMimeTypes: { ...previous.imageMimeTypes, ...Object.fromEntries(result.assets.map(asset => [asset.uri, asset.mimeType ?? 'image/jpeg'])) },
+    }));
+  };
 
   const patch = (key: string, value: unknown) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -410,13 +438,14 @@ const CreateListingScreen: React.FC = () => {
   };
 
   const handleSave = async (mode: 'draft' | 'publish') => {
-    if (!validateStep()) return;
+    if (saving || loadFailed) return;
+    if (mode === 'publish' && !validateStep()) return;
     setSaving(true);
     try {
-      addListing(form);
+      await addListing(form, mode, propertyId);
       navigation.navigate('HostDashboard');
-    } catch {
-      setErrors({ submit: t('createListing.submitError') });
+    } catch (error) {
+      setErrors({ submit: (error as Error).message || t('createListing.submitError') });
     } finally {
       setSaving(false);
     }
@@ -517,31 +546,23 @@ const CreateListingScreen: React.FC = () => {
 
       {/* Carte */}
       <View style={s.mapWrap}>
-        <MapView
+        <PropertyMap
           ref={mapRef}
           style={s.map}
           initialRegion={GISENYI_REGION}
-          showsUserLocation
-          showsMyLocationButton={false}
-          onPress={e => {
-            const { latitude, longitude } = e.nativeEvent.coordinate;
+          markers={form.latitude != null && form.longitude != null ? [{
+            id: 'listing-location', latitude: form.latitude, longitude: form.longitude, draggable: true,
+          }] : []}
+          onMapPress={({ latitude, longitude }) => {
             patch('latitude', latitude);
             patch('longitude', longitude);
           }}
-        >
-          {form.latitude != null && form.longitude != null && (
-            <Marker
-              coordinate={{ latitude: form.latitude, longitude: form.longitude }}
-              draggable
-              onDragEnd={e => {
-                patch('latitude', e.nativeEvent.coordinate.latitude);
-                patch('longitude', e.nativeEvent.coordinate.longitude);
-              }}
-              pinColor={colors.primary}
-            />
-          )}
-        </MapView>
-        <View style={s.mapHintBadge}>
+          onMarkerDragEnd={(_id, { latitude, longitude }) => {
+            patch('latitude', latitude);
+            patch('longitude', longitude);
+          }}
+        />
+        <View pointerEvents="none" style={s.mapHintBadge}>
           <MaterialIcons name="touch-app" size={13} color={colors.white} />
           <Text style={s.mapHintTxt}>{t('createListing.mapHint')}</Text>
         </View>
@@ -584,10 +605,6 @@ const CreateListingScreen: React.FC = () => {
   );
 
   const renderStep2 = () => {
-    const netMonthly = form.price > 0
-      ? Math.round(form.price * (1 - COMMISSION))
-      : 0;
-
     return (
       <Animated.View entering={FadeInDown.duration(320)}>
         <Text style={s.stepTitle}>{t('createListing.step2Title')}</Text>
@@ -627,18 +644,6 @@ const CreateListingScreen: React.FC = () => {
             <View style={s.pricePreviewRow}>
               <Text style={s.pricePreviewLbl}>{t('createListing.grossRent')}</Text>
               <Text style={s.pricePreviewVal}>{form.price.toLocaleString('fr-FR')} RWF</Text>
-            </View>
-            <View style={s.pricePreviewRow}>
-              <Text style={s.pricePreviewLbl}>{t('createListing.commission')}</Text>
-              <Text style={[s.pricePreviewVal, { color: colors.inkSubtle }]}>
-                − {Math.round(form.price * COMMISSION).toLocaleString('fr-FR')} RWF
-              </Text>
-            </View>
-            <View style={[s.pricePreviewRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 }]}>
-              <Text style={[s.pricePreviewLbl, { fontWeight: '700', color: colors.ink }]}>{t('createListing.netRent')}</Text>
-              <Text style={[s.pricePreviewVal, { color: colors.primary, fontWeight: '700' }]}>
-                {netMonthly.toLocaleString('fr-FR')} RWF
-              </Text>
             </View>
           </View>
         )}
@@ -707,13 +712,14 @@ const CreateListingScreen: React.FC = () => {
       {/* Équipements */}
       <Text style={s.fieldGroupLabel}>{t('createListing.amenitiesLabel')}</Text>
       <View style={s.amenitiesGrid}>
-        {AMENITIES.map(a => {
-          const active = form.amenities.includes(a.label);
+        {AMENITIES.map((a, index) => {
+          const key = AMENITY_ICONS[index].key;
+          const active = form.amenities.includes(key);
           return (
             <TouchableOpacity
               key={a.label}
               style={[s.amenityChip, active && s.amenityChipActive]}
-              onPress={() => toggleAmenity(a.label)}
+              onPress={() => toggleAmenity(key)}
               activeOpacity={0.8}
             >
               <MaterialIcons
@@ -785,9 +791,7 @@ const CreateListingScreen: React.FC = () => {
         {form.images.length < 10 && (
           <TouchableOpacity
             style={s.photoAdd}
-            onPress={() => {
-              patch('images', [...form.images, `https://picsum.photos/seed/${form.images.length + 1}/800/600`]);
-            }}
+            onPress={() => { void pickPhotos().catch(error => setErrors({ images: error.message })); }}
             activeOpacity={0.8}
           >
             <MaterialIcons name="add-photo-alternate" size={26} color={colors.inkDisabled} />
@@ -822,6 +826,7 @@ const CreateListingScreen: React.FC = () => {
         <TouchableOpacity
           style={s.draftBtn}
           onPress={() => handleSave('draft')}
+          disabled={saving || loadFailed}
           activeOpacity={0.8}
         >
           <Text style={s.draftTxt}>{t('createListing.draftBtn')}</Text>
@@ -848,6 +853,7 @@ const CreateListingScreen: React.FC = () => {
         <View style={{ height: 24 }} />
       </ScrollView>
 
+      {errors.submit && step !== 3 && <Text accessibilityRole="alert" style={s.errorInline}>{errors.submit}</Text>}
       {/* Footer */}
       <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
         {isLastStep ? (
@@ -855,7 +861,7 @@ const CreateListingScreen: React.FC = () => {
             <TouchableOpacity
               style={s.secondaryFooterBtn}
               onPress={() => handleSave('draft')}
-              disabled={saving}
+              disabled={saving || loadFailed}
               activeOpacity={0.8}
             >
               <Text style={s.secondaryFooterTxt}>{t('createListing.save')}</Text>
@@ -863,15 +869,15 @@ const CreateListingScreen: React.FC = () => {
             <TouchableOpacity
               style={[s.primaryFooterBtn, saving && s.btnDisabled]}
               onPress={() => handleSave('publish')}
-              disabled={saving}
+              disabled={saving || loadFailed}
               activeOpacity={0.85}
             >
               {saving ? (
-                <ActivityIndicator size="small" color={colors.white} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <>
                   <Text style={s.primaryFooterTxt}>{t('createListing.publish')}</Text>
-                  <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
+                  <MaterialIcons name="arrow-forward" size={16} color={colors.onAccent} />
                 </>
               )}
             </TouchableOpacity>
@@ -885,7 +891,7 @@ const CreateListingScreen: React.FC = () => {
             <Text style={s.primaryFooterTxt}>
               {t('createListing.continueStep', { stepName: STEPS[step + 1 < STEPS.length ? step + 1 : step].label })}
             </Text>
-            <MaterialIcons name="arrow-forward" size={16} color={colors.white} />
+            <MaterialIcons name="arrow-forward" size={16} color={colors.onAccent} />
           </TouchableOpacity>
         )}
       </View>
@@ -935,7 +941,7 @@ const s = StyleSheet.create({
   locateTxt:      { fontSize: 13, fontWeight: '600', color: colors.primary },
   mapWrap:        { borderRadius: 14, overflow: 'hidden', height: MAP_HEIGHT, marginBottom: 8, borderWidth: 1.5, borderColor: colors.border, position: 'relative' },
   map:            { width: '100%', height: '100%' },
-  mapHintBadge:   { position: 'absolute', bottom: 10, left: '50%', transform: [{ translateX: -80 }], flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(15,31,31,0.65)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  mapHintBadge:   { position: 'absolute', bottom: 30, left: '50%', transform: [{ translateX: -80 }], flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(15,31,31,0.65)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   mapHintTxt:     { fontSize: 11, color: colors.white, fontWeight: '500' },
   coordsRow:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   coordsTxt:      { fontSize: 11, color: colors.inkSubtle, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
@@ -1000,10 +1006,10 @@ const s = StyleSheet.create({
   footer:              { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 20, paddingTop: 14 },
   footerRow:           { flexDirection: 'row', gap: 10 },
   // Bouton plein dans footerRow (last step)
-  primaryFooterBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14 },
+  primaryFooterBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14 },
   // Bouton pleine largeur (steps 1-3)
-  primaryFooterBtnFull:{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 15 },
-  primaryFooterTxt:    { fontSize: 15, fontWeight: '700', color: colors.white },
+  primaryFooterBtnFull:{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 15 },
+  primaryFooterTxt:    { fontSize: 16, fontWeight: '700', color: colors.onAccent },
   secondaryFooterBtn:  { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   secondaryFooterTxt:  { fontSize: 14, fontWeight: '600', color: colors.inkMid },
   btnDisabled:         { opacity: 0.45 },

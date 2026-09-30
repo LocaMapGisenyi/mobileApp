@@ -1,3 +1,5 @@
+> Document historique : cette migration REST a été remplacée par Supabase. Voir le README à la racine et docs/BACKEND-DEPLOYMENT.md.
+
 # Guide de migration vers l'API REST
 
 Ce document explique comment migrer les fonctionnalités de LocaMap des données mockées vers l'API REST.
@@ -95,4 +97,4 @@ Voici un ordre suggéré pour la migration des écrans :
 
 - Les tokens d'authentification sont gérés automatiquement par les intercepteurs Axios
 - Les erreurs 401 (non autorisé) déclenchent une déconnexion automatique
-- Tous les appels API sont enveloppés dans des blocs try/catch pour éviter les crash de l'application 
+- Tous les appels API sont enveloppés dans des blocs try/catch pour éviter les crash de l'application

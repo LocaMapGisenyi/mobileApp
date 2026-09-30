@@ -1,35 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  FlatList, 
-  Text, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Text,
+  TouchableOpacity,
   StatusBar,
   Platform,
-  Dimensions
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  FadeIn, 
-  FadeOut, 
-  SlideInRight, 
-  SlideOutLeft,
-  Layout,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming
-} from 'react-native-reanimated';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
 
 // Components
 import CardLogement from '../components/CardLogement';
-import FavoriteButton from '../components/FavoriteButton';
 
 // Types
 import { RootStackParamList, Property } from '../types';
@@ -39,73 +27,46 @@ import { useFavoritesStore } from '../store/favorites';
 
 type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { width } = Dimensions.get('window');
-
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-
 const FavoritesScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
-  const { favorites, removeFavorite } = useFavoritesStore();
+  const { favorites, removeFavorite, fetchFavorites, isLoading, error } = useFavoritesStore();
+  useEffect(() => { void fetchFavorites(); }, [fetchFavorites]);
   const [removedId, setRemovedId] = useState<string | null>(null);
-  
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const listOpacity = useSharedValue(0);
-  
-  useEffect(() => {
-    // Animate header and list when component mounts
-    headerOpacity.value = withTiming(1, { duration: 600 });
-    listOpacity.value = withTiming(1, { duration: 800 });
-    
-    return () => {
-      headerOpacity.value = withTiming(0, { duration: 300 });
-      listOpacity.value = withTiming(0, { duration: 300 });
-    };
-  }, []);
-  
+
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try { await fetchFavorites(); }
+    finally { setRefreshing(false); }
+  };
+
   const handlePropertyPress = (propertyId: string) => {
     navigation.navigate('PropertyDetails', { propertyId });
   };
-  
-  const handleRemoveFavorite = (propertyId: string) => {
+
+  const handleRemoveFavorite = async (propertyId: string) => {
     setRemovedId(propertyId);
-    
-    // Delay actual removal to allow animation to complete
-    setTimeout(() => {
-      removeFavorite(propertyId);
-      setRemovedId(null);
-    }, 500);
+    try { await removeFavorite(propertyId); }
+    finally { setRemovedId(null); }
   };
-  
+
   const renderEmptyState = () => (
-    <Animated.View 
-      entering={FadeIn.duration(600)}
-      style={styles.emptyContainer}
-    >
-      <Animated.View 
-        entering={FadeIn.delay(200).duration(800)}
-        style={styles.emptyIconContainer}
-      >
-        <Ionicons name="heart" size={80} color={colors.error} />
-      </Animated.View>
-      
-      <Animated.Text 
-        entering={FadeIn.delay(400).duration(800)}
-        style={styles.emptyTitle}
-      >
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="heart" size={80} color={colors.primary} />
+      </View>
+
+      <Text style={styles.emptyTitle}>
         {t('favorites.noFavorites')}
-      </Animated.Text>
-      
-      <Animated.Text 
-        entering={FadeIn.delay(600).duration(800)}
-        style={styles.emptyText}
-      >
+      </Text>
+
+      <Text style={styles.emptyText}>
         {t('favorites.startBrowsing')}
-      </Animated.Text>
-      
-      <AnimatedTouchable 
-        entering={FadeIn.delay(800).duration(800)}
+      </Text>
+
+      <TouchableOpacity
+        accessibilityRole="button"
         style={styles.exploreButton}
         onPress={() => navigation.navigate('MainTabs', { screen: 'Explorer' } as any)}
         activeOpacity={0.8}
@@ -114,40 +75,27 @@ const FavoritesScreen: React.FC = () => {
         <Text style={styles.exploreButtonText}>
           {t('favorites.exploreMore')}
         </Text>
-      </AnimatedTouchable>
-    </Animated.View>
+      </TouchableOpacity>
+    </View>
   );
-  
+
   const renderListHeader = () => {
-    const animatedHeaderStyle = useAnimatedStyle(() => {
-      return {
-        opacity: headerOpacity.value,
-        transform: [{ translateY: withSpring(headerOpacity.value * 0) }]
-      };
-    });
-    
     return (
-      <Animated.View style={[styles.header, animatedHeaderStyle]}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {t('favorites.title')}
         </Text>
         <Text style={styles.headerSubtitle}>
-          {favorites.length} {t('favorites.savedCount', { count: favorites.length })}
+          {t('favorites.savedCount', { count: favorites.length })}
         </Text>
-      </Animated.View>
+      </View>
     );
   };
-  
+
   const renderItem = ({ item, index }: { item: Property; index: number }) => {
-    const isRemoving = item.id === removedId;
-    
+
     return (
-      <Animated.View
-        layout={Layout.springify()}
-        entering={SlideInRight.delay(index * 100).duration(400)}
-        exiting={isRemoving ? SlideOutLeft.duration(500) : undefined}
-        style={styles.cardContainer}
-      >
+      <View style={styles.cardContainer}>
         <CardLogement
           logement={item}
           index={index}
@@ -155,50 +103,49 @@ const FavoritesScreen: React.FC = () => {
         />
         <TouchableOpacity
           style={styles.removeButton}
+          accessibilityRole="button" accessibilityLabel="Retirer des favoris"
+          accessibilityState={{ disabled: removedId === item.id, busy: removedId === item.id }}
+          disabled={removedId === item.id}
           onPress={() => handleRemoveFavorite(item.id)}
           activeOpacity={0.9}
         >
           <Ionicons name="heart" size={22} color={colors.white} />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   };
-  
-  const animatedListStyle = useAnimatedStyle(() => {
-    return {
-      opacity: listOpacity.value,
-    };
-  });
-  
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+      {error && <Text accessibilityRole="alert">{error}</Text>}
+      <StatusBar
+        barStyle="dark-content"
         backgroundColor={colors.white}
       />
-      
-      {favorites.length > 0 ? (
-        <Animated.FlatList
-          data={favorites}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderListHeader}
-          style={animatedListStyle}
-          initialNumToRender={5}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-        />
-      ) : (
-        renderEmptyState()
-      )}
+
+      <FlatList
+        data={favorites}
+        refreshing={refreshing}
+        onRefresh={() => void refresh()}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={[styles.listContent, favorites.length === 0 && { flexGrow: 1 }]}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={isLoading || refreshing
+          ? (!refreshing ? <ActivityIndicator color={colors.primary} size="large" accessibilityLabel="Chargement des favoris" /> : null)
+          : renderEmptyState}
+        initialNumToRender={5}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%', maxWidth: 960, alignSelf: 'center',
     flex: 1,
     backgroundColor: colors.white,
   },
@@ -241,9 +188,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing[3],
     right: spacing[3],
-    backgroundColor: colors.error,
-    width: 36,
-    height: 36,
+    backgroundColor: colors.primary,
+    width: 44,
+    height: 44,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
@@ -297,7 +244,7 @@ const styles = StyleSheet.create({
     color: colors.gray[500],
     textAlign: 'center',
     marginBottom: spacing[8],
-    maxWidth: width * 0.8,
+    maxWidth: '100%',
     lineHeight: 22,
   },
   exploreButton: {
@@ -330,4 +277,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FavoritesScreen; 
+export default FavoritesScreen;

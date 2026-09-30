@@ -1,50 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Dimensions, TouchableOpacity, ScrollView, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  TouchableOpacity,
+  ScrollView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from 'react-native';
 import { Text, Button } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigation/AuthNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CarouselSlide from '../components/CarouselSlide';
 import { usePreferences, Language, Currency } from '../store/preferences';
 import { useUserActions } from '../store/user';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight, FadeOutLeft } from 'react-native-reanimated';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { colors, spacing, typography, borderRadius } from '../theme';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
-
-const { width } = Dimensions.get('window');
-
-type PreferenceCarouselScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'PreferenceCarousel'>;
 
 const PreferenceCarouselScreen = () => {
-  const navigation = useNavigation<PreferenceCarouselScreenNavigationProp>();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const { setLanguage, setCurrency, setNotifications } = usePreferences();
   const { setOnboardingCompleted } = useUserActions();
   const { t, i18n } = useTranslation();
-  
+
   // Current slide index
   const [currentIndex, setCurrentIndex] = useState(0);
-  
+
   // Selected preferences
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('fr');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>('RWF');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // Pour suivre si les préférences sont en cours de sauvegarde
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Mettre à jour la langue de i18n lors du changement
   useEffect(() => {
     i18n.changeLanguage(selectedLanguage);
-  }, [selectedLanguage]);
-  
+  }, [selectedLanguage, i18n]);
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollTo({ x: currentIndex * width, animated: false });
+  }, [width]);
+
   // Slide data
   const getSlides = () => [
     {
       title: t('preferences.chooseLanguage'),
       description: t('preferences.languageDescription'),
-      lottieSource: require('../assets/lottie/language.json'),
       type: 'radio' as const,
       options: [
         { key: 'fr', label: t('languages.fr'), value: 'fr', icon: 'language' },
@@ -58,20 +62,14 @@ const PreferenceCarouselScreen = () => {
     {
       title: t('preferences.chooseCurrency'),
       description: t('preferences.currencyDescription'),
-      lottieSource: require('../assets/lottie/currency.json'),
       type: 'radio' as const,
-      options: [
-        { key: 'RWF', label: t('currencies.RWF'), value: 'RWF', icon: 'cash' },
-        { key: 'USD', label: t('currencies.USD'), value: 'USD', icon: 'logo-usd' },
-        { key: 'EUR', label: t('currencies.EUR'), value: 'EUR', icon: 'logo-euro' },
-      ],
+      options: [{ key: 'RWF', label: t('currencies.RWF'), value: 'RWF', icon: 'cash' }],
       selectedValue: selectedCurrency,
       onSelect: (value: string) => setSelectedCurrency(value as Currency),
     },
     {
       title: t('preferences.notifications'),
       description: t('preferences.notificationsDescription'),
-      lottieSource: require('../assets/lottie/notifications.json'),
       type: 'switch' as const,
       options: [
         {
@@ -94,20 +92,17 @@ const PreferenceCarouselScreen = () => {
     } else {
       // Indiquer que nous sommes en train de sauvegarder
       setIsSaving(true);
-      
+
       try {
         // Sauvegarder les préférences
         await setLanguage(selectedLanguage);
         await setCurrency(selectedCurrency);
         await setNotifications(notificationsEnabled);
-        
-        // Attendre un court instant pour s'assurer que tout est enregistré
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Marquer l'onboarding comme terminé
         await setOnboardingCompleted(true);
       } catch (error) {
-        console.error("Erreur lors de la sauvegarde des préférences:", error);
+        console.error('Erreur lors de la sauvegarde des préférences:', error);
       } finally {
         setIsSaving(false);
       }
@@ -133,7 +128,7 @@ const PreferenceCarouselScreen = () => {
   const slides = getSlides();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -148,7 +143,6 @@ const PreferenceCarouselScreen = () => {
             <CarouselSlide
               title={slide.title}
               description={slide.description}
-              lottieSource={slide.lottieSource}
               options={slide.options}
               selectedValue={slide.selectedValue}
               onSelect={slide.onSelect as (value: string | boolean) => void}
@@ -164,33 +158,24 @@ const PreferenceCarouselScreen = () => {
           {slides.map((_, index) => (
             <View
               key={index}
-              style={[
-                styles.progressDot,
-                currentIndex === index && styles.activeDot,
-              ]}
+              style={[styles.progressDot, currentIndex === index && styles.activeDot]}
             />
           ))}
         </View>
-        
+
         <View style={styles.buttonsContainer}>
           {currentIndex > 0 && (
-            <TouchableOpacity
-              onPress={handlePrevious}
-              style={styles.prevButton}
-            >
+            <TouchableOpacity onPress={handlePrevious} style={styles.prevButton}>
               <Ionicons name="arrow-back" size={22} color={colors.gray[600]} />
               <Text style={styles.prevButtonText}>{t('common.previous')}</Text>
             </TouchableOpacity>
           )}
-          
-          <Animated.View 
-            key={currentIndex}
-            style={styles.nextButtonContainer}
-            entering={FadeInRight.duration(300)}
-            exiting={FadeOutLeft.duration(300)}
-          >
+
+          <View key={currentIndex} style={styles.nextButtonContainer}>
             <Button
               mode="contained"
+              buttonColor={colors.accent}
+              textColor={colors.onAccent}
               onPress={handleNext}
               loading={isSaving}
               disabled={isSaving}
@@ -199,7 +184,7 @@ const PreferenceCarouselScreen = () => {
             >
               {currentIndex === slides.length - 1 ? t('common.finish') : t('common.next')}
             </Button>
-          </Animated.View>
+          </View>
         </View>
       </View>
     </View>
@@ -218,6 +203,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   navigationContainer: {
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
   },
@@ -243,6 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   prevButton: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing[2],
@@ -258,7 +247,7 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     minWidth: 120,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderRadius: borderRadius.button,
   },
   nextButtonLabel: {
@@ -268,4 +257,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PreferenceCarouselScreen; 
+export default PreferenceCarouselScreen;

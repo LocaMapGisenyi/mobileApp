@@ -1,3 +1,6 @@
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../types';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -26,7 +29,7 @@ import {
 } from '../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const DPO_EMAIL = 'dpo@locamap.rw';
+const DPO_EMAIL = process.env.EXPO_PUBLIC_DPO_EMAIL || '';
 const CURRENT_YEAR = new Date().getFullYear();
 
 const CATEGORY_CONFIG: Record<
@@ -102,11 +105,6 @@ const DocumentReaderModal = ({
     }
   };
 
-  const handleDownload = () => {
-    if (!doc) return;
-    Linking.openURL(`https://locamap.rw/documents/${doc.slug}.pdf`).catch(() => {});
-  };
-
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[drm.root, { paddingTop: insets.top }]}>
@@ -118,9 +116,6 @@ const DocumentReaderModal = ({
           <Text style={drm.headerTitle} numberOfLines={1}>
             {doc?.title ?? 'Document'}
           </Text>
-          <TouchableOpacity style={drm.downloadBtn} onPress={handleDownload} activeOpacity={0.7}>
-            <MaterialIcons name="download" size={20} color={colors.primary} />
-          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -236,7 +231,6 @@ const drm = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10 },
   closeBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink },
-  downloadBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   errorTxt:    { fontSize: 14, color: colors.inkSubtle },
   metaStrip:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surfaceSunken, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -267,6 +261,7 @@ const drm = StyleSheet.create({
 type Tab = 'documents' | 'tax' | 'data';
 
 const HostLegalScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
@@ -544,7 +539,7 @@ const HostLegalScreen = () => {
                 title: t('hostLegal.rightAccess'),
                 desc: t('hostLegal.rightAccessDesc'),
                 action: t('hostLegal.requestExport'),
-                onPress: () => Linking.openURL('mailto:dpo@locamap.rw?subject=Demande%20export%20données').catch(() => {}),
+                onPress: () => navigation.navigate('GuestAccount'),
                 color: colors.primary,
               },
               {
@@ -552,23 +547,23 @@ const HostLegalScreen = () => {
                 title: t('hostLegal.rightRectify'),
                 desc: t('hostLegal.rightRectifyDesc'),
                 action: t('hostLegal.goSettings'),
-                onPress: () => {},
+                onPress: () => navigation.navigate('GuestAccount'),
                 color: colors.inkMid,
               },
               {
                 icon: 'delete-outline' as const,
                 title: t('hostLegal.rightForget'),
                 desc: t('hostLegal.rightForgetDesc'),
-                action: t('hostLegal.contactDpo'),
-                onPress: () => Linking.openURL(`mailto:${DPO_EMAIL}?subject=Demande%20suppression%20données`).catch(() => {}),
+                action: t('hostLegal.goSettings'),
+                onPress: () => navigation.navigate('GuestAccount'),
                 color: colors.error,
               },
               {
                 icon: 'privacy-tip' as const,
                 title: t('hostLegal.dpoTitle'),
-                desc: `${t('hostLegal.dpoDesc')} ${DPO_EMAIL}`,
+                desc: DPO_EMAIL ? `${t('hostLegal.dpoDesc')} ${DPO_EMAIL}` : t('hostSupport.contactTitle', 'Contacter l’assistance'),
                 action: t('hostLegal.writeDpo'),
-                onPress: () => Linking.openURL(`mailto:${DPO_EMAIL}`).catch(() => {}),
+                onPress: () => DPO_EMAIL ? void Linking.openURL(`mailto:${DPO_EMAIL}`).catch(() => navigation.navigate('Support')) : navigation.navigate('Support'),
                 color: colors.inkSubtle,
               },
             ]

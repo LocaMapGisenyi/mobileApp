@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import * as profileSvc from '../profile.service';
 import { User } from '../../types';
+import { uploadPhoto } from '../../lib/storage';
 
 export const userService = {
   getCurrentUser: async (): Promise<User> => {
@@ -34,15 +35,31 @@ export const userService = {
     };
   },
 
-  changePassword: async (_currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) throw new Error('Connectez-vous pour modifier le mot de passe.');
+    const { error: verificationError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+    if (verificationError) throw verificationError;
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw new Error(error.message);
     return { message: 'Mot de passe mis à jour' };
   },
 
-  // Avatar upload requires a server-side signed URL; return empty until wired up
-  uploadAvatar: async (_formData: FormData): Promise<{ avatarUrl: string }> => {
-    return { avatarUrl: '' };
+  uploadAvatar: async (formData: FormData): Promise<{ avatarUrl: string }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Connectez-vous pour changer votre photo.');
+    const native = formData as unknown as { _parts?: [string, { uri?: string; type?: string }][] };
+    const file = typeof formData.get === 'function' ? formData.get('avatar') ?? formData.get('file') : native._parts?.find(([key]) => key === 'avatar' || key === 'file')?.[1];
+    if (!file || typeof file === 'string') throw new Error('Sélectionnez une image.');
+    const input = file as { uri?: string; type?: string };
+    const temporaryUri = !input.uri && typeof URL.createObjectURL === 'function' && file instanceof Blob ? URL.createObjectURL(file) : null;
+    try {
+      const uri = input.uri ?? temporaryUri;
+      if (!uri) throw new Error('Image illisible.');
+      const avatarUrl = await uploadPhoto(uri, input.type || 'image/jpeg', user.id, 'avatars');
+      await profileSvc.updateProfile(user.id, { avatar_url: avatarUrl });
+      return { avatarUrl };
+    } finally { if (temporaryUri) URL.revokeObjectURL(temporaryUri); }
   },
 
   updatePreferences: async (preferences: {
@@ -55,48 +72,34 @@ export const userService = {
     await profileSvc.updateProfile(user.id, {
       preferred_currency: preferences.preferredCurrency,
       preferred_language: preferences.preferredLanguage,
-    } as any);
+    });
+    if (preferences.notifications !== undefined) await profileSvc.updateNotificationPrefs(user.id, { push_enabled: preferences.notifications });
     return userService.getCurrentUser();
   },
 
   getSavedProperties: async (): Promise<string[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-    const { data } = await supabase
-      .from('alerts')
-      .select('filters')
-      .eq('user_id', user.id)
-      .eq('name', 'favorite');
-    return Array.isArray(data)
-      ? data.map(a => (a.filters as any)?.propertyId).filter(Boolean)
-      : [];
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) throw new Error('Connectez-vous pour consulter vos favoris.');
+    const { data, error } = await supabase.from('favorites').select('property_id').eq('user_id', user.id);
+    if (error) throw error;
+    return (data ?? []).map(row => row.property_id);
   },
-
   saveProperty: async (propertyId: string): Promise<{ message: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    await supabase
-      .from('alerts')
-      .insert({ user_id: user.id, name: 'favorite', filters: { propertyId }, frequency: 'instant' });
+    if (!user) throw new Error('Connectez-vous pour enregistrer vos favoris.');
+    const { error } = await supabase.from('favorites').upsert({ user_id: user.id, property_id: propertyId }, { onConflict: 'user_id,property_id', ignoreDuplicates: true });
+    if (error) throw error;
     return { message: 'Sauvegardé' };
   },
-
   unsaveProperty: async (propertyId: string): Promise<{ message: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const { data: existing } = await supabase
-      .from('alerts')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('name', 'favorite')
-      .filter('filters->>propertyId', 'eq', propertyId);
-    if (Array.isArray(existing) && existing.length > 0) {
-      await supabase.from('alerts').delete().in('id', existing.map(r => r.id));
-    }
+    if (!user) throw new Error('Connectez-vous pour modifier vos favoris.');
+    const { error } = await supabase.from('favorites').delete().eq('user_id', user.id).eq('property_id', propertyId);
+    if (error) throw error;
     return { message: 'Retiré' };
   },
 };
-
 // ─── Host account types ───────────────────────────────────────────────────────
 export type KycStatus = 'NOT_VERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type PayoutType = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'M_PESA' | 'BANK_TRANSFER';
@@ -118,6 +121,7 @@ export interface NotificationPrefs {
   pushEnabled: boolean;
   emailEnabled: boolean;
   smsEnabled: boolean;
+  alertMatches: boolean;
 }
 
 export interface HostProfileDetail {
@@ -204,7 +208,7 @@ export const hostAccountService = {
   getNotificationPrefs: async (): Promise<NotificationPrefs> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return { reservations: true, messages: true, promotions: false, newsletter: false, pushEnabled: true, emailEnabled: true, smsEnabled: false };
+      throw new Error('Connectez-vous pour consulter vos préférences.');
     }
     const prefs = await profileSvc.getNotificationPrefs(user.id);
     return prefs
@@ -216,8 +220,9 @@ export const hostAccountService = {
           pushEnabled: prefs.push_enabled,
           emailEnabled: prefs.email_enabled,
           smsEnabled: prefs.sms_enabled,
+          alertMatches: prefs.alert_matches,
         }
-      : { reservations: true, messages: true, promotions: false, newsletter: false, pushEnabled: true, emailEnabled: true, smsEnabled: false };
+      : { reservations: true, messages: true, promotions: false, newsletter: false, pushEnabled: true, emailEnabled: true, smsEnabled: false, alertMatches: true };
   },
 
   updateNotificationPrefs: async (patch: Partial<NotificationPrefs>): Promise<NotificationPrefs> => {
@@ -231,17 +236,44 @@ export const hostAccountService = {
       push_enabled: patch.pushEnabled,
       email_enabled: patch.emailEnabled,
       sms_enabled: patch.smsEnabled,
+      alert_matches: patch.alertMatches,
     } as any);
     return hostAccountService.getNotificationPrefs();
   },
 
-  requestDataExport: async (): Promise<void> => {
-    // No backend endpoint yet — silently succeeds
+  requestDataExport: async (): Promise<AccountExport> => {
+    const { data, error } = await supabase.functions.invoke<AccountExport>('account-export', { body: {} });
+    if (error) throw error;
+    if (!data?.exportedAt || !data.user || !data.data) throw new Error('Export incomplet. Réessayez.');
+    return data;
   },
 
   deleteAccount: async (): Promise<void> => {
-    // Supabase client SDK cannot delete the authenticated user's own account;
-    // sign out so the app state is cleared, deletion must be handled server-side.
-    await supabase.auth.signOut().catch(() => {});
+    const { data, error } = await supabase.functions.invoke<{ deleted: boolean }>('account-delete', { body: { confirmation: 'DELETE' } });
+    if (error) throw error;
+    if (!data?.deleted) throw new Error('La suppression du compte n’a pas été confirmée.');
+  },
+};
+
+export interface AccountExport { exportedAt: string; user: unknown; data: Record<string, unknown> }
+export const guestAccountService = {
+  async getPaymentPreference() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Connectez-vous pour consulter vos préférences.');
+    const { data, error } = await supabase.from('user_payment_preferences').select('*').eq('user_id', user.id).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  async savePaymentPreference(provider: string, accountLabel: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Connectez-vous pour enregistrer vos préférences.');
+    const { error } = await supabase.from('user_payment_preferences').upsert({ user_id: user.id, provider, account_label: accountLabel.slice(0, 80) });
+    if (error) throw error;
+  },
+  async deletePaymentPreference() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Connectez-vous pour modifier vos préférences.');
+    const { error } = await supabase.from('user_payment_preferences').delete().eq('user_id', user.id);
+    if (error) throw error;
   },
 };

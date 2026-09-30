@@ -5,10 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
-import PriceDisplay from './PriceDisplay';
 import { Property } from '../types';
-import { convertToRwf } from '../utils/currency';
-import { Currency } from '../store/preferences';
 
 interface PropertyCardProps {
   property: Property;
@@ -27,10 +24,6 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
     e.stopPropagation();
     onFavoritePress?.();
   }, [onFavoritePress]);
-
-  const priceInRwf = property.currency === 'RWF'
-    ? property.price
-    : convertToRwf(property.price, property.currency as Currency);
 
   let imageSource: ImageSourcePropType | { uri: string };
   if (property.images && property.images.length > 0) {
@@ -122,12 +115,7 @@ const PropertyCard = ({ property, index, onPress, onFavoritePress, isFavoriteSta
           </View>
 
           <View style={styles.priceContainer}>
-            <PriceDisplay
-              priceInRwf={priceInRwf}
-              size="medium"
-              isPerNight={false}
-              isPerMonth={true}
-            />
+            <Text>{property.price.toLocaleString()} {property.currency} /mois</Text>
           </View>
         </View>
       </TouchableOpacity>

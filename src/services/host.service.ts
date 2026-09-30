@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Tables } from '../types/database';
+import { summarizeStayPeriod } from '../utils/stays';
+import { updateBookingStatus } from './booking.service';
 
 export async function getDashboardSummary(hostId: string): Promise<{
   pendingRequests: number;
@@ -12,43 +14,32 @@ export async function getDashboardSummary(hostId: string): Promise<{
   currency: string;
   unreadNotifications: number;
 }> {
-  const today = new Date().toISOString().split('T')[0];
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-
-  const [bookingsRes, checkInsRes, checkOutsRes, notifsRes, revenueRes] = await Promise.all([
-    supabase.from('bookings').select('status').eq('host_id', hostId),
-    supabase.from('bookings').select('id').eq('host_id', hostId).eq('start_date', today).eq('status', 'approved'),
-    supabase.from('bookings').select('id').eq('host_id', hostId).eq('end_date', today).eq('status', 'approved'),
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Kigali' });
+  const start = today.slice(0, 7) + '-01';
+  const end = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 1)).toISOString().slice(0, 10);
+  const [bookingsRes, propertiesRes, notifsRes] = await Promise.all([
+    supabase.from('bookings').select('*').eq('host_id', hostId),
+    supabase.from('properties').select('id,status,currency').eq('owner_id', hostId),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', hostId).eq('is_read', false),
-    supabase.from('bookings').select('total_price, status').eq('host_id', hostId).gte('created_at', monthStart),
   ]);
-
-  const bookings = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
-  const pendingRequests = bookings.filter(b => b.status === 'pending').length;
-
-  const checkInsToday = Array.isArray(checkInsRes.data) ? checkInsRes.data.length : 0;
-  const checkOutsToday = Array.isArray(checkOutsRes.data) ? checkOutsRes.data.length : 0;
-
-  const unreadNotifications = notifsRes.count ?? 0;
-
-  const revenueBookings = Array.isArray(revenueRes.data) ? revenueRes.data : [];
-  const revenueMonth = revenueBookings
-    .filter(b => b.status === 'approved' || b.status === 'completed')
-    .reduce((sum, b) => sum + (b.total_price ?? 0), 0);
-  const revenuePending = revenueBookings
-    .filter(b => b.status === 'pending')
-    .reduce((sum, b) => sum + (b.total_price ?? 0), 0);
-
+  for (const result of [bookingsRes, propertiesRes, notifsRes]) if (result.error) throw result.error;
+  const bookings = bookingsRes.data ?? [];
+  const ids = (propertiesRes.data ?? []).filter(p => ['ACTIVE', 'PAUSED'].includes(p.status)).map(p => p.id);
+  const allIds = (propertiesRes.data ?? []).map(p => p.id);
+  const period = summarizeStayPeriod(bookings, ids, start, end);
+  if (bookings.some(b => b.currency !== 'RWF')) throw new Error('Les statistiques multi-devises nécessitent une conversion configurée.');
+  const revenue = summarizeStayPeriod(bookings.filter(b => b.currency === 'RWF'), allIds, start, end);
+  const pending = summarizeStayPeriod(bookings.filter(b => b.status === 'pending' && b.currency === 'RWF').map(b => ({...b, status:'approved'})), allIds, start, end);
   return {
-    pendingRequests,
-    checkInsToday,
-    checkOutsToday,
-    occupancyNights: 0,
-    occupancyTotal: 0,
-    revenueMonth,
-    revenuePending,
+    pendingRequests: bookings.filter(b => b.status === 'pending').length,
+    checkInsToday: bookings.filter(b => b.start_date === today && b.status === 'approved').length,
+    checkOutsToday: bookings.filter(b => b.end_date === today && b.status === 'approved').length,
+    occupancyNights: period.occupiedDays,
+    occupancyTotal: period.availableDays,
+    revenueMonth: revenue.revenue,
+    revenuePending: pending.revenue,
     currency: 'RWF',
-    unreadNotifications,
+    unreadNotifications: notifsRes.count ?? 0,
   };
 }
 
@@ -82,7 +73,7 @@ export async function getPendingRequests(hostId: string): Promise<{
 }[]> {
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, start_date, end_date, total_price, created_at, guest:profiles!guest_id(full_name), property:properties(title)')
+    .select('id, guest_id, start_date, end_date, total_price, created_at, property:properties(title)')
     .eq('host_id', hostId)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
@@ -91,10 +82,14 @@ export async function getPendingRequests(hostId: string): Promise<{
   if (error) throw error;
 
   const rows = Array.isArray(data) ? data : [];
+  const guestIds = [...new Set(rows.map(b => b.guest_id))];
+  const profiles = guestIds.length ? await supabase.from('public_profiles').select('id,full_name').in('id', guestIds) : {data: [], error: null};
+  if (profiles.error) throw profiles.error;
+  const names = new Map((profiles.data ?? []).map(p => [p.id, p.full_name]));
   return rows.map(b => ({
     id: b.id,
     type: 'reservation' as const,
-    guestName: (b.guest as any)?.full_name ?? 'Inconnu',
+    guestName: names.get(b.guest_id) ?? 'Utilisateur',
     propertyTitle: (b.property as any)?.title ?? '',
     checkIn: b.start_date ?? undefined,
     checkOut: b.end_date ?? undefined,
@@ -104,24 +99,11 @@ export async function getPendingRequests(hostId: string): Promise<{
 }
 
 export async function acceptRequest(bookingId: string): Promise<void> {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status: 'approved', updated_at: new Date().toISOString() })
-    .eq('id', bookingId);
-
-  if (error) throw error;
+  await updateBookingStatus(bookingId, 'approved');
 }
 
-export async function declineRequest(bookingId: string, reason?: string): Promise<void> {
-  const { error } = await supabase
-    .from('bookings')
-    .update({
-      status: 'rejected',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', bookingId);
-
-  if (error) throw error;
+export async function declineRequest(bookingId: string, _reason?: string): Promise<void> {
+  await updateBookingStatus(bookingId, 'rejected');
 }
 
 export async function getHostStats(hostId: string): Promise<{
@@ -133,16 +115,18 @@ export async function getHostStats(hostId: string): Promise<{
 }> {
   const [propCountRes, bookingStatsRes, ratingRes] = await Promise.all([
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('owner_id', hostId),
-    supabase.from('bookings').select('total_price, status').eq('host_id', hostId),
+    supabase.from('bookings').select('total_price, status,currency').eq('host_id', hostId),
     supabase.from('properties').select('avg_rating').eq('owner_id', hostId),
   ]);
 
+  for (const result of [propCountRes, bookingStatsRes, ratingRes]) if (result.error) throw result.error;
   const propertyCount = propCountRes.count ?? 0;
 
   const bookings = Array.isArray(bookingStatsRes.data) ? bookingStatsRes.data : [];
   const totalBookings = bookings.length;
+  if (bookings.some(b => b.currency !== 'RWF')) throw new Error('Les statistiques multi-devises nécessitent une conversion configurée.');
   const totalRevenue = bookings
-    .filter(b => b.status === 'approved' || b.status === 'completed')
+    .filter(b => b.currency === 'RWF' && (b.status === 'approved' || b.status === 'completed'))
     .reduce((sum, b) => sum + (b.total_price ?? 0), 0);
 
   const ratings = Array.isArray(ratingRes.data) ? ratingRes.data : [];

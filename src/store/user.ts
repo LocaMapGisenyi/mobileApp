@@ -1,248 +1,154 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Session, User as AuthUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { User } from '../types';
+import { setAccountIdentity } from '../lib/accountScope';
+import type { User } from '../types';
 
 export type AuthProvider = 'manual' | 'google' | 'facebook' | null;
-
+const blankUser = {
+  id: null as string | null, fullName: null as string | null, email: null as string | null,
+  phoneNumber: null as string | null, photoURL: null as string | null,
+  authProvider: null as AuthProvider, isLoggedIn: false, hasCompletedOnboarding: false, token: null as string | null,
+};
 interface UserState {
-  user: {
-    id: string | null;
-    fullName: string | null;
-    email: string | null;
-    phoneNumber: string | null;
-    photoURL: string | null;
-    authProvider: AuthProvider;
-    isLoggedIn: boolean;
-    hasCompletedOnboarding: boolean;
-    token: string | null;
-  };
+  user: typeof blankUser;
+  session: Session | null;
+  authUser: AuthUser | null;
+  passwordRecovery: boolean;
   loading: boolean;
   error: string | null;
   actions: {
-    initAuth: () => Promise<void>;
-    login: (email: string, password: string) => Promise<void>;
-    register: (userData: {
-      fullName: string;
-      email: string;
-      password: string;
-      phoneNumber?: string;
-    }) => Promise<void>;
-    logout: () => Promise<void>;
-    updateUserData: (data: Partial<User>) => Promise<void>;
-    setOnboardingCompleted: (completed: boolean) => Promise<void>;
-    fetchCurrentUser: () => Promise<void>;
-    uploadAvatar: (formData: FormData) => Promise<void>;
-    changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-    clearError: () => void;
+    initAuth(): Promise<void>;
+    disposeAuth(): void;
+    login(email: string, password: string): Promise<void>;
+    register(data: { fullName: string; email: string; password: string; phoneNumber?: string }): Promise<void>;
+    logout(): Promise<void>;
+    updateUserData(data: Partial<User>): Promise<void>;
+    setOnboardingCompleted(completed: boolean): Promise<void>;
+    fetchCurrentUser(): Promise<void>;
+    uploadAvatar(formData: FormData): Promise<void>;
+    changePassword(currentPassword: string, newPassword: string): Promise<void>;
+    clearError(): void;
   };
 }
+let subscription: { unsubscribe(): void } | undefined;
+let generation = 0;
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Impossible de terminer cette opération.';
 
-const BLANK_USER = {
-  id: null, fullName: null, email: null, phoneNumber: null,
-  photoURL: null, authProvider: null as AuthProvider,
-  isLoggedIn: false, hasCompletedOnboarding: false, token: null,
-};
-
-export const useUserStore = create<UserState>()(
-  persist(
-    (set, get) => ({
-      user: { ...BLANK_USER },
-      loading: false,
-      error: null,
-      actions: {
-        // Call once from App.tsx — subscribes to Supabase auth changes
-        initAuth: async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles').select('full_name, phone_number, avatar_url')
-              .eq('id', session.user.id).single();
-            set(s => ({
-              user: {
-                ...s.user,
-                id: session.user.id,
-                fullName: profile?.full_name ?? session.user.user_metadata?.full_name ?? null,
-                email: session.user.email ?? null,
-                phoneNumber: profile?.phone_number ?? null,
-                photoURL: profile?.avatar_url ?? null,
-                isLoggedIn: true,
-                token: session.access_token,
-              }
-            }));
-          }
-          supabase.auth.onAuthStateChange(async (event, newSession) => {
-            if (newSession?.user) {
-              const { data: profile } = await supabase
-                .from('profiles').select('full_name, phone_number, avatar_url')
-                .eq('id', newSession.user.id).single();
-              set(s => ({
-                user: {
-                  ...s.user,
-                  id: newSession.user.id,
-                  fullName: profile?.full_name ?? newSession.user.user_metadata?.full_name ?? null,
-                  email: newSession.user.email ?? null,
-                  phoneNumber: profile?.phone_number ?? null,
-                  photoURL: profile?.avatar_url ?? null,
-                  isLoggedIn: true,
-                  token: newSession.access_token,
-                }
-              }));
-            } else {
-              set(s => ({ user: { ...BLANK_USER, hasCompletedOnboarding: s.user.hasCompletedOnboarding } }));
-            }
-          });
-        },
-
-        login: async (email, password) => {
-          set({ loading: true, error: null });
-          try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw new Error(error.message);
-            const { data: profile } = await supabase
-              .from('profiles').select('full_name, phone_number, avatar_url')
-              .eq('id', data.user!.id).single();
-            set(s => ({
-              loading: false,
-              user: {
-                ...s.user,
-                id: data.user!.id,
-                fullName: profile?.full_name ?? data.user!.user_metadata?.full_name ?? null,
-                email: data.user!.email ?? null,
-                phoneNumber: profile?.phone_number ?? null,
-                photoURL: profile?.avatar_url ?? null,
-                authProvider: 'manual',
-                isLoggedIn: true,
-                token: data.session!.access_token,
-              },
-            }));
-          } catch (err) {
-            set({ loading: false, error: err instanceof Error ? err.message : 'Erreur de connexion' });
-            throw err;
-          }
-        },
-
-        register: async (userData) => {
-          set({ loading: true, error: null });
-          try {
-            const { data, error } = await supabase.auth.signUp({
-              email: userData.email,
-              password: userData.password,
-              options: { data: { full_name: userData.fullName } },
-            });
-            if (error) throw new Error(error.message);
-            if (userData.phoneNumber && data.user) {
-              await supabase.from('profiles').update({ phone_number: userData.phoneNumber }).eq('id', data.user.id);
-            }
-            set(s => ({
-              loading: false,
-              user: {
-                ...s.user,
-                id: data.user?.id ?? null,
-                fullName: userData.fullName,
-                email: userData.email,
-                authProvider: 'manual',
-                isLoggedIn: !!data.session,
-                hasCompletedOnboarding: false,
-                token: data.session?.access_token ?? null,
-              },
-            }));
-          } catch (err) {
-            set({ loading: false, error: err instanceof Error ? err.message : "Erreur d'inscription" });
-            throw err;
-          }
-        },
-
-        logout: async () => {
-          // Clear state immediately — never blocks the UI
-          set({ user: { ...BLANK_USER }, loading: false, error: null });
-          supabase.auth.signOut().catch(() => {});
-        },
-
-        updateUserData: async (data) => {
-          const userId = get().user.id;
-          if (!userId) return;
-          set({ loading: true, error: null });
-          try {
-            const updates: Record<string, unknown> = {};
-            if (data.fullName) updates.full_name = data.fullName;
-            if (data.phoneNumber) updates.phone_number = data.phoneNumber;
-            if (data.avatar) updates.avatar_url = data.avatar;
-            await supabase.from('profiles').update(updates).eq('id', userId);
-            set(s => ({
-              loading: false,
-              user: { ...s.user, fullName: data.fullName ?? s.user.fullName, photoURL: data.avatar ?? s.user.photoURL },
-            }));
-          } catch (err) {
-            set({ loading: false, error: err instanceof Error ? err.message : 'Erreur de mise à jour' });
-            throw err;
-          }
-        },
-
-        setOnboardingCompleted: async (completed) => {
-          set(s => ({ user: { ...s.user, hasCompletedOnboarding: completed } }));
-        },
-
-        fetchCurrentUser: async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const { data: profile } = await supabase
-            .from('profiles').select('full_name, phone_number, avatar_url')
-            .eq('id', user.id).single();
-          set(s => ({
-            user: {
-              ...s.user,
-              id: user.id,
-              fullName: profile?.full_name ?? s.user.fullName,
-              email: user.email ?? s.user.email,
-              phoneNumber: profile?.phone_number ?? s.user.phoneNumber,
-              photoURL: profile?.avatar_url ?? s.user.photoURL,
-            }
-          }));
-        },
-
-        uploadAvatar: async (_formData) => {
-          // Upload handled via storage.ts — update profile after
-          set(s => ({ user: { ...s.user } }));
-        },
-
-        changePassword: async (_currentPassword, newPassword) => {
-          set({ loading: true, error: null });
-          try {
-            const { error } = await supabase.auth.updateUser({ password: newPassword });
-            if (error) throw new Error(error.message);
-            set({ loading: false });
-          } catch (err) {
-            set({ loading: false, error: err instanceof Error ? err.message : 'Erreur' });
-            throw err;
-          }
-        },
-
-        clearError: () => set({ error: null }),
-      },
-    }),
-    {
-      name: 'user-storage-v2',
-      storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        user: {
-          id: state.user.id,
-          fullName: state.user.fullName,
-          email: state.user.email,
-          phoneNumber: state.user.phoneNumber,
-          photoURL: state.user.photoURL,
-          authProvider: state.user.authProvider,
-          isLoggedIn: state.user.isLoggedIn,
-          hasCompletedOnboarding: state.user.hasCompletedOnboarding,
-          token: null,
-        },
-      }),
+export const useUserStore = create<UserState>((set, get) => {
+  const applySession = (session: Session | null) => {
+    const id = session?.user.id ?? null;
+    const changed = get().user.id !== id;
+    ++generation;
+    setAccountIdentity(id);
+    set({
+      session, authUser: session?.user ?? null,
+      user: session ? {
+        ...(changed ? blankUser : get().user), id,
+        email: session.user.email ?? null,
+        fullName: changed ? session.user.user_metadata?.full_name ?? null : get().user.fullName,
+        authProvider: session.user.app_metadata?.provider === 'google' ? 'google' : session.user.app_metadata?.provider === 'facebook' ? 'facebook' : 'manual',
+        isLoggedIn: true, token: null,
+      } : { ...blankUser },
+      ...(!session ? { passwordRecovery: false } : {}),
+    });
+  };
+  const loadProfile = async () => {
+    const id = get().user.id;
+    const request = generation;
+    if (!id) return;
+    try {
+      const [{ data: profile, error }, onboarding] = await Promise.all([
+        supabase.from('profiles').select('full_name, phone_number, avatar_url').eq('id', id).single(),
+        AsyncStorage.getItem(`onboarding:${id}`),
+      ]);
+      if (request !== generation || get().user.id !== id) return;
+      if (error) throw error;
+      set({ user: { ...get().user, fullName: profile.full_name, phoneNumber: profile.phone_number,
+        photoURL: profile.avatar_url, hasCompletedOnboarding: onboarding === 'true' } });
+    } catch (error) {
+      if (request === generation) set({ error: errorMessage(error) });
     }
-  )
-);
-
-export const useUser = () => useUserStore((state) => state.user);
-export const useUserLoading = () => useUserStore((state) => state.loading);
-export const useUserError = () => useUserStore((state) => state.error);
-export const useUserActions = () => useUserStore((state) => state.actions);
+  };
+  const run = async (operation: () => Promise<void>) => {
+    set({ loading: true, error: null });
+    try { await operation(); } catch (error) { set({ error: errorMessage(error) }); throw error; }
+    finally { set({ loading: false }); }
+  };
+  return {
+    user: { ...blankUser }, session: null, authUser: null, passwordRecovery: false, loading: false, error: null,
+    actions: {
+      initAuth: async () => {
+        subscription?.unsubscribe();
+        subscription = supabase.auth.onAuthStateChange((event, session) => {
+          applySession(session);
+          if (event === 'PASSWORD_RECOVERY') set({ passwordRecovery: true });
+          // Authenticated I/O must begin after Supabase releases its callback lock.
+          setTimeout(() => { void loadProfile(); }, 0);
+        }).data.subscription;
+        const request = generation;
+        const { data, error } = await supabase.auth.getSession();
+        if (error) { applySession(null); set({ error: errorMessage(error) }); throw error; }
+        if (request === generation) applySession(data.session);
+        await AsyncStorage.multiRemove(['user-storage-v2', 'messages-storage']);
+        await loadProfile();
+      },
+      disposeAuth: () => { subscription?.unsubscribe(); subscription = undefined; ++generation; },
+      login: (email, password) => run(async () => {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        applySession(data.session);
+        await loadProfile();
+      }),
+      register: (data) => run(async () => {
+        const { data: result, error } = await supabase.auth.signUp({ email: data.email, password: data.password,
+          options: { data: { full_name: data.fullName, phone_number: data.phoneNumber ?? null } } });
+        if (error) throw error;
+        applySession(result.session);
+        if (result.session) await loadProfile();
+      }),
+      logout: () => run(async () => {
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+        applySession(null);
+      }),
+      updateUserData: (data) => run(async () => {
+        const id = get().user.id;
+        if (!id) throw new Error('Connectez-vous pour modifier le profil.');
+        const updates = {
+          ...(data.fullName !== undefined ? { full_name: data.fullName } : {}),
+          ...(data.phoneNumber !== undefined ? { phone_number: data.phoneNumber } : {}),
+          ...(data.avatar !== undefined ? { avatar_url: data.avatar } : {}),
+        };
+        const { error } = await supabase.from('profiles').update(updates).eq('id', id);
+        if (error) throw error;
+        if (get().user.id === id) await loadProfile();
+      }),
+      setOnboardingCompleted: async (completed) => {
+        const id = get().user.id;
+        if (!id) throw new Error('Connectez-vous pour enregistrer vos préférences.');
+        await AsyncStorage.setItem(`onboarding:${id}`, String(completed));
+        if (get().user.id === id) set({ user: { ...get().user, hasCompletedOnboarding: completed } });
+      },
+      fetchCurrentUser: loadProfile,
+      uploadAvatar: async (formData) => {
+        const { userService } = await import('../services/api/user.service');
+        await userService.uploadAvatar(formData);
+        await loadProfile();
+      },
+      changePassword: (currentPassword, newPassword) => run(async () => {
+        if (!get().user.email) throw new Error('Connectez-vous pour modifier votre mot de passe.');
+        const { error: verificationError } = await supabase.auth.signInWithPassword({ email: get().user.email!, password: currentPassword });
+        if (verificationError) throw verificationError;
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      }),
+      clearError: () => set({ error: null }),
+    },
+  };
+});
+export const useUser = () => useUserStore(state => state.user);
+export const useUserLoading = () => useUserStore(state => state.loading);
+export const useUserError = () => useUserStore(state => state.error);
+export const useUserActions = () => useUserStore(state => state.actions);

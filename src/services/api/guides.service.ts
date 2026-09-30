@@ -26,7 +26,7 @@ export const guidesService = {
       .from('guide_categories')
       .select('*')
       .order('title');
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(c => ({
       id: c.id,
       title: c.title,
@@ -42,7 +42,7 @@ export const guidesService = {
       .order('created_at', { ascending: false });
     if (categoryId) query = query.eq('category_id', categoryId);
     const { data, error } = await query;
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(g => ({
       id: g.id,
       categoryId: g.category_id ?? '',
@@ -81,7 +81,7 @@ export const guidesService = {
       .eq('is_new', true)
       .order('created_at', { ascending: false })
       .limit(10);
-    if (error) return [];
+    if (error) throw error;
     return (Array.isArray(data) ? data : []).map(g => ({
       id: g.id,
       categoryId: g.category_id ?? '',

@@ -15,6 +15,9 @@ import { Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types';
 import { colors } from '../theme';
 import {
   cohostService,
@@ -29,7 +32,7 @@ import {
 const DEFAULT_PERMISSIONS: CoHostPermissions = {
   calendar: true,
   reservations: false,
-  messages: true,
+  messages: false,
   pricing: false,
   revenue_view: false,
   reviews: false,
@@ -100,55 +103,11 @@ const pt = StyleSheet.create({
   thumbOn:       { transform: [{ translateX: 20 }] },
 });
 
-// ─── Revenue simulator ────────────────────────────────────────────────────────
-const RevenueSimulator = ({
-  type,
-  value,
-  avgMonthlyRevenue = 300000,
-}: {
-  type: RevenueShareType;
-  value: number;
-  avgMonthlyRevenue?: number;
-}) => {
-  const { t } = useTranslation();
-  const estimated = (() => {
-    if (type === 'PERCENTAGE') return Math.round(avgMonthlyRevenue * value / 100);
-    if (type === 'FIXED_MONTHLY') return value;
-    // FIXED_PER_BOOKING — assume 3 réservations/mois
-    return value * 3;
-  })();
-  return (
-    <View style={sim.card}>
-      <Text style={sim.title}>{t('hostCoHost.simulationTitle')}</Text>
-      <View style={sim.row}>
-        <Text style={sim.lbl}>{t('hostCoHost.simulationAverage')}</Text>
-        <Text style={sim.val}>{formatRWF(avgMonthlyRevenue)}</Text>
-      </View>
-      <View style={sim.row}>
-        <Text style={sim.lbl}>{t('hostCoHost.simulationShare')}</Text>
-        <Text style={[sim.val, { color: colors.primary, fontWeight: '700' }]}>
-          {formatRWF(estimated)}
-        </Text>
-      </View>
-      {type === 'FIXED_PER_BOOKING' && (
-        <Text style={sim.note}>{t('hostCoHost.simulationNote')}</Text>
-      )}
-    </View>
-  );
-};
-const sim = StyleSheet.create({
-  card:  { backgroundColor: colors.primaryLight, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.primary + '33', marginTop: 8 },
-  title: { fontSize: 11, fontWeight: '700', color: colors.inkSubtle, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
-  row:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  lbl:   { fontSize: 12, color: colors.inkMid },
-  val:   { fontSize: 13, fontWeight: '600', color: colors.ink },
-  note:  { fontSize: 10, color: colors.inkSubtle, marginTop: 6 },
-});
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 type Tab = 'cohosts' | 'marketplace';
 
 const HostCoHostScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
@@ -197,6 +156,8 @@ const HostCoHostScreen = () => {
   const [inviteRevenueType, setInviteRevenueType] = useState<RevenueShareType>('PERCENTAGE');
   const [inviteRevenueValue, setInviteRevenueValue] = useState(10);
   const [inviting, setInviting] = useState(false);
+  const [ownedListings, setOwnedListings] = useState<{id: string; title: string}[]>([]);
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
 
   // ── Permissions modal ───────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<CoHost | null>(null);
@@ -215,6 +176,7 @@ const HostCoHostScreen = () => {
       if (tab === 'cohosts') {
         const data = await cohostService.getCoHosts();
         setCoHosts(Array.isArray(data) ? data : []);
+        setOwnedListings(await cohostService.getOwnedListings());
       } else {
         const data = await cohostService.getMarketplace();
         setCandidates(Array.isArray(data) ? data : []);
@@ -230,12 +192,13 @@ const HostCoHostScreen = () => {
 
   // ─── Invite ────────────────────────────────────────────────────────────────
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
+    if (!inviteEmail.trim() || !selectedListingIds.length) return;
+    setError(null);
     setInviting(true);
     try {
       const payload: InviteCoHostPayload = {
         email: inviteEmail.trim(),
-        listingIds: [],
+        listingIds: selectedListingIds,
         permissions: invitePerms,
         revenueShareType: inviteRevenueType,
         revenueShareValue: inviteRevenueValue,
@@ -245,7 +208,7 @@ const HostCoHostScreen = () => {
       setInviteEmail('');
       setInvitePerms(DEFAULT_PERMISSIONS);
       load();
-    } catch {/* silent */} finally {
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Invitation impossible. Réessayez.'); } finally {
       setInviting(false);
     }
   };
@@ -257,10 +220,10 @@ const HostCoHostScreen = () => {
     try {
       await cohostService.updatePermissions(editTarget.id, editPerms);
       setCoHosts(prev =>
-        prev.map(c => c.id === editTarget.id ? { ...c, permissions: editPerms } : c),
+        prev.map(c => c.id === editTarget.id ? { ...c, permissions: editPerms, status: 'PENDING' } : c),
       );
       setEditTarget(null);
-    } catch {/* silent */} finally {
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Modification impossible. Réessayez.'); } finally {
       setSavingPerms(false);
     }
   };
@@ -273,7 +236,7 @@ const HostCoHostScreen = () => {
       await cohostService.terminate(terminateTarget.id);
       setCoHosts(prev => prev.filter(c => c.id !== terminateTarget.id));
       setTerminateTarget(null);
-    } catch {/* silent */} finally {
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Résiliation impossible. Réessayez.'); } finally {
       setTerminating(false);
     }
   };
@@ -324,22 +287,26 @@ const HostCoHostScreen = () => {
           </View>
 
           {/* Actions */}
+          {item.status === 'PENDING' && item.received && (
+            <View style={s.cardActions}>
+              <Text style={s.cardListings}>Permissions proposées : {item.permissions.calendar ? 'calendrier ' : ''}{item.permissions.reviews ? 'réponses aux avis' : ''}. Rémunération convenue entre les parties, sans versement automatique.</Text>
+              {[true, false].map(accept => <TouchableOpacity key={String(accept)} style={s.outlineBtn} onPress={async () => {
+                try { await cohostService.respond(item.id, accept); await load(); }
+                catch (cause) { setError(cause instanceof Error ? cause.message : 'Réponse impossible.'); }
+              }}><Text style={s.outlineTxt}>{accept ? 'Accepter' : 'Refuser'}</Text></TouchableOpacity>)}
+            </View>
+          )}
           {item.status === 'ACTIVE' && (
             <View style={s.cardActions}>
-              <TouchableOpacity
+              {item.received && item.permissions.calendar && item.listingIds.map(id => <TouchableOpacity key={id} style={s.outlineBtn} onPress={() => navigation.navigate('HostCalendar', {propertyId: id})}><Text style={s.outlineTxt}>Calendrier · {id.slice(0,8)}</Text></TouchableOpacity>)}
+              {!item.received && <TouchableOpacity
                 style={s.outlineBtn}
                 onPress={() => { setEditTarget(item); setEditPerms(item.permissions); }}
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="tune" size={14} color={colors.inkMid} />
                 <Text style={s.outlineTxt}>Permissions</Text>
-              </TouchableOpacity>
-              {item.contractUrl && (
-                <TouchableOpacity style={s.outlineBtn} activeOpacity={0.8}>
-                  <MaterialIcons name="description" size={14} color={colors.inkMid} />
-                  <Text style={s.outlineTxt}>Contrat</Text>
-                </TouchableOpacity>
-              )}
+              </TouchableOpacity>}
               <TouchableOpacity
                 style={[s.outlineBtn, s.outlineBtnDanger]}
                 onPress={() => setTerminateTarget(item)}
@@ -445,10 +412,10 @@ const HostCoHostScreen = () => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.tab, tab === 'marketplace' && s.tabActive]}
-          onPress={() => setTab('marketplace')}
+          disabled
           activeOpacity={0.8}
         >
-          <Text style={[s.tabTxt, tab === 'marketplace' && s.tabTxtActive]}>{t('hostCoHost.tabDirectory')}</Text>
+          <Text style={s.tabTxt}>Annuaire indisponible</Text>
         </TouchableOpacity>
       </View>
 
@@ -531,6 +498,7 @@ const HostCoHostScreen = () => {
               <View style={m.handle} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={m.title}>{t('hostCoHost.inviteTitle')}</Text>
+                {error && <Text style={{color: colors.error}}>{error}</Text>}
 
                 {/* Email */}
                 <Text style={m.sectionLabel}>{t('hostCoHost.emailLabel')}</Text>
@@ -548,7 +516,14 @@ const HostCoHostScreen = () => {
                 </View>
 
                 {/* Permissions */}
+                <Text style={[m.sectionLabel, { marginTop: 20 }]}>Logements concernés</Text>
+                {ownedListings.map(listing => <TouchableOpacity key={listing.id} style={m.revenueRow} onPress={() => setSelectedListingIds(ids => ids.includes(listing.id) ? ids.filter(id => id !== listing.id) : [...ids, listing.id])} accessibilityRole="checkbox" accessibilityState={{checked: selectedListingIds.includes(listing.id)}}>
+                  <MaterialIcons name={selectedListingIds.includes(listing.id) ? 'check-box' : 'check-box-outline-blank'} size={22} color={colors.primary} />
+                  <Text style={{flex: 1}}>{listing.title || 'Brouillon'}</Text>
+                </TouchableOpacity>)}
+                {!ownedListings.length && <Text>Créez un logement avant d’inviter un co-hôte.</Text>}
                 <Text style={[m.sectionLabel, { marginTop: 20 }]}>{t('hostCoHost.permissionsLabel')}</Text>
+                <Text>Calendrier et réponses aux avis disponibles. Les autres accès ne sont pas encore pris en charge.</Text>
                 <View style={m.permsCard}>
                   {PERMISSION_CONFIG.map((pc, i) => (
                     <View key={pc.key}>
@@ -558,6 +533,7 @@ const HostCoHostScreen = () => {
                         label={pc.label}
                         sub={pc.sub}
                         icon={pc.icon}
+                        disabled={!['calendar', 'reviews'].includes(pc.key)}
                         onToggle={key =>
                           setInvitePerms(prev => ({ ...prev, [key]: !prev[key] }))
                         }
@@ -622,16 +598,13 @@ const HostCoHostScreen = () => {
                   </View>
                 </View>
 
-                <RevenueSimulator
-                  type={inviteRevenueType}
-                  value={inviteRevenueValue}
-                />
+                <Text>Ces conditions seront présentées au co-hôte pour accord. LocaMap ne réalise aucun versement automatique.</Text>
 
                 {/* CTA */}
                 <TouchableOpacity
                   style={[m.sendBtn, (!inviteEmail.trim() || inviting) && m.sendBtnDisabled]}
                   onPress={handleInvite}
-                  disabled={!inviteEmail.trim() || inviting}
+                  disabled={!inviteEmail.trim() || !selectedListingIds.length || inviting}
                   activeOpacity={0.85}
                 >
                   {inviting
@@ -669,6 +642,7 @@ const HostCoHostScreen = () => {
             onStartShouldSetResponder={() => true}
           >
             <View style={m.handle} />
+            {error && <Text style={{color: colors.error}}>{error}</Text>}
             <Text style={m.title}>
               {t('hostCoHost.editPermissionsTitle', { name: editTarget?.coHostName })}
             </Text>
@@ -681,6 +655,7 @@ const HostCoHostScreen = () => {
                     label={pc.label}
                     sub={pc.sub}
                     icon={pc.icon}
+                    disabled={!['calendar', 'reviews'].includes(pc.key)}
                     onToggle={key =>
                       setEditPerms(prev => ({ ...prev, [key]: !prev[key] }))
                     }
