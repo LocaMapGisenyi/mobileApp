@@ -38,6 +38,7 @@ coverage/
 supabase/.temp/
 credentials.json
 backups/
+.superpowers/
 
 # typescript
 *.tsbuildinfo

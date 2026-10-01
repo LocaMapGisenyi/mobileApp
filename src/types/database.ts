@@ -884,6 +884,7 @@ export type Database = {
       get_or_create_conversation: { Args: { p_other_user_id: string; p_property_id?: string | null }; Returns: DatabaseDefinition['public']['Tables']['conversations']['Row'] };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
       set_conversation_status: { Args: { p_conversation_id: string; p_status: string }; Returns: undefined };
+      report_conversation: { Args: { p_conversation_id: string; p_category: 'language' | 'harassment' | 'fraud' | 'spam'; p_description?: string | null }; Returns: undefined };
       quote_booking: { Args: {p_property_id: string; p_start_date: string; p_end_date: string; p_guest_count?: number}; Returns: Json };
       create_booking: { Args: { p_property_id: string; p_start_date: string; p_end_date: string; p_guest_count?: number; p_message?: string | null; p_expected_total?: number }; Returns: DatabaseDefinition['public']['Tables']['bookings']['Row'] };
       update_booking_status: { Args: { p_booking_id: string; p_status: string }; Returns: DatabaseDefinition['public']['Tables']['bookings']['Row'] };

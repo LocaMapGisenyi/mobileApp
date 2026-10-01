@@ -231,10 +231,14 @@ export const messageService = {
 
   reportMessage: async (
     conversationId: string,
-    _category: ReportCategory,
-    _description?: string,
+    category: ReportCategory,
+    description?: string,
   ): Promise<void> => {
-    const { error } = await supabase.rpc('set_conversation_status', { p_conversation_id: conversationId, p_status: 'REPORTED' });
+    const { error } = await supabase.rpc('report_conversation', {
+      p_conversation_id: conversationId,
+      p_category: category,
+      p_description: description ?? null,
+    });
     if (error) throw error;
   },
 

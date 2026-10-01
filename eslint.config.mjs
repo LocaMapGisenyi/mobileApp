@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   // MapLibre files are copied verbatim from node_modules by prepare-map-assets.cjs.
-  { ignores: ['node_modules/**', '.expo/**', 'dist/**', 'web-build/**', 'public/maplibre/**', 'supabase/functions/**', 'coverage/**'] },
+  { ignores: ['node_modules/**', '.expo/**', 'dist/**', 'admin/dist/**', 'web-build/**', 'public/maplibre/**', 'supabase/functions/**', 'coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

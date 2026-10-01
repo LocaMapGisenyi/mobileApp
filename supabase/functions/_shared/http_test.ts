@@ -23,6 +23,26 @@ Deno.test('malformed and oversized request bodies fail explicitly', async () => 
     assert(rejected, 'Invalid body accepted');
   }
 });
+Deno.test('authenticated routes distinguish suspension from quotas and unavailable storage', async () => {
+  const originalFetch = globalThis.fetch;
+  const values = { SUPABASE_URL: 'https://test.invalid', SUPABASE_ANON_KEY: 'test-anon', SUPABASE_SERVICE_ROLE_KEY: 'test-service' };
+  const previous = Object.fromEntries(Object.keys(values).map(key => [key, Deno.env.get(key)]));
+  try {
+    for (const [key, value] of Object.entries(values)) Deno.env.set(key, value);
+    for (const [code, status] of [['42501', 403], ['PT429', 429], ['XX000', 503]] as const) {
+      globalThis.fetch = async input => new Response(JSON.stringify(String(input).includes('/auth/v1/user')
+        ? { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated' }
+        : { code, message: 'private diagnostic detail' }), { status: String(input).includes('/auth/v1/user') ? 200 : 403, headers: { 'Content-Type': 'application/json' } });
+      const handler = endpoint(async req => { await authenticated(req); throw new Error('Protected handler was reached'); });
+      const response = await handler(new Request('https://test.invalid', { method: 'POST', headers: { Authorization: 'Bearer test-token' } }));
+      assert(response.status === status, `${code} returned ${response.status}, expected ${status}`);
+      assert(!(await response.text()).includes('private diagnostic'), 'Private error leaked');
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(previous)) { if (value === undefined) Deno.env.delete(key); else Deno.env.set(key, value); }
+  }
+});
 Deno.test('presigned R2 URL binds content length and MIME to a temporary key', async () => {
   Deno.env.set('R2_ACCOUNT_ID', 'a'.repeat(32));
   Deno.env.set('R2_ACCESS_KEY_ID', 'test-access-key');

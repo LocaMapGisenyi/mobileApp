@@ -70,6 +70,7 @@ export async function authenticated(req: Request) {
   const admin = adminClient();
   for (const [p_name,p_actor] of [['edge_user_minute',user.id],['edge_global_minute',null]] as const) {
     const { error: quota } = await admin.rpc('consume_limit',{ p_name,p_actor,p_units:1 });
+    if (quota?.code === '42501') throw new HttpError(403, 'Compte suspendu. Contactez le support LocaMap.');
     if (quota) throw new HttpError(quota.code === 'PT429' ? 429 : 503, quota.code === 'PT429' ? 'Limite atteinte. Réessayez plus tard.' : 'Service temporairement indisponible');
   }
   return { user, client, admin };

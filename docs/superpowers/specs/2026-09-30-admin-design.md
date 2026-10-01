@@ -1,6 +1,6 @@
 # Espace d’administration LocaMap
 
-Date : 30 septembre 2026. Statut : validé par l’exploitant (« okey vas y »), réalisation en cours.
+Date : 30 septembre 2026. Statut : validé par l’exploitant (« okey vas y »), réalisation livrée sur staging ; site local sur 8098.
 
 ## Objectif
 
