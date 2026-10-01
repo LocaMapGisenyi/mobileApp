@@ -1,5 +1,15 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Linking, Share, StatusBar, ActivityIndicator, useWindowDimensions } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
+  Share,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +21,7 @@ import PropertyMap from '../components/PropertyMap';
 import { useTranslation } from 'react-i18next';
 
 // Hooks et composants personnalisés
-import {recordViewedProperty} from '../services/history.service';
+import { recordViewedProperty } from '../services/history.service';
 import useListingById from '../hooks/useListingById';
 import ImageCarousel from '../components/ImageCarousel';
 import AmenityTag from '../components/AmenityTag';
@@ -35,12 +45,19 @@ const LogementDetailScreen = () => {
   const { propertyId } = route.params;
   const userId = useUserStore(state => state.user.id);
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
-  const { getAverageRating, getSortedReviews, fetchReviews, error: reviewError } = useReviewsStore();
+  const {
+    getAverageRating,
+    getSortedReviews,
+    fetchReviews,
+    error: reviewError,
+  } = useReviewsStore();
   const favoriteError = useFavoritesStore(state => state.error);
-  useEffect(() => { void fetchReviews(propertyId); void useFavoritesStore.getState().fetchFavorites(); }, [propertyId, fetchReviews]);
+  useEffect(() => {
+    void fetchReviews(propertyId);
+    void useFavoritesStore.getState().fetchFavorites();
+  }, [propertyId, fetchReviews]);
 
   // États locaux
-
 
   // États pour les avis
   const [reviewSortOrder, setReviewSortOrder] = useState<'recent' | 'highest' | 'lowest'>('recent');
@@ -48,7 +65,9 @@ const LogementDetailScreen = () => {
 
   // Récupération des données du logement
   const { listing, isLoading, error } = useListingById(propertyId);
-  useEffect(() => { if (listing?.id && userId) void recordViewedProperty(listing.id,userId).catch(() => {}); }, [listing?.id,userId]);
+  useEffect(() => {
+    if (listing?.id && userId) void recordViewedProperty(listing.id, userId).catch(() => {});
+  }, [listing?.id, userId]);
 
   // Gestion des favoris
   const handleFavoriteToggle = () => {
@@ -61,7 +80,8 @@ const LogementDetailScreen = () => {
     }
   };
 
-  const formatPrice = (price: number, originalCurrency: string) => `${price.toLocaleString()} ${originalCurrency}`;
+  const formatPrice = (price: number, originalCurrency: string) =>
+    `${price.toLocaleString()} ${originalCurrency}`;
 
   // Partager l'annonce
   const handleShare = async () => {
@@ -90,7 +110,8 @@ const LogementDetailScreen = () => {
       propertyTitle: listing.title,
       ownerId: listing.owner.id,
       ownerName: listing.owner.name,
-      ownerAvatar: listing.owner.avatar || 'https://a0.muscache.com/defaults/user_pic-50x50.png?v=3'
+      ownerAvatar:
+        listing.owner.avatar || 'https://a0.muscache.com/defaults/user_pic-50x50.png?v=3',
     });
   };
 
@@ -117,19 +138,10 @@ const LogementDetailScreen = () => {
   };
 
   // Filtrer les avis à afficher (limité ou tous)
-  const displayedReviews = showAllReviews
-    ? propertyReviews
-    : propertyReviews.slice(0, 3);
+  const displayedReviews = showAllReviews ? propertyReviews : propertyReviews.slice(0, 3);
 
   // Indicateur de chargement
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>{t('common.loading')}</Text>
-      </View>
-    );
-  }
+  if (isLoading) return <SkeletonScreen variant="detail" />;
 
   // Gestion des erreurs
   if (error || !listing) {
@@ -137,11 +149,7 @@ const LogementDetailScreen = () => {
       <View style={styles.errorContainer}>
         <MaterialIcons name="error-outline" size={64} color="#e57373" />
         <Text style={styles.errorText}>{error || t('common.unknownError')}</Text>
-        <Button
-          mode="contained"
-          onPress={() => navigation.goBack()}
-          style={{ marginTop: 20 }}
-        >
+        <Button mode="contained" onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
           {t('common.back')}
         </Button>
       </View>
@@ -149,10 +157,11 @@ const LogementDetailScreen = () => {
   }
 
   // Déterminer si le logement est adapté pour certains types de locataires
-  const isSuitableForStudents = (listing.amenities || []).some(a =>
-    a.toLowerCase().includes('bureau') ||
-    a.toLowerCase().includes('wifi') ||
-    a.toLowerCase().includes('étude')
+  const isSuitableForStudents = (listing.amenities || []).some(
+    a =>
+      a.toLowerCase().includes('bureau') ||
+      a.toLowerCase().includes('wifi') ||
+      a.toLowerCase().includes('étude'),
   );
 
   const isLongTermFriendly = (listing.size || 0) >= 40 && (listing.bedrooms || 0) >= 1;
@@ -165,15 +174,26 @@ const LogementDetailScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          accessibilityRole="button" accessibilityLabel="Retour"
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.ink} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('pro.propertyTitle')}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerActionButton}
-            accessibilityRole="button" accessibilityLabel="Partager ce logement"
+            accessibilityRole="button"
+            accessibilityLabel={t('property.contactOwner')}
+            onPress={handleContact}
+          >
+            <MaterialIcons name="chat-bubble-outline" size={21} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerActionButton}
+            accessibilityRole="button"
+            accessibilityLabel="Partager ce logement"
             onPress={handleShare}
           >
             <Ionicons name="share-outline" size={22} color={colors.ink} />
@@ -190,43 +210,41 @@ const LogementDetailScreen = () => {
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {(reviewError || favoriteError) && <Text accessibilityRole="alert">{reviewError || favoriteError}</Text>}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {(reviewError || favoriteError) && (
+          <Text accessibilityRole="alert">{reviewError || favoriteError}</Text>
+        )}
         {/* Carousel d'images */}
         <View style={styles.carouselContainer}>
           <ImageCarousel
             key={propertyId}
             images={listing.images.length > 0 ? listing.images : []}
-            height={Math.min(440, width * 0.72)}
+            height={Math.min(480, (width - 32) * 0.82)}
           />
 
           {/* Badge disponibilité */}
-          <Animated.View
-            style={styles.availabilityBadgeContainer}
-          >
-            <Surface style={[
-              styles.availabilityBadge,
-              {
-                backgroundColor: listing.available
-                  ? colors.primaryLight
-                  : '#ffeded',
-                borderColor: listing.available
-                  ? colors.primary
-                  : '#f27272'
-              }
-            ]}>
+          <Animated.View style={styles.availabilityBadgeContainer}>
+            <Surface
+              elevation={0}
+              style={[
+                styles.availabilityBadge,
+                {
+                  backgroundColor: listing.available ? colors.primaryLight : '#ffeded',
+                  borderColor: listing.available ? colors.primary : '#f27272',
+                },
+              ]}
+            >
               <MaterialIcons
-                name={listing.available ? "check-circle" : "cancel"}
+                name={listing.available ? 'check-circle' : 'cancel'}
                 size={18}
                 color={listing.available ? colors.primary : '#f27272'}
               />
-              <Text style={[
-                styles.availabilityText,
-                { color: listing.available ? colors.primaryDark : '#d42e2e' }
-              ]}>
+              <Text
+                style={[
+                  styles.availabilityText,
+                  { color: listing.available ? colors.primaryDark : '#d42e2e' },
+                ]}
+              >
                 {listing.available ? t('property.available') : t('property.unavailable')}
               </Text>
             </Surface>
@@ -234,9 +252,7 @@ const LogementDetailScreen = () => {
         </View>
 
         {/* Informations principales */}
-        <Animated.View
-          style={styles.mainInfoContainer}
-        >
+        <Animated.View style={styles.mainInfoContainer}>
           <Text style={styles.title}>{listing.title}</Text>
 
           <View style={styles.locationRow}>
@@ -256,21 +272,20 @@ const LogementDetailScreen = () => {
             </View>
 
             <View style={[styles.typeChip, styles.contractChip]}>
-              <MaterialIcons name="date-range" size={12} color={colors.inkMid} style={{ marginRight: 4 }} />
-              <Text style={styles.typeChipText}>
-                Location mensuelle
-              </Text>
+              <MaterialIcons
+                name="date-range"
+                size={12}
+                color={colors.inkMid}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.typeChipText}>{t('pro.monthlyRental')}</Text>
             </View>
           </View>
 
           {/* Affichage du prix */}
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              {formatPrice(listing.price, listing.currency)}
-            </Text>
-            <Text style={styles.priceUnit}>
-              /mois
-            </Text>
+            <Text style={styles.price}>{formatPrice(listing.price, listing.currency)}</Text>
+            <Text style={styles.priceUnit}>{t('property.perMonth')}</Text>
           </View>
 
           {/* Badges pour les types de séjour adaptés */}
@@ -294,53 +309,53 @@ const LogementDetailScreen = () => {
             <View style={styles.infoItem}>
               <MaterialIcons name="king-bed" size={22} color={colors.primary} />
               <Text style={styles.infoText}>
-                {listing.bedrooms || 0} {(listing.bedrooms || 0) > 1 ? t('property.bedroomsPlural') : t('property.bedroomsSingular')}
+                {listing.bedrooms || 0}{' '}
+                {(listing.bedrooms || 0) > 1
+                  ? t('property.bedroomsPlural')
+                  : t('property.bedroomsSingular')}
               </Text>
             </View>
 
             <View style={styles.infoItem}>
               <MaterialIcons name="bathtub" size={22} color={colors.primary} />
               <Text style={styles.infoText}>
-                {listing.bathrooms || 0} {(listing.bathrooms || 0) > 1 ? t('property.bathroomsPlural') : t('property.bathroomsSingular')}
+                {listing.bathrooms || 0}{' '}
+                {(listing.bathrooms || 0) > 1
+                  ? t('property.bathroomsPlural')
+                  : t('property.bathroomsSingular')}
               </Text>
             </View>
 
-            {!!listing.size && <View style={styles.infoItem}>
-              <MaterialIcons name="straighten" size={22} color={colors.primary} />
-              <Text style={styles.infoText}>{listing.size} m²</Text>
-            </View>}
+            {!!listing.size && (
+              <View style={styles.infoItem}>
+                <MaterialIcons name="straighten" size={22} color={colors.primary} />
+                <Text style={styles.infoText}>{listing.size} m²</Text>
+              </View>
+            )}
           </View>
         </Animated.View>
 
         {/* Description */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.description')}
-            icon="info-outline"
-          />
+          <SectionTitle title={t('property.description')} icon="info-outline" />
 
           <Text style={styles.description}>{listing.description}</Text>
         </Animated.View>
 
         {/* Conditions de location */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.contract.title')}
-            icon="description"
-          />
+          <SectionTitle title={t('property.contract.title')} icon="description" />
 
           <View style={styles.contractDetailsContainer}>
             <View style={styles.contractDetailItem}>
               <MaterialIcons name="timer" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.minDuration')}</Text>
-                <Text style={styles.contractDetailText}>{listing.minDurationMonths ?? 1} mois</Text>
+                <Text style={styles.contractDetailText}>
+                  {t('pro.months', { count: listing.minDurationMonths ?? 1 })}
+                </Text>
               </View>
             </View>
 
@@ -348,7 +363,9 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="account-balance-wallet" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.deposit')}</Text>
-                <Text style={styles.contractDetailText}>{formatPrice(listing.deposit ?? 0, listing.currency)}</Text>
+                <Text style={styles.contractDetailText}>
+                  {formatPrice(listing.deposit ?? 0, listing.currency)}
+                </Text>
               </View>
             </View>
 
@@ -356,7 +373,9 @@ const LogementDetailScreen = () => {
               <MaterialIcons name="event-available" size={20} color={colors.primary} />
               <View>
                 <Text style={styles.contractDetailTitle}>{t('property.contract.notice')}</Text>
-                <Text style={styles.contractDetailText}>{listing.noticePeriodDays ?? 30} jours</Text>
+                <Text style={styles.contractDetailText}>
+                  {t('pro.days', { count: listing.noticePeriodDays ?? 30 })}
+                </Text>
               </View>
             </View>
 
@@ -370,14 +389,9 @@ const LogementDetailScreen = () => {
         </Animated.View>
 
         {/* Commodités */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.amenities')}
-            icon="hotel-class"
-          />
+          <SectionTitle title={t('property.amenities')} icon="hotel-class" />
 
           <View style={styles.amenitiesContainer}>
             {(listing.amenities || []).map((amenity, index) => (
@@ -388,14 +402,9 @@ const LogementDetailScreen = () => {
 
         {/* Localisation sur la carte */}
         {listing.location?.coordinates && (
-          <Animated.View
-            style={styles.section}
-          >
+          <Animated.View style={styles.section}>
             <View style={styles.sectionSeparator} />
-            <SectionTitle
-              title={t('property.location')}
-              icon="place"
-            />
+            <SectionTitle title={t('property.location')} icon="place" />
 
             <View style={styles.mapContainer}>
               <View style={styles.mapWrapper}>
@@ -408,19 +417,18 @@ const LogementDetailScreen = () => {
                     longitudeDelta: 0.01,
                   }}
                   interactive={false}
-                  markers={[{
-                    id: listing.id,
-                    latitude: listing.location.coordinates.latitude,
-                    longitude: listing.location.coordinates.longitude,
-                    title: listing.title,
-                  }]}
+                  markers={[
+                    {
+                      id: listing.id,
+                      latitude: listing.location.coordinates.latitude,
+                      longitude: listing.location.coordinates.longitude,
+                      title: listing.title,
+                    },
+                  ]}
                 />
               </View>
 
-              <TouchableOpacity
-                style={styles.viewOnMapButton}
-                onPress={handleViewOnMap}
-              >
+              <TouchableOpacity style={styles.viewOnMapButton} onPress={handleViewOnMap}>
                 <Text style={styles.viewOnMapText}>{t('property.viewOnMap')}</Text>
                 <MaterialIcons name="arrow-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
@@ -429,19 +437,18 @@ const LogementDetailScreen = () => {
         )}
 
         {/* Informations pratiques */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.practicalInfo')}
-            icon="info"
-          />
+          <SectionTitle title={t('property.practicalInfo')} icon="info" />
 
           <View style={styles.infoSection}>
             <View style={styles.infoItem}>
               <MaterialIcons name="calendar-today" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>{t('property.availableSince', { date: new Date(listing.createdAt).toLocaleDateString() })}</Text>
+              <Text style={styles.infoText}>
+                {t('property.availableSince', {
+                  date: new Date(listing.createdAt).toLocaleDateString(),
+                })}
+              </Text>
             </View>
 
             <View style={styles.infoItem}>
@@ -451,20 +458,17 @@ const LogementDetailScreen = () => {
 
             <View style={styles.infoItem}>
               <MaterialIcons name="people" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>{t('property.occupancy', { max: listing.maxGuests ?? 1 })}</Text>
+              <Text style={styles.infoText}>
+                {t('property.occupancy', { max: listing.maxGuests ?? 1 })}
+              </Text>
             </View>
           </View>
         </Animated.View>
 
         {/* Coordonnées du propriétaire */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('property.host')}
-            icon="person"
-          />
+          <SectionTitle title={t('property.host')} icon="person" />
 
           <View style={styles.ownerCard}>
             <View style={styles.ownerInfo}>
@@ -473,26 +477,28 @@ const LogementDetailScreen = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.ownerName}>{listing.owner?.name}</Text>
-                <Text style={styles.ownerContact}>
-                  {listing.owner?.phone}
-                </Text>
+                {listing.owner?.phone && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={t('property.call')}
+                    onPress={() => Linking.openURL('tel:' + listing.owner?.phone)}
+                    style={{ minHeight: 44, justifyContent: 'center' }}
+                  >
+                    <Text style={styles.ownerContact}>{listing.owner.phone}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <TouchableOpacity style={styles.contactOwnerButton} onPress={handleContact}>
-                <Text style={styles.contactOwnerButtonText}>Contacter</Text>
+                <Text style={styles.contactOwnerButtonText}>{t('property.contactOwner')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
 
         {/* Section des avis */}
-        <Animated.View
-          style={styles.section}
-        >
+        <Animated.View style={styles.section}>
           <View style={styles.sectionSeparator} />
-          <SectionTitle
-            title={t('reviews.title')}
-            icon="star"
-          />
+          <SectionTitle title={t('reviews.title')} icon="star" />
 
           {propertyReviews.length > 0 ? (
             <View style={styles.reviewsContainer}>
@@ -500,15 +506,8 @@ const LogementDetailScreen = () => {
               <View style={styles.reviewsHeader}>
                 <View style={styles.ratingOverview}>
                   <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
-                  <RatingStars
-                    rating={averageRating}
-                    size={18}
-                    disabled={true}
-                    color="#FFB100"
-                  />
-                  <Text style={styles.reviewCount}>
-                    ({propertyReviews.length} avis)
-                  </Text>
+                  <RatingStars rating={averageRating} size={18} disabled={true} color="#FFB100" />
+                  <Text style={styles.reviewCount}>({propertyReviews.length} avis)</Text>
                 </View>
 
                 {/* Sélecteur de tri */}
@@ -519,16 +518,22 @@ const LogementDetailScreen = () => {
                       style={styles.sortButton}
                       onPress={() => {
                         // Cycle entre les options de tri
-                        const orders: ('recent' | 'highest' | 'lowest')[] = ['recent', 'highest', 'lowest'];
+                        const orders: ('recent' | 'highest' | 'lowest')[] = [
+                          'recent',
+                          'highest',
+                          'lowest',
+                        ];
                         const currentIndex = orders.indexOf(reviewSortOrder);
                         const nextIndex = (currentIndex + 1) % orders.length;
                         setReviewSortOrder(orders[nextIndex]);
                       }}
                     >
                       <Text style={styles.sortButtonText}>
-                        {reviewSortOrder === 'recent' ? t('reviews.sortRecent') :
-                         reviewSortOrder === 'highest' ? t('reviews.sortHighest') :
-                         t('reviews.sortLowest')}
+                        {reviewSortOrder === 'recent'
+                          ? t('reviews.sortRecent')
+                          : reviewSortOrder === 'highest'
+                            ? t('reviews.sortHighest')
+                            : t('reviews.sortLowest')}
                       </Text>
                       <Ionicons name="chevron-down" size={14} color={colors.primary} />
                     </TouchableOpacity>
@@ -573,9 +578,7 @@ const LogementDetailScreen = () => {
             </View>
           ) : (
             <View style={styles.noReviewsContainer}>
-              <Text style={styles.noReviewsText}>
-                {t('reviews.noReviews')}
-              </Text>
+              <Text style={styles.noReviewsText}>{t('reviews.noReviews')}</Text>
               <Button
                 mode="contained"
                 icon="star-outline"
@@ -588,37 +591,32 @@ const LogementDetailScreen = () => {
             </View>
           )}
         </Animated.View>
-
-
       </ScrollView>
 
-      {/* Boutons de contact */}
       <View style={styles.footerContainer}>
-        {listing.available && listing.owner?.id !== userId && (
-          <Button mode="contained" buttonColor={colors.accent} textColor={colors.onAccent} contentStyle={{ minHeight: 52 }} style={{ marginBottom: 8, borderRadius: borderRadius.button }} onPress={() => navigation.navigate('BookingRequest', { propertyId: listing.id })}>{t('property.requestBooking')}</Button>
-        )}
-        <View style={styles.contactContainer}>
+        <View style={styles.bookingBar}>
+          <View style={styles.bookingPrice}>
+            <Text style={styles.bookingAmount}>{formatPrice(listing.price, listing.currency)}</Text>
+            <Text style={styles.bookingPeriod}>{t('property.perMonth')}</Text>
+          </View>
           <TouchableOpacity
-            style={styles.contactButton}
+            style={styles.bookingAction}
             accessibilityRole="button"
-            onPress={handleContact}
-            activeOpacity={0.85}
+            activeOpacity={0.82}
+            onPress={
+              listing.available && listing.owner?.id !== userId
+                ? () => navigation.navigate('BookingRequest', { propertyId: listing.id })
+                : handleContact
+            }
           >
-            <MaterialIcons name="message" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={styles.contactButtonText}>{t('property.contactOwner')}</Text>
+            <Text style={styles.bookingActionText}>
+              {t(
+                listing.available && listing.owner?.id !== userId
+                  ? 'property.requestBooking'
+                  : 'property.contactOwner',
+              )}
+            </Text>
           </TouchableOpacity>
-
-          {listing.owner?.phone && (
-            <TouchableOpacity
-              style={styles.callButton}
-              accessibilityRole="button"
-              onPress={() => Linking.openURL(`tel:${listing.owner?.phone}`)}
-              activeOpacity={0.85}
-            >
-              <MaterialIcons name="phone" size={18} color={colors.inkMid} style={{ marginRight: 8 }} />
-              <Text style={styles.callButtonText}>{t('property.call')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     </SafeAreaView>
@@ -626,12 +624,40 @@ const LogementDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  headerTitle: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '600', color: colors.ink },
+  bookingBar: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  bookingPrice: { flex: 1, gap: 2 },
+  bookingAmount: { fontSize: 18, lineHeight: 24, fontWeight: '700', color: colors.ink },
+  bookingPeriod: { fontSize: 12, color: colors.inkSubtle },
+  bookingAction: {
+    flex: 1.15,
+    backgroundColor: colors.accent,
+    borderRadius: 10,
+    minHeight: 52,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingActionText: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '700',
+    color: colors.onAccent,
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   header: {
-    width: '100%', maxWidth: 960, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   backButton: {
     width: 44,
@@ -655,9 +681,15 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     position: 'relative',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   scrollContent: {
-    width: '100%', maxWidth: 960, alignSelf: 'center', paddingBottom: 24,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -685,30 +717,32 @@ const styles = StyleSheet.create({
   },
   availabilityBadgeContainer: {
     alignSelf: 'flex-start',
-    marginHorizontal: 20,
+    marginHorizontal: 8,
     marginTop: 12,
   },
   availabilityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 6,
   },
   availabilityText: {
     marginLeft: 6,
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontWeight: '600',
+    fontSize: 12,
   },
   mainInfoContainer: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
   title: {
-    fontSize: typography.fontSize['2xl'],
+    fontSize: 26,
+    lineHeight: 34,
     fontWeight: '700',
     color: colors.ink,
-    marginBottom: spacing[2],
+    marginBottom: 8,
   },
   locationRow: {
     flexDirection: 'row',
@@ -752,12 +786,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   priceContainer: {
-    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', paddingVertical: 14, marginBottom: 16, gap: 4, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    paddingVertical: 14,
+    marginBottom: 16,
+    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   price: {
-    fontSize: typography.fontSize.xl,
+    fontSize: 26,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.ink,
   },
   priceUnit: {
     fontSize: typography.fontSize.sm,
@@ -810,8 +851,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   section: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
+    paddingHorizontal: 24,
+    paddingTop: 20,
     backgroundColor: colors.surface,
   },
   description: {
@@ -893,16 +934,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   ownerCard: {
-    padding: spacing[4],
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.card,
-    marginBottom: spacing[4],
+    paddingVertical: 16,
+    marginBottom: 16,
   },
   ownerInfo: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    gap: 12,
   },
   ownerIconContainer: {
     width: 48,
@@ -924,18 +963,28 @@ const styles = StyleSheet.create({
     color: colors.inkSubtle,
   },
   contactOwnerButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 44,
+    maxWidth: '100%',
   },
   contactOwnerButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.sm,
+    color: colors.primaryDark,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
   },
   footerContainer: {
-    width: '100%', maxWidth: 960, alignSelf: 'center', backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 20, borderTopWidth: 1, borderTopColor: colors.border,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   contactContainer: {
     flexDirection: 'row',

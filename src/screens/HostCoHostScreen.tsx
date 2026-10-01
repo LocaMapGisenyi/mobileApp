@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -10,15 +11,14 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types';
 import { colors } from '../theme';
+import { HostPage, HostHeader } from '../components/host/HostUI';
 import {
   cohostService,
   CoHost,
@@ -91,11 +91,11 @@ const PermissionToggle = ({
 );
 const pt = StyleSheet.create({
   row:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
-  iconWrap:      { width: 36, height: 36, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  iconWrap:      { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   iconWrapActive:{ backgroundColor: colors.primaryLight },
   label:         { fontSize: 14, fontWeight: '600', color: colors.ink },
   labelDisabled: { color: colors.inkDisabled },
-  sub:           { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
+  sub:           { fontSize: 13, color: colors.inkSubtle, marginTop: 1 },
   toggle:        { width: 42, height: 22, borderRadius: 11, backgroundColor: colors.border, justifyContent: 'center', paddingHorizontal: 2 },
   toggleOn:      { backgroundColor: colors.primary },
   toggleDisabled:{ opacity: 0.4 },
@@ -108,7 +108,6 @@ type Tab = 'cohosts' | 'marketplace';
 
 const HostCoHostScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
   // Build translated config arrays inside the component
@@ -242,11 +241,11 @@ const HostCoHostScreen = () => {
   };
 
   // ─── Render co-host card ───────────────────────────────────────────────────
-  const renderCoHostCard = (item: CoHost, i: number) => {
+  const renderCoHostCard = (item: CoHost) => {
     const sc = STATUS_CONFIG[item.status];
     const activePermsCount = Object.values(item.permissions).filter(Boolean).length;
     return (
-      <Animated.View key={item.id} entering={FadeInDown.delay(i * 50).duration(300)}>
+      <View key={item.id}>
         <View style={s.card}>
           <View style={s.cardHeader}>
             <Avatar name={item.coHostName} size={46} />
@@ -318,13 +317,13 @@ const HostCoHostScreen = () => {
             </View>
           )}
         </View>
-      </Animated.View>
+      </View>
     );
   };
 
   // ─── Render candidate card ─────────────────────────────────────────────────
-  const renderCandidateCard = (item: CoHostCandidate, i: number) => (
-    <Animated.View key={item.id} entering={FadeInDown.delay(i * 50).duration(300)}>
+  const renderCandidateCard = (item: CoHostCandidate) => (
+    <View key={item.id}>
       <View style={s.card}>
         <View style={s.cardHeader}>
           <Avatar name={item.name} size={46} />
@@ -372,27 +371,25 @@ const HostCoHostScreen = () => {
           <Text style={s.inviteFromMarketTxt}>{t('hostCoHost.inviteFromDirectory')}</Text>
         </TouchableOpacity>
       </View>
-    </Animated.View>
+    </View>
   );
 
   // ─── Main render ───────────────────────────────────────────────────────────
   return (
-    <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+    <HostPage scroll={false}><View style={s.root}>
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(320)} style={s.header}>
-        <View>
-          <Text style={s.title}>{t('hostCoHost.title')}</Text>
-          <Text style={s.subtitle}>{t('hostCoHost.subtitle')}</Text>
-        </View>
-        <TouchableOpacity
-          style={s.inviteBtn}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+        <HostHeader title={t('hostCoHost.title')} subtitle={t('hostCoHost.subtitle')} onBack={() => navigation.goBack()} />
+<TouchableOpacity
+          accessibilityRole="button"
+          style={[s.inviteBtn, { alignSelf: 'flex-start', marginBottom: 16, minHeight: 48 }]}
           onPress={() => setInviteVisible(true)}
           activeOpacity={0.85}
         >
           <MaterialIcons name="person-add" size={16} color={colors.white} />
           <Text style={s.inviteBtnTxt}>{t('hostCoHost.invite')}</Text>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
 
       {/* Tabs */}
       <View style={s.tabs}>
@@ -421,9 +418,7 @@ const HostCoHostScreen = () => {
 
       {/* Content */}
       {loading ? (
-        <View style={s.centered}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <ContentSkeleton style={{ paddingHorizontal: 20 }} />
       ) : error ? (
         <View style={s.centered}>
           <MaterialIcons name="cloud-off" size={36} color={colors.inkDisabled} />
@@ -470,7 +465,7 @@ const HostCoHostScreen = () => {
               candidates.map(renderCandidateCard)
             )
           )}
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
@@ -490,13 +485,12 @@ const HostCoHostScreen = () => {
             activeOpacity={1}
             onPress={() => setInviteVisible(false)}
           >
-            <Animated.View
-              entering={FadeInDown.duration(260)}
+            <View
               style={m.sheet}
               onStartShouldSetResponder={() => true}
             >
               <View style={m.handle} />
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={m.title}>{t('hostCoHost.inviteTitle')}</Text>
                 {error && <Text style={{color: colors.error}}>{error}</Text>}
 
@@ -509,7 +503,7 @@ const HostCoHostScreen = () => {
                     value={inviteEmail}
                     onChangeText={setInviteEmail}
                     placeholder="exemple@gmail.com"
-                    placeholderTextColor={colors.inkDisabled}
+                    placeholderTextColor={colors.inkSubtle}
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
@@ -619,7 +613,7 @@ const HostCoHostScreen = () => {
                 </TouchableOpacity>
                 <View style={{ height: 32 }} />
               </ScrollView>
-            </Animated.View>
+            </View>
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
@@ -636,8 +630,7 @@ const HostCoHostScreen = () => {
           activeOpacity={1}
           onPress={() => setEditTarget(null)}
         >
-          <Animated.View
-            entering={FadeInDown.duration(260)}
+          <View
             style={m.sheet}
             onStartShouldSetResponder={() => true}
           >
@@ -676,7 +669,7 @@ const HostCoHostScreen = () => {
               }
             </TouchableOpacity>
             <View style={{ height: 32 }} />
-          </Animated.View>
+          </View>
         </TouchableOpacity>
       </Modal>
 
@@ -688,7 +681,7 @@ const HostCoHostScreen = () => {
         onRequestClose={() => setTerminateTarget(null)}
       >
         <View style={tc.overlay}>
-          <Animated.View entering={FadeInDown.duration(220)} style={tc.card}>
+          <View style={tc.card}>
             <MaterialIcons name="link-off" size={32} color={colors.error} style={{ marginBottom: 12 }} />
             <Text style={tc.title}>{t('hostCoHost.terminateTitle')}</Text>
             <Text style={tc.body}>
@@ -714,16 +707,16 @@ const HostCoHostScreen = () => {
                 }
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
         </View>
       </Modal>
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: colors.background },
+  root:     { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   errorTxt: { fontSize: 14, color: colors.inkSubtle, textAlign: 'center' },
   retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary },
@@ -735,8 +728,8 @@ const s = StyleSheet.create({
   inviteBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   inviteBtnTxt: { fontSize: 13, fontWeight: '700', color: colors.white },
 
-  tabs:         { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 12, gap: 6 },
-  tab:          { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  tabs:         { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, marginBottom: 12, gap: 6 },
+  tab:          { flexGrow: 1, flexBasis: 85, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   tabActive:    { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   tabTxt:       { fontSize: 13, fontWeight: '600', color: colors.inkSubtle },
   tabTxtActive: { color: colors.primary },
@@ -761,7 +754,7 @@ const s = StyleSheet.create({
   statusTxt:   { fontSize: 11, fontWeight: '700' },
   cardMeta:    { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 12, flexWrap: 'wrap' },
   metaChip:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceSunken, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  metaTxt:     { fontSize: 11, color: colors.inkSubtle, fontWeight: '500' },
+  metaTxt:     { fontSize: 13, color: colors.inkSubtle, fontWeight: '500' },
   cardActions: { flexDirection: 'row', gap: 8, padding: 14, borderTopWidth: 1, borderTopColor: colors.border, flexWrap: 'wrap' },
   outlineBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border },
   outlineBtnDanger: { borderColor: colors.error + '66' },
@@ -779,7 +772,7 @@ const s = StyleSheet.create({
   inviteFromMarketBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, margin: 14, marginTop: 4, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 12 },
   inviteFromMarketTxt: { fontSize: 13, fontWeight: '700', color: colors.white },
 
-  emptyCard:     { alignItems: 'center', padding: 40, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 10, marginTop: 8 },
+  emptyCard:     { alignItems: 'center', padding: 24, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 10, marginTop: 8 },
   emptyTitle:    { fontSize: 16, fontWeight: '700', color: colors.ink },
   emptySubtitle: { fontSize: 13, color: colors.inkSubtle, textAlign: 'center', lineHeight: 19, maxWidth: 260 },
   emptyInviteBtn:{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 20, marginTop: 4 },
@@ -788,10 +781,10 @@ const s = StyleSheet.create({
 // Modal styles
 const m = StyleSheet.create({
   overlay:    { flex: 1, backgroundColor: 'rgba(15,31,31,0.45)', justifyContent: 'flex-end' },
-  sheet:      { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '90%' },
+  sheet:      { backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '90%', width: '100%', maxWidth: 760, alignSelf: 'center' },
   handle:     { width: 36, height: 3, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 16 },
   title:      { fontSize: 18, fontWeight: '700', color: colors.ink, marginBottom: 20 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 8 },
   inputWrap:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 4 },
   input:      { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
   permsCard:  { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
@@ -801,7 +794,7 @@ const m = StyleSheet.create({
   radio:      { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
   revenueLabel: { fontSize: 14, fontWeight: '600', color: colors.ink },
-  revenueSub:   { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
+  revenueSub:   { fontSize: 13, color: colors.inkSubtle, marginTop: 1 },
   valueRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
   valueLabel: { fontSize: 13, fontWeight: '600', color: colors.inkMid },
   stepper:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, overflow: 'hidden' },

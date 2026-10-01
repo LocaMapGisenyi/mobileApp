@@ -9,9 +9,11 @@ Node.js 24 et npm sont utilisés par la CI.
 1. Installer avec `npm ci` (le script `postinstall` prépare les fichiers MapLibre nécessaires au web).
 2. Copier `.env.example` en `.env`, puis renseigner uniquement les clés publiques du projet Supabase.
 3. Appliquer le [guide backend](docs/BACKEND-DEPLOYMENT.md) sur un projet de staging avant de lancer les parcours métier. Il couvre les migrations 001–005, sept fonctions Edge, R2 public/privé et le nettoyage périodique. L’[audit des 20 protections](docs/PRODUCTION-READINESS.md) détaille les protections appliquées et les validations encore nécessaires avant production.
-4. Lancer `npm start` ou `npm run web`. Sur ce poste, Apache utilise 8081 : lancer `npx expo start --go --lan --port 8097 --max-workers 2`. Le [guide iPhone Expo Go](docs/NATIVE-RELEASE.md) décrit la variante staging et le retour Auth.
+4. Lancer `npm start` ou `npm run web`. Les commandes npm `start`, `android`, `ios` et `web` utilisent le port **8097**, car Apache utilise 8081 sur ce poste. Pour Expo Go : `npm start -- --go --lan --max-workers 2`. Le web est accessible sur `http://localhost:8097`. Le [guide iPhone Expo Go](docs/NATIVE-RELEASE.md) décrit la variante staging et le retour Auth.
 
 Il n'existe plus de connexion simulée ni de compte de démonstration universel. Créer des comptes de test dans le projet de staging. L'hôte et ses annonces doivent être modérés côté serveur avant publication.
+
+Les emails d’authentification du staging utilisent désormais Resend via le SMTP personnalisé de Supabase. Voir [la configuration et la recette Resend](docs/EMAILS-RESEND.md) pour l’expéditeur temporaire, les quotas et le changement de domaine. La clé d’envoi reste uniquement dans Supabase.
 
 ## Contrôles
 

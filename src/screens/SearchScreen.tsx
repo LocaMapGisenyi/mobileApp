@@ -1,5 +1,6 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, FlatList, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Searchbar, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -144,7 +145,7 @@ const SearchScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           {(error || favoriteError) && <Text accessibilityRole="alert" onPress={() => { void fetchListings(); }}>{error || favoriteError} — {t('common.retry')}</Text>}
-          {isLoading && listings.length === 0 && <ActivityIndicator style={{ marginVertical: 24 }} color={colors.primary} accessibilityLabel="Recherche des logements" />}
+          {isLoading && listings.length === 0 && <ContentSkeleton variant="cards" count={2} />}
           {!isLoading && !error && listings.length === 0 && <Text>{t('explore.noResults')}</Text>}
           {listings.map((property, index) => (
             <Animated.View

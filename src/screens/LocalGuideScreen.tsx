@@ -1,5 +1,6 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, ScrollView, TextInput as RNTextInput, TouchableOpacity, StatusBar, RefreshControl, Platform, Dimensions, SectionList, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, TextInput as RNTextInput, TouchableOpacity, StatusBar, RefreshControl, Platform, Dimensions, SectionList } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, Searchbar, Divider, useTheme, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -198,14 +199,7 @@ const LocalGuideScreen = () => {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <ActivityIndicator animating={true} size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, {color: colors.onSurfaceVariant}]}>{t('common.loading')}</Text>
-      </View>
-    );
-  }
+  if (isLoading) return <SkeletonScreen variant="list" />;
   
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>

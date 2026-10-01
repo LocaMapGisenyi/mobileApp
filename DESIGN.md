@@ -6,6 +6,8 @@ Un locataire consulte LocaMap sur son téléphone, parfois dehors à Gisenyi, et
 
 Palette demandée par l’exploitant : **#F58F20, #467434, #363636**.
 
+Logo : utiliser le fichier d’origine `assets/icon.png`, également configuré comme icône de l’application, via `AppLogo`. Garder ses proportions et ses couleurs. Ne pas le remplacer par une icône de maison ni recréer un logotype avec du texte coloré.
+
 ## Couleurs et rôles
 
 - `colors.accent` — `#F58F20` : action principale (rechercher, ouvrir la carte, se connecter, demander une réservation, publier).
@@ -28,18 +30,35 @@ Rayons : champs 10 px, boutons 12 px, cartes 16 px. Les catégories et boutons c
 
 ## Disposition
 
-- Accueil : marque et lieu, titre de recherche, champ avec bouton d’envoi, filtres, catégories horizontales, logements. Une liste virtualisée, 1/2/3 colonnes suivant la largeur, contenu plafonné à 1120 px. Le bouton Carte reste dans la barre des résultats, sans recouvrir les annonces.
-- Logements : photo, quartier et note, titre, caractéristiques, prix. Favori indépendant de la zone qui ouvre la fiche.
-- Navigation : quatre destinations, icône active sur fond orange clair, texte vert. Barre dans le flux de navigation, largeur maximale 720 px, respect de la zone sûre.
-- Fiche : photo proportionnelle, contenu plafonné à 960 px, prix et conditions lisibles, demande de réservation orange dans un pied fixe, contacts secondaires.
-- Profil : identité, accès hôte, groupes d’actions et préférences, déconnexion discrète en bas. Largeur maximale 760 px.
-- Connexion et inscription : formulaires centrés de 460–520 px au maximum, sans animation décorative répétée. Les champs restent accessibles au clavier.
+- Accueil : logo d’origine et lieu, titre de recherche, champ avec bouton d’envoi orange, filtres, catégories en onglets avec icône et soulignement de sélection. Une liste virtualisée, 1/2/3 colonnes suivant la largeur, contenu plafonné à 1120 px. Le bouton Carte reste secondaire dans la barre des résultats.
+- Logements et favoris : même composant `ListingCard`, photo au ratio 1,4 et coins de 12 px, contenu sans cadre extérieur, type et quartier discrets, titre sur deux lignes, prix sombre. Favori indépendant de la zone qui ouvre la fiche.
+- Navigation voyageur : quatre destinations, icône active sur fond vert clair, texte vert. Barre blanche bordée en haut, sans panneau flottant, largeur maximale 720 px, respect de la zone sûre.
+- Fiche : photo complète contenue dans son cadre, contenu plafonné à 960 px, sections alignées, prix et demande de réservation dans une barre compacte. Messagerie accessible dans l’en-tête ; coordonnées dans la section hôte.
+- Profil : titre, identité, deux raccourcis pour les séjours et favoris, invitation hôte discrète, puis actions et préférences en lignes séparées. Largeur maximale 760 px.
+- Confirmation de déconnexion : logo d’origine, dialogue blanc de 400 px au maximum, rayon de 20 px, action orange et bouton Annuler distinct. Une erreur reste dans le dialogue et l’envoi ne peut pas être répété.
+- Connexion, inscription et récupération : composant commun `AuthLayout`. Sur ordinateur, photo de Gisenyi à gauche et formulaire de 416 px à droite. Sur téléphone, logo et lieu en tête, photo courte uniquement à la connexion, formulaire défilable. Champs de 54 px, rayons de 10 px, actions principales orange. Aucun carrousel ou animation décorative.
+- Messagerie : en-tête aligné sur le profil, conversations en lignes ; initiales en remplacement d’une photo absente ou défectueuse.
+- Parcours hôte : photo locale à l’accueil, titres alignés à gauche, progression compacte indiquant le libellé et le numéro de l’étape, formulaire tenant compte du clavier.
 - Préférences initiales : options lisibles en lignes de 60 px, largeur réactive, contenu défilable sur les petits écrans et navigation respectant les zones sûres.
-- Création et réservation : les étapes restent inchangées ; leurs actions principales partagent la palette orange/gris.
+- Création et réservation : les actions principales partagent la palette orange/gris. Le parcours de création hôte suit les conventions ci-dessous.
+
+## Espace hôte — octobre 2026
+
+- Cinq vrais onglets React Navigation : Aujourd’hui, Calendrier, Annonces, Messages, Menu. Barre dans la mise en page, jamais en superposition. Conversation et formulaires sont des routes de la pile principale sans barre d’onglets. Libellés de 13 px, adaptés à 12 px sous 360 px, pouvant revenir à la ligne avec les réglages d’accessibilité.
+- Composants communs `src/components/host/HostUI.tsx` : cadre et zones sûres, en-tête, boutons, lignes d’action, statut, erreur et état vide. Fond blanc, contenu plafonné à 1000 px, marges mobiles de 20 px, corps 16 px et métadonnées 14 px.
+- Aujourd’hui : demandes à traiter, arrivées/départs ouvrant les réservations hôte, puis valeur des séjours explicitement séparée de tout encaissement. Les décisions ont une fiche dédiée avec confirmation, état occupé unique et erreur visible.
+- Annonces : liste virtualisée, recherche, filtres par statut, photo et loyer mensuel. Une action de gestion, un raccourci calendrier. Photos, informations, emplacement, prix et règles s’ouvrent directement depuis la fiche.
+- Création : logement, emplacement, photos/description, prix/règles, puis récapitulatif. Brouillon incomplet possible, sortie protégée, champs et actions défilants au-dessus du clavier. Une modification enregistrée quitte la publication et nécessite une nouvelle validation, conformément aux transitions du serveur.
+- Calendrier : réglages visibles après sélection, jours réservés protégés, contrôles tarifaires limités aux rôles autorisés. Dates des vues quotidiennes en Afrique/Kigali ; disponibilité de l’action « terminé » alignée sur le jour UTC du serveur.
+- Menu : pages secondaires dans la pile, sans modales contenant des pages entières. Profil vérifié reconnu après reconnexion. Identité, support et ressources existants conservés ; aucun badge d’excellence ni montant encaissé inventé.
+- Traductions hôte ajoutées dans `hostFlow.ts`, `hostListings.ts`, `hostWorkspace.ts` et fusionnées pour FR/EN/RW/SW. La recette native sur iPhone complète les vérifications web ; un export JavaScript ne valide pas les autorisations ou le clavier natifs.
+- Recette de la refonte hôte : voir `docs/HOST-EXPERIENCE-RECETTE-2026-10-01.md` pour les parcours réellement essayés, les corrections d’intégration, les 215 tests réussis et les limites natives.
 
 ## États et mouvement
 
 Le contenu apparaît directement. Les séquences d’entrée décoratives de l’accueil, de la connexion, du profil et de la fiche sont retirées. Le premier chargement de la liste utilise un squelette statique ; le rafraîchissement conserve son indicateur natif. Une action occupée ne peut pas être envoyée deux fois. Les erreurs restent lisibles et les sélections ne reposent pas uniquement sur la couleur.
+
+Les erreurs des formulaires apparaissent dans le formulaire, sans second bandeau global. La connexion traduit les refus d’identifiants, les limites de tentatives et les problèmes réseau. Les avis d’authentification en arrière-plan respectent les zones sûres. Le formulaire d’identité hôte adapte sa hauteur au clavier et fait défiler le champ actif ; sur iPhone, « Terminé » permet aussi de fermer le clavier numérique.
 
 ## Cartographie
 
@@ -52,3 +71,7 @@ Contrôle dans le navigateur à 320, 390 et 1280 px : connexion, préférences, 
 TypeScript : aucune erreur. Suite complète exécutée pendant la refonte : 145 tests réussis ; après les derniers ajustements, les 13 tests de recherche, traductions immobilières et onboarding passent. ESLint ciblé : aucune erreur, un avertissement de type `any` préexistant dans les filtres. Les exports JavaScript web, iOS et Android réussissent ; le script web se parse et le worker cartographique est présent.
 
 Captures de recette conservées dans `.expo/design-*.png`, exports dans `.expo/design-export`. Le contrôle visuel natif de cette refonte reste à effectuer sur l’iPhone dans Expo Go ; les exports ne constituent pas des applications signées.
+
+Corrections complémentaires : logo d’origine, dialogue de déconnexion et erreur de connexion contrôlés à 390 × 844 ; formulaire hôte contrôlé avec une zone réduite à 390 × 430. Annulation, déconnexion réelle et refus d’identifiants vérifiés sur le compte de recette. TypeScript et les 167 tests passent, ainsi que les exports web/iOS/Android (`.expo/ui-fixes-export`). Le comportement du clavier natif reste à confirmer sur l’iPhone. Captures : `.expo/logout-redesign-mobile.png`, `.expo/login-error-mobile.png` et `.expo/onboarding-short-viewport.png`.
+
+Refonte de la composition : accueil, fiche, profil, favoris, messagerie, parcours hôte et trois écrans d’authentification. Vérification visuelle à 390 × 844, inscription à 320 × 568 et connexion à 1280 × 900 ; le dernier champ hôte reste dans la zone visible à 390 × 430. Favori de recette ajouté puis retiré, bouton de réservation vérifié sans envoi de demande. Les 167 tests passent ; ESLint ne signale aucune erreur (avertissements existants). Captures `.expo/pro-*.png`, exports web/iOS/Android dans `.expo/pro-design-export`. Photos réutilisées depuis les fichiers existants ; aucune image d’annonce ni identité réelle remplacée pour la recette.

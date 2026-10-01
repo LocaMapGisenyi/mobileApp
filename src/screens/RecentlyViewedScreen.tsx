@@ -1,5 +1,6 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, {useEffect, useState} from 'react';
-import {ScrollView, Text, ActivityIndicator} from 'react-native';
+import {ScrollView, Text} from 'react-native';
 import {Button} from 'react-native-paper';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
@@ -28,7 +29,7 @@ export default function RecentlyViewedScreen({navigation}: NativeStackScreenProp
   const clear=async()=>{if(!uid)return;try{await clearViewedProperties(uid);setItems([]);}catch{setError(t('recent.error','Impossible de charger l’historique.'));}};
   return <ScrollView contentContainerStyle={{padding:24,gap:16,backgroundColor:colors.background,flexGrow:1}}>
     <Text style={{color:colors.inkSubtle}}>{t('recent.local','Les 30 derniers logements consultés sur cet appareil.')}</Text>
-    {loading&&<ActivityIndicator color={colors.primary}/>}
+    {loading&&<ContentSkeleton />}
     {!!error&&<Text accessibilityRole="alert" style={{color:colors.error}}>{error}</Text>}
     {!loading&&!items.length&&<Text>{t('recent.empty','Aucun logement consulté.')}</Text>}
     {items.map(item=><Button key={item.id} mode="outlined" onPress={()=>navigation.navigate('PropertyDetails',{propertyId:item.id})}>{item.title}</Button>)}

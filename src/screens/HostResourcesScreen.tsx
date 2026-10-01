@@ -1,21 +1,20 @@
+import ContentSkeleton from '../components/ContentSkeleton';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
+  BackHandler,
   StyleSheet,
   ScrollView,
   FlatList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
-  Modal,
-  Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { HostPage, HostHeader } from '../components/host/HostUI';
 import { useUserStore } from '../store/user';
 import type { Article } from '../services/api/resources.service';
 import {
@@ -222,7 +221,7 @@ const cc = StyleSheet.create({
 });
 
 // ─── Course detail modal ──────────────────────────────────────────────────────
-const CourseDetailModal = ({
+const CourseDetail = ({
   course,
   onClose,
   onStepComplete,
@@ -248,22 +247,17 @@ const CourseDetailModal = ({
   };
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <HostPage scroll={false}>
       <View style={cdm.root}>
         {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
         {/* Close bar */}
-        <View style={cdm.bar}>
-          <TouchableOpacity style={cdm.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <MaterialIcons name="close" size={22} color={colors.ink} />
-          </TouchableOpacity>
-          <Text style={cdm.barTitle} numberOfLines={1}>{course.title}</Text>
-        </View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}><HostHeader title={course.title} onBack={onClose} /></View>
 
         <ScrollView contentContainerStyle={cdm.scroll} showsVerticalScrollIndicator={false}>
           {/* Course header */}
           <View style={cdm.header}>
             <LevelBadge level={course.level} />
-            <Text style={cdm.title}>{course.title}</Text>
+
             <Text style={cdm.desc}>{course.description}</Text>
             <View style={cdm.progressSection}>
               <View style={cdm.progressRow}>
@@ -322,13 +316,13 @@ const CourseDetailModal = ({
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
-    </Modal>
+    </HostPage>
   );
 };
 const cdm = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.background },
+  root:         { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   bar:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  closeBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  closeBtn:     { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   barTitle:     { flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink },
   scroll:       { padding: 20 },
   header:       { marginBottom: 24 },
@@ -339,7 +333,7 @@ const cdm = StyleSheet.create({
   progressTxt:  { fontSize: 12, fontWeight: '600', color: colors.inkSubtle },
   certBanner:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF8E1', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#E8D070' },
   certTxt:      { fontSize: 13, fontWeight: '600', color: '#8B6914', flex: 1 },
-  stepsLabel:   { fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  stepsLabel:   { fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 12 },
   stepRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   stepRowDone:  { opacity: 0.65 },
   stepNum:      { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
@@ -355,7 +349,7 @@ const cdm = StyleSheet.create({
 type MainTab = 'articles' | 'courses' | 'bookmarks';
 
 const HostResourcesScreen = () => {
-  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { t } = useTranslation();
 
   // Build translated filter arrays inside component
@@ -498,18 +492,33 @@ const HostResourcesScreen = () => {
     { key: 'bookmarks', label: t('hostResources.tabBookmarks'),  icon: 'bookmark' },
   ], [t]);
 
+  useFocusEffect(useCallback(() => {
+    if (!activeArticle && !activeCourse) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActiveArticle(null); setActiveCourse(null); return true;
+    });
+    return () => subscription.remove();
+  }, [activeArticle, activeCourse]));
+
+  if (openingArticle) return <HostPage>
+    <HostHeader title={t('hostResources.title')} onBack={() => navigation.goBack()} />
+    <ContentSkeleton variant="article" />
+  </HostPage>;
+  if (activeArticle) return <HostPage>
+    <HostHeader title={activeArticle.title} onBack={() => setActiveArticle(null)} />
+    <Text selectable style={{ fontSize: 16, lineHeight: 25, color: colors.ink }}>{activeArticle.content}</Text>
+  </HostPage>;
+  if (activeCourse) return <CourseDetail course={activeCourse} onClose={() => setActiveCourse(null)}
+    onStepComplete={handleStepComplete} error={error} />;
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+    <HostPage scroll={false}><View style={s.root}>
       {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
-      {openingArticle && <ActivityIndicator color={colors.primary} />}
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(300)} style={s.header}>
-        <View>
-          <Text style={s.title}>{t('hostResources.title')}</Text>
-          <Text style={s.subtitle}>{t('hostResources.subtitle')}</Text>
-        </View>
-      </Animated.View>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+        <HostHeader title={t('hostResources.title')} subtitle={t('hostResources.subtitle')} onBack={() => navigation.goBack()} />
+      </View>
 
       {/* Search */}
       <View style={[s.searchBar, searchFocused && s.searchBarFocused]}>
@@ -519,7 +528,7 @@ const HostResourcesScreen = () => {
           value={search}
           onChangeText={setSearch}
           placeholder={t('hostResources.searchPlaceholder')}
-          placeholderTextColor={colors.inkDisabled}
+          placeholderTextColor={colors.inkSubtle}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
         />
@@ -613,9 +622,7 @@ const HostResourcesScreen = () => {
 
           {/* List */}
           {loadingArticles ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : error ? (
             <View style={s.centered}>
               <MaterialIcons name="cloud-off" size={36} color={colors.inkDisabled} />
@@ -648,15 +655,15 @@ const HostResourcesScreen = () => {
               keyExtractor={a => a.slug}
               contentContainerStyle={s.listContent}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInDown.delay(index * 40).duration(260)}>
+              renderItem={({ item }) => (
+                <View>
                   <ArticleCard
                     item={item}
                     bookmarked={bookmarks.includes(item.slug)}
                     onPress={() => void openArticle(item.slug)}
                     onBookmark={() => handleBookmark(item.slug)}
                   />
-                </Animated.View>
+                </View>
               )}
             />
           )}
@@ -670,9 +677,7 @@ const HostResourcesScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           {loadingCourses ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : courses.length === 0 ? (
             <View style={s.centered}>
               <MaterialIcons name="school" size={40} color={colors.inkDisabled} />
@@ -702,8 +707,8 @@ const HostResourcesScreen = () => {
               </ScrollView>
 
               <Text style={[s.sectionLabel, { marginTop: 20 }]}>{t('hostResources.sectionAllCourses')}</Text>
-              {courses.map((c, i) => (
-                <Animated.View key={c.id} entering={FadeInDown.delay(i * 50).duration(280)}>
+              {courses.map((c) => (
+                <View key={c.id}>
                   <TouchableOpacity
                     style={s.courseRow}
                     onPress={() => setActiveCourse(c)}
@@ -728,37 +733,21 @@ const HostResourcesScreen = () => {
                     </View>
                     <MaterialIcons name="chevron-right" size={20} color={colors.inkDisabled} />
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               ))}
             </>
           )}
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
-      {/* Course detail modal */}
-      {!!activeArticle && <Modal visible animationType="slide" onRequestClose={() => setActiveArticle(null)}>
-        <ScrollView contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, gap: 20, backgroundColor: colors.surface }}>
-          <TouchableOpacity onPress={() => setActiveArticle(null)}><Text style={{ color: colors.primary }}>Fermer</Text></TouchableOpacity>
-          <Text style={{ fontSize: 24, fontWeight: '700' }}>{activeArticle.title}</Text>
-          <Text selectable style={{ fontSize: 16, lineHeight: 24 }}>{activeArticle.content}</Text>
-        </ScrollView>
-      </Modal>}
-      {activeCourse && (
-        <CourseDetailModal
-          course={activeCourse}
-          onClose={() => setActiveCourse(null)}
-          onStepComplete={handleStepComplete}
-          error={error}
-        />
-      )}
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: colors.background },
+  root:     { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   errorTxt: { fontSize: 14, color: colors.inkSubtle, textAlign: 'center' },
   retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary },
@@ -773,10 +762,10 @@ const s = StyleSheet.create({
   searchInput:     { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
 
   // Main tabs
-  mainTabs:       { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, gap: 6 },
-  mainTab:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  mainTabs:       { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, marginBottom: 10, gap: 6 },
+  mainTab:        { flexGrow: 1, flexBasis: 85, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   mainTabActive:  { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  mainTabTxt:     { fontSize: 12, fontWeight: '600', color: colors.inkDisabled },
+  mainTabTxt:     { fontSize: 13, fontWeight: '600', color: colors.inkSubtle, flexShrink: 1, textAlign: 'center' },
   mainTabTxtActive: { color: colors.primary },
   tabBadge:       { backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   tabBadgeTxt:    { fontSize: 9, fontWeight: '700', color: colors.white },
@@ -797,8 +786,8 @@ const s = StyleSheet.create({
   miniDivider:    { width: 1, backgroundColor: colors.border, marginHorizontal: 2 },
 
   // Content
-  listContent:    { paddingHorizontal: 20, paddingBottom: 110 },
-  sectionLabel:   { fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
+  listContent:    { paddingHorizontal: 20, paddingBottom: 24 },
+  sectionLabel:   { fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 10 },
 
   // Courses
   courseScroll:   { paddingBottom: 4, gap: 0 },

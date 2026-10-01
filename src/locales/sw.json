@@ -26,7 +26,8 @@
     "refreshing": "Inasasisha...",
     "unknownError": "Hitilafu imetokea",
     "unknownLocation": "Eneo halijulikani",
-    "retry": "Jaribu tena"
+    "retry": "Jaribu tena",
+    "close": "Funga"
   },
   "tabs": {
     "explorer": "Chunguza",
@@ -124,7 +125,11 @@
     "fullNamePlaceholder": "Jina lako kamili",
     "confirmPasswordPlaceholder": "Andika nenosiri lako tena",
     "accountCreated": "Akaunti imefunguliwa!",
-    "loginSuccess": "Umeingia!"
+    "loginSuccess": "Umeingia!",
+    "emailUnconfirmed": "Thibitisha anwani yako ya barua pepe kabla ya kuingia.",
+    "tooManyAttempts": "Umejaribu mara nyingi sana. Subiri dakika chache kabla ya kujaribu tena.",
+    "connectionUnavailable": "Imeshindikana kuunganisha. Angalia muunganisho wako wa Intaneti na ujaribu tena.",
+    "loginUnavailable": "Kuingia hakupatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi."
   },
   "preferences": {
     "title": "Mapendeleo",
@@ -236,8 +241,8 @@
     "darkMode": "Mandhari ya Giza",
     "help": "Msaada",
     "about": "Kuhusu",
-    "logoutConfirmTitle": "Toka",
-    "logoutConfirmMessage": "Una uhakika unataka kutoka?",
+    "logoutConfirmTitle": "Unataka kutoka?",
+    "logoutConfirmMessage": "Unaweza kuingia tena ili kuona nyumba na ujumbe wako.",
     "myFavorites": "Vipendwa vyangu",
     "myAlerts": "Arifa zangu",
     "myGuides": "Miongozo yangu",
@@ -252,7 +257,10 @@
     "notifications": "Arifa",
     "notificationsEnabled": "Zimewashwa",
     "notificationsDisabled": "Zimezimwa",
-    "avatarAltText": "Picha ya wasifu"
+    "avatarAltText": "Picha ya wasifu",
+    "logoutAction": "Toka",
+    "loggingOut": "Inatoka…",
+    "logoutError": "Imeshindwa kutoka. Angalia mtandao wako kisha ujaribu tena."
   },
   "search": {
     "title": "Tafuta",
@@ -818,7 +826,9 @@
     "launchTitle": "Uhifadhi bila malipo ndani ya programu",
     "launchDescription": "Wakati wa uzinduzi, LocaMap inakuwezesha kupokea na kukubali maombi ya uhifadhi. Programu haikusanyi wala haitumi malipo.",
     "launchPaymentInfo": "Malipo ndani ya programu yanaweza kuongezwa baada ya mtoa huduma wa malipo kuthibitishwa. Hakuna taarifa za kifedha zinazohitajika kwa ombi hili.",
-    "submitting": "Ombi linatumwa…"
+    "submitting": "Ombi linatumwa…",
+    "keyboardDone": "Nimemaliza",
+    "birthDatePlaceholder": "DD/MM/YYYY"
   },
   "hostCoHost": {
     "title": "Co-hosts",
@@ -1302,5 +1312,24 @@
   },
   "readiness": {
     "recovery": "Ukurasa huu haukuweza kuonyeshwa. Tafadhali jaribu tena."
+  },
+  "pro": {
+    "lakeView": "Ziwa Kivu huko Gisenyi",
+    "authSceneTitle": "Nyumba yako ijayo, Gisenyi.",
+    "authSceneDescription": "Gundua nyumba za eneo hili na uzungumze moja kwa moja na wenyeji.",
+    "loginTitle": "Karibu LocaMap",
+    "loginSubtitle": "Ingia upate nyumba ulizohifadhi na mazungumzo yako.",
+    "registerTitle": "Fungua akaunti yako",
+    "registerSubtitle": "Hifadhi vipendwa, zungumza na wenyeji na upange ukaaji wako.",
+    "confirmEmail": "Angalia barua pepe yako ili kuthibitisha akaunti, kisha uingie.",
+    "exploreTitle": "Nyumba yako Gisenyi.",
+    "exploreSubtitle": "Linganisha nyumba na upate inayokufaa.",
+    "profileTitle": "Akaunti yako",
+    "hostInvitation": "Tangaza nyumba yako huko Gisenyi.",
+    "stepCount": "Hatua {{current}} kati ya {{total}}",
+    "propertyTitle": "Nyumba",
+    "monthlyRental": "Ukodishaji wa mwezi",
+    "months": "Miezi {{count}}",
+    "days": "Siku {{count}}"
   }
 }

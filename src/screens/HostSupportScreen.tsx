@@ -1,23 +1,24 @@
+import ContentSkeleton from '../components/ContentSkeleton';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
+  BackHandler,
   StyleSheet,
   ScrollView,
   FlatList,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Modal,
   Linking,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { HostPage, HostHeader } from '../components/host/HostUI';
 import { useUserStore } from '../store/user';
 import {
   supportService,
@@ -26,7 +27,6 @@ import {
   FaqItem,
   TicketPriority,
   TicketStatus,
-  CreateTicketPayload,
   ChatAvailability,
 } from '../services/api';
 
@@ -134,13 +134,13 @@ const tr = StyleSheet.create({
   left:       { flex: 1 },
   topRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
   subject:    { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 3 },
-  meta:       { fontSize: 11, color: colors.inkSubtle },
+  meta:       { fontSize: 13, color: colors.inkSubtle },
   unreadBadge:{ backgroundColor: colors.primary, borderRadius: 8, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   unreadTxt:  { fontSize: 9, fontWeight: '700', color: colors.white },
 });
 
 // ─── Ticket detail modal ──────────────────────────────────────────────────────
-const TicketDetailModal = ({
+const TicketDetail = ({
   ticketId,
   currentUserId,
   onClose,
@@ -149,7 +149,6 @@ const TicketDetailModal = ({
   currentUserId: string;
   onClose: () => void;
 }) => {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
@@ -205,32 +204,20 @@ const TicketDetailModal = ({
   };
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[tdm.root, { paddingTop: insets.top }]}>
+    <HostPage scroll={false}>
+      <View style={tdm.root}>
         {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
-        <View style={tdm.bar}>
-          <TouchableOpacity style={tdm.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
-          </TouchableOpacity>
-          <Text style={tdm.barTitle} numberOfLines={1}>
-            {ticket?.subject ?? 'Ticket'}
-          </Text>
-          {ticket && (
-            <View style={tdm.barBadges}>
-              <StatusBadge status={ticket.status} />
-            </View>
-          )}
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <HostHeader title={ticket?.subject ?? t('hostSupport.tabTickets')} onBack={onClose} />
+          {ticket && <View style={{ paddingBottom: 12 }}><StatusBadge status={ticket.status} /></View>}
         </View>
 
         {loading ? (
-          <View style={tdm.centered}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <ContentSkeleton variant="conversation" style={{ paddingHorizontal: 20 }} />
         ) : (
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={insets.top + 56}
           >
             <FlatList
               ref={flatRef}
@@ -281,15 +268,15 @@ const TicketDetailModal = ({
                 </View>
               )}
             />
-            {ticket?.status !== 'RESOLVED' && ticket?.status !== 'CLOSED' && (
-              <View style={[tdm.compose, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+            {ticket && ticket.status !== 'RESOLVED' && ticket?.status !== 'CLOSED' && (
+              <View style={[tdm.compose, { paddingBottom: 12 }]}>
                 <View style={tdm.inputWrap}>
                   <TextInput
                     style={tdm.input}
                     value={reply}
                     onChangeText={setReply}
                     placeholder={t('hostSupport.replyPlaceholder')}
-                    placeholderTextColor={colors.inkDisabled}
+                    placeholderTextColor={colors.inkSubtle}
                     multiline
                     maxLength={2000}
                   />
@@ -310,20 +297,20 @@ const TicketDetailModal = ({
           </KeyboardAvoidingView>
         )}
       </View>
-    </Modal>
+    </HostPage>
   );
 };
 
 const tdm = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.background },
+  root:         { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   bar:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 10, backgroundColor: colors.surface },
-  closeBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  closeBtn:     { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   barTitle:     { flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink },
   barBadges:    { flexShrink: 0 },
   centered:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
   msgList:      { padding: 16, gap: 10, paddingBottom: 20 },
   ticketInfo:   { backgroundColor: colors.surfaceSunken, borderRadius: 10, padding: 14, marginBottom: 16, gap: 6 },
-  ticketDate:   { fontSize: 11, color: colors.inkSubtle },
+  ticketDate:   { fontSize: 13, color: colors.inkSubtle },
   ticketDesc:   { fontSize: 13, color: colors.inkMid, lineHeight: 18 },
   bubble:       { borderRadius: 14, padding: 12, maxWidth: '88%' },
   bubbleSupport:{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
@@ -335,7 +322,7 @@ const tdm = StyleSheet.create({
   bubbleTime:   { fontSize: 10, color: colors.inkSubtle, marginTop: 5 },
   bubbleTimeHost: { color: colors.white + 'AA' },
   ratingRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
-  ratingLabel:  { flex: 1, fontSize: 11, color: colors.inkSubtle },
+  ratingLabel:  { flex: 1, fontSize: 13, color: colors.inkSubtle },
   rateBtn:      { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   ratedTxt:     { fontSize: 11, fontWeight: '600', marginTop: 6 },
   compose:      { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
@@ -346,14 +333,13 @@ const tdm = StyleSheet.create({
 });
 
 // ─── New ticket modal ─────────────────────────────────────────────────────────
-const NewTicketModal = ({
+const NewTicket = ({
   onClose,
   onCreated,
 }: {
   onClose: () => void;
   onCreated: (ticket: SupportTicket) => void;
 }) => {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
   const CATEGORIES = [
@@ -402,16 +388,13 @@ const NewTicketModal = ({
   };
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <HostPage scroll={false}>
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: colors.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={[ntm.bar, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity style={ntm.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <MaterialIcons name="close" size={22} color={colors.ink} />
-          </TouchableOpacity>
-          <Text style={ntm.barTitle}>Nouveau ticket</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <HostHeader title={t('hostFlow.workspace.newTicket')} onBack={onClose} />
         </View>
         <ScrollView contentContainerStyle={ntm.scroll} keyboardShouldPersistTaps="handled">
           {/* Category */}
@@ -460,7 +443,7 @@ const NewTicketModal = ({
               value={subject}
               onChangeText={setSubject}
               placeholder={t('hostSupport.subjectPlaceholder')}
-              placeholderTextColor={colors.inkDisabled}
+              placeholderTextColor={colors.inkSubtle}
               maxLength={120}
             />
           </View>
@@ -473,7 +456,7 @@ const NewTicketModal = ({
               value={description}
               onChangeText={setDescription}
               placeholder={t('hostSupport.descriptionPlaceholder')}
-              placeholderTextColor={colors.inkDisabled}
+              placeholderTextColor={colors.inkSubtle}
               multiline
               maxLength={2000}
             />
@@ -508,17 +491,17 @@ const NewTicketModal = ({
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Modal>
+    </HostPage>
   );
 };
 const ntm = StyleSheet.create({
   bar:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
-  closeBtn:  { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  closeBtn:  { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   barTitle:  { fontSize: 17, fontWeight: '700', color: colors.ink },
   scroll:    { padding: 20 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
+  sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 10 },
   chipRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  chip:      { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   chipActive:{ borderColor: colors.primary, backgroundColor: colors.primaryLight },
   chipTxt:   { fontSize: 13, fontWeight: '600', color: colors.inkSubtle },
   chipTxtActive: { color: colors.primary },
@@ -541,7 +524,7 @@ const ntm = StyleSheet.create({
 type Tab = 'contact' | 'faq' | 'tickets';
 
 const HostSupportScreen = () => {
-  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const fullName = useUserStore(s => s.user.fullName);
   const currentUserId = useUserStore(s => s.user.id);
   const [error, setError] = useState('');
@@ -624,17 +607,27 @@ const HostSupportScreen = () => {
     setActiveTicketId(ticket.id);
   };
 
+  useFocusEffect(useCallback(() => {
+    if (!activeTicketId && !newTicketVisible) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActiveTicketId(null); setNewTicketVisible(false); return true;
+    });
+    return () => subscription.remove();
+  }, [activeTicketId, newTicketVisible]));
+
+  if (activeTicketId) return <TicketDetail key={activeTicketId} ticketId={activeTicketId}
+    currentUserId={currentUserId ?? ''} onClose={() => setActiveTicketId(null)} />;
+  if (newTicketVisible) return <NewTicket onClose={() => setNewTicketVisible(false)} onCreated={handleTicketCreated} />;
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+    <HostPage scroll={false}><View style={s.root}>
       {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }}>{error}</Text>}
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(300)} style={s.header}>
-        <Text style={s.title}>{t('hostSupport.title')}</Text>
-        <Text style={s.subtitle}>{t('hostSupport.subtitle')}</Text>
-      </Animated.View>
-
-      {/* Tabs */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+        <HostHeader title={t('hostSupport.title')} subtitle={t('hostSupport.subtitle')} onBack={() => navigation.goBack()} />
+      </View>
+{/* Tabs */}
       <View style={s.tabs}>
         {(
           [
@@ -659,7 +652,7 @@ const HostSupportScreen = () => {
       {tab === 'contact' && (
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           {/* Chat card */}
-          <Animated.View entering={FadeInDown.delay(60).duration(280)}>
+          <View>
             <View style={s.channelCard}>
               <View style={s.channelHeader}>
                 <View style={[s.channelIcon, { backgroundColor: colors.primaryLight }]}>
@@ -688,10 +681,10 @@ const HostSupportScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
 
           {/* WhatsApp card */}
-          <Animated.View entering={FadeInDown.delay(100).duration(280)}>
+          <View>
             <TouchableOpacity style={s.channelCard} onPress={handleWhatsApp} activeOpacity={0.85}>
               <View style={s.channelHeader}>
                 <View style={[s.channelIcon, { backgroundColor: '#E8F8F0' }]}>
@@ -709,10 +702,10 @@ const HostSupportScreen = () => {
                 <Text style={s.channelBtnTxt}>{t('hostSupport.whatsappBtn')}</Text>
               </View>
             </TouchableOpacity>
-          </Animated.View>
+          </View>
 
           {/* Email */}
-          <Animated.View entering={FadeInDown.delay(140).duration(280)}>
+          <View>
             <TouchableOpacity
               style={s.channelCard}
               onPress={() => openContact('email')}
@@ -729,10 +722,10 @@ const HostSupportScreen = () => {
                 <MaterialIcons name="open-in-new" size={16} color={colors.inkSubtle} />
               </View>
             </TouchableOpacity>
-          </Animated.View>
+          </View>
 
           {/* Urgent phone */}
-          <Animated.View entering={FadeInDown.delay(180).duration(280)}>
+          <View>
             <View style={[s.channelCard, s.urgentCard]}>
               <View style={s.channelHeader}>
                 <View style={[s.channelIcon, { backgroundColor: colors.error + '14' }]}>
@@ -751,7 +744,7 @@ const HostSupportScreen = () => {
                 <Text style={s.channelBtnTxt}>{t('hostSupport.urgentBtn')}</Text>
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
 
           {/* Open ticket CTA */}
           <View style={s.ticketCta}>
@@ -766,7 +759,7 @@ const HostSupportScreen = () => {
               <Text style={s.ticketCtaBtnTxt}>{t('hostSupport.createTicket')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
@@ -780,7 +773,7 @@ const HostSupportScreen = () => {
               value={faqQuery}
               onChangeText={setFaqQuery}
               placeholder={t('hostSupport.faqSearch')}
-              placeholderTextColor={colors.inkDisabled}
+              placeholderTextColor={colors.inkSubtle}
             />
             {faqQuery.length > 0 && (
               <TouchableOpacity onPress={() => setFaqQuery('')}>
@@ -807,9 +800,7 @@ const HostSupportScreen = () => {
           </ScrollView>
 
           {loadingFaq ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : faqItems.length === 0 ? (
             <View style={s.centered}>
               <MaterialIcons name="help-outline" size={40} color={colors.inkDisabled} />
@@ -835,7 +826,7 @@ const HostSupportScreen = () => {
           ) : (
             <ScrollView contentContainerStyle={s.faqList} showsVerticalScrollIndicator={false}>
               {faqItems.map(item => (
-                <Animated.View key={item.id} entering={FadeIn.duration(200)}>
+                <View key={item.id}>
                   <TouchableOpacity
                     style={s.faqItem}
                     onPress={() => setExpandedFaq(prev => prev === item.id ? null : item.id)}
@@ -855,9 +846,9 @@ const HostSupportScreen = () => {
                       <Text style={s.faqA}>{item.answer}</Text>
                     )}
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               ))}
-              <View style={{ height: 110 }} />
+              <View style={{ height: 24 }} />
             </ScrollView>
           )}
         </>
@@ -881,9 +872,7 @@ const HostSupportScreen = () => {
           </View>
 
           {loadingTickets ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : tickets.length === 0 ? (
             <View style={s.centered}>
               <MaterialIcons name="confirmation-number" size={40} color={colors.inkDisabled} />
@@ -905,46 +894,32 @@ const HostSupportScreen = () => {
               data={tickets}
               keyExtractor={tk => tk.id}
               contentContainerStyle={s.ticketList}
-              renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInDown.delay(index * 40).duration(260)}>
+              renderItem={({ item }) => (
+                <View>
                   <TicketRow ticket={item} onPress={() => setActiveTicketId(item.id)} />
-                </Animated.View>
+                </View>
               )}
             />
           )}
         </View>
       )}
 
-      {/* Modals */}
-      {activeTicketId && (
-        <TicketDetailModal
-          ticketId={activeTicketId}
-          currentUserId={currentUserId ?? ''}
-          onClose={() => setActiveTicketId(null)}
-        />
-      )}
-      {newTicketVisible && (
-        <NewTicketModal
-          onClose={() => setNewTicketVisible(false)}
-          onCreated={handleTicketCreated}
-        />
-      )}
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: colors.background },
+  root:     { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   header:   { paddingHorizontal: 20, marginBottom: 14 },
   title:    { fontSize: 24, fontWeight: '700', color: colors.ink, letterSpacing: -0.4 },
   subtitle: { fontSize: 13, color: colors.inkSubtle, marginTop: 2 },
 
-  tabs:       { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 14, gap: 6 },
-  tab:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  tabs:       { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, marginBottom: 14, gap: 6 },
+  tab:        { flexGrow: 1, flexBasis: 85, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   tabActive:  { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  tabTxt:     { fontSize: 11, fontWeight: '600', color: colors.inkDisabled },
+  tabTxt:     { fontSize: 13, fontWeight: '600', color: colors.inkSubtle, flexShrink: 1, textAlign: 'center' },
   tabTxtActive: { color: colors.primary },
 
   scroll: { paddingHorizontal: 20 },
@@ -998,7 +973,7 @@ const s = StyleSheet.create({
   ticketsCount:   { fontSize: 13, color: colors.inkSubtle },
   newTicketBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   newTicketBtnTxt:{ fontSize: 13, fontWeight: '700', color: colors.white },
-  ticketList:     { paddingHorizontal: 20, paddingBottom: 110 },
+  ticketList:     { paddingHorizontal: 20, paddingBottom: 24 },
 
   emptyTitle:     { fontSize: 15, fontWeight: '700', color: colors.ink },
   emptySubtitle:  { fontSize: 13, color: colors.inkSubtle, textAlign: 'center', lineHeight: 19, maxWidth: 260 },

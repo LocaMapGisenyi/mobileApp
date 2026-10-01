@@ -26,7 +26,8 @@
     "refreshing": "Refreshing...",
     "unknownError": "An error occurred",
     "unknownLocation": "Unknown location",
-    "retry": "Try again"
+    "retry": "Try again",
+    "close": "Close"
   },
   "tabs": {
     "explorer": "Explore",
@@ -124,7 +125,11 @@
     "sendResetLink": "Send link",
     "emailSentTitle": "Email sent!",
     "emailSentSubtitle": "Check your inbox. The reset link expires in 30 minutes.",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "emailUnconfirmed": "Confirm your email address before signing in.",
+    "tooManyAttempts": "Too many attempts. Wait a few minutes before trying again.",
+    "connectionUnavailable": "Unable to connect. Check your Internet connection and try again.",
+    "loginUnavailable": "Sign-in is temporarily unavailable. Please try again shortly."
   },
   "preferences": {
     "title": "Preferences",
@@ -236,8 +241,8 @@
     "darkMode": "Dark Mode",
     "help": "Help & Support",
     "about": "About",
-    "logoutConfirmTitle": "Logout",
-    "logoutConfirmMessage": "Are you sure you want to logout?",
+    "logoutConfirmTitle": "Log out?",
+    "logoutConfirmMessage": "You can log back in to find your properties and messages.",
     "myFavorites": "My Favorites",
     "myAlerts": "My Alerts",
     "myGuides": "My Guides",
@@ -252,7 +257,10 @@
     "notifications": "Notifications",
     "notificationsEnabled": "Enabled",
     "notificationsDisabled": "Disabled",
-    "avatarAltText": "Profile picture"
+    "avatarAltText": "Profile picture",
+    "logoutAction": "Log out",
+    "loggingOut": "Logging out…",
+    "logoutError": "Could not log out. Check your connection and try again."
   },
   "search": {
     "title": "Search",
@@ -818,7 +826,9 @@
     "launchTitle": "Bookings without in-app payments",
     "launchDescription": "At launch, LocaMap lets you receive and accept booking requests. The app does not collect payments or send payouts.",
     "launchPaymentInfo": "In-app payments may be added after a payment provider has been validated. No financial details are required for this application.",
-    "submitting": "Sending application…"
+    "submitting": "Sending application…",
+    "keyboardDone": "Done",
+    "birthDatePlaceholder": "DD/MM/YYYY"
   },
   "hostCoHost": {
     "title": "Co-hosts",
@@ -1302,5 +1312,24 @@
   },
   "readiness": {
     "recovery": "This page could not be displayed. Please try again."
+  },
+  "pro": {
+    "lakeView": "Lake Kivu in Gisenyi",
+    "authSceneTitle": "Your next home, in Gisenyi.",
+    "authSceneDescription": "Discover local homes and speak directly with their hosts.",
+    "loginTitle": "Welcome to LocaMap",
+    "loginSubtitle": "Sign in to find your saved homes and conversations.",
+    "registerTitle": "Create your account",
+    "registerSubtitle": "Save your favourites, talk to hosts and plan your next stay.",
+    "confirmEmail": "Check your email to confirm your account, then sign in.",
+    "exploreTitle": "Your home in Gisenyi.",
+    "exploreSubtitle": "Explore local homes and find your place.",
+    "profileTitle": "Your space",
+    "hostInvitation": "List your home in Gisenyi.",
+    "stepCount": "Step {{current}} of {{total}}",
+    "propertyTitle": "The property",
+    "monthlyRental": "Monthly rental",
+    "months": "{{count}} months",
+    "days": "{{count}} days"
   }
 }

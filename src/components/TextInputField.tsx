@@ -12,20 +12,20 @@ import { colors } from '../theme';
 
 const T = {
   labelDefault: colors.inkMid,
-  labelFocus:   colors.primary,
-  labelError:   colors.error,
-  borderDefault:colors.borderMid,
-  borderFocus:  colors.primary,
-  borderError:  colors.error,
-  bgDefault:    colors.surface,
-  bgFocus:      colors.surface,
-  bgError:      '#FDF2EF',
-  iconDefault:  colors.inkSubtle,
-  iconFocus:    colors.primary,
-  iconError:    colors.error,
-  inputText:    colors.ink,
-  placeholder:  colors.inkSubtle,
-  errorText:    colors.error,
+  labelFocus: colors.primary,
+  labelError: colors.error,
+  borderDefault: colors.borderMid,
+  borderFocus: colors.primary,
+  borderError: colors.error,
+  bgDefault: colors.background,
+  bgFocus: colors.surface,
+  bgError: '#FDF2EF',
+  iconDefault: colors.inkSubtle,
+  iconFocus: colors.primary,
+  iconError: colors.error,
+  inputText: colors.ink,
+  placeholder: colors.inkSubtle,
+  errorText: colors.error,
 };
 
 interface TextInputFieldProps extends TextInputProps {
@@ -42,10 +42,10 @@ const TextInputField = forwardRef<RNTextInput, TextInputFieldProps>(
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
     const showError = !!(error && touched);
-    const labelColor  = showError ? T.labelError  : isFocused ? T.labelFocus  : T.labelDefault;
+    const labelColor = showError ? T.labelError : isFocused ? T.labelFocus : T.labelDefault;
     const borderColor = showError ? T.borderError : isFocused ? T.borderFocus : T.borderDefault;
-    const bgColor     = showError ? T.bgError     : isFocused ? T.bgFocus     : T.bgDefault;
-    const iconColor   = showError ? T.iconError   : isFocused ? T.iconFocus   : T.iconDefault;
+    const bgColor = showError ? T.bgError : isFocused ? T.bgFocus : T.bgDefault;
+    const iconColor = showError ? T.iconError : isFocused ? T.iconFocus : T.iconDefault;
 
     return (
       <View style={styles.container}>
@@ -64,8 +64,14 @@ const TextInputField = forwardRef<RNTextInput, TextInputFieldProps>(
           <RNTextInput
             ref={ref}
             style={styles.input}
-            onFocus={(e) => { setIsFocused(true); onFocus?.(e); }}
-            onBlur={(e)  => { setIsFocused(false); onBlur?.(e); }}
+            onFocus={e => {
+              setIsFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={e => {
+              setIsFocused(false);
+              onBlur?.(e);
+            }}
             placeholderTextColor={T.placeholder}
             secureTextEntry={secureTextEntry && !isPasswordVisible}
             selectionColor={T.borderFocus}
@@ -98,7 +104,7 @@ const TextInputField = forwardRef<RNTextInput, TextInputFieldProps>(
         )}
       </View>
     );
-  }
+  },
 );
 
 TextInputField.displayName = 'TextInputField';
@@ -107,20 +113,20 @@ export default TextInputField;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 14,
+    marginBottom: 18,
     width: '100%',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 8,
     letterSpacing: 0.1,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
-    borderWidth: 1.5,
+    borderWidth: 1,
     paddingHorizontal: 13,
     minHeight: 54,
   },

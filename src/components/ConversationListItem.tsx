@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { Conversation } from '../types';
-import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 interface ConversationListItemProps {
   conversation: Conversation;
@@ -9,6 +9,17 @@ interface ConversationListItemProps {
 }
 
 const ConversationListItem: React.FC<ConversationListItemProps> = ({ conversation, onPress }) => {
+  const avatarUrl = conversation.otherUser.avatar;
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const initials =
+    (conversation.otherUser.name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join('')
+      .toUpperCase() || '?';
   // Format date for last message time display
   const formatLastMessageTime = (dateInput: Date | string | number | undefined | null): string => {
     if (!dateInput) {
@@ -34,7 +45,7 @@ const ConversationListItem: React.FC<ConversationListItemProps> = ({ conversatio
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       // Today - show time only
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -51,44 +62,53 @@ const ConversationListItem: React.FC<ConversationListItemProps> = ({ conversatio
       return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
     }
   };
-  
+
   // Get last message
-  const lastMessage = conversation.messages.length > 0 
-    ? conversation.messages[conversation.messages.length - 1] 
-    : null;
-  
+  const lastMessage =
+    conversation.messages.length > 0
+      ? conversation.messages[conversation.messages.length - 1]
+      : null;
+
   // Determine if the last message is from the current user
   const isLastMessageFromMe = lastMessage && lastMessage.user.id === 'user-1';
-  
+
   // Get preview text
   const getPreviewText = () => {
     if (!lastMessage) return '';
-    
+
     const previewLength = 35;
     let text = lastMessage.text;
-    
+
     if (isLastMessageFromMe) {
       text = 'Vous: ' + text;
     }
-    
+
     if (text.length > previewLength) {
       return text.substring(0, previewLength) + '...';
     }
-    
+
     return text;
   };
-  
+
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
+      accessibilityRole="button"
       style={styles.container}
       onPress={() => onPress(conversation.id)}
       activeOpacity={0.7}
     >
       <View style={styles.avatarContainer}>
-        <Image 
-          source={{ uri: conversation.otherUser.avatar }} 
-          style={styles.avatar} 
-        />
+        {avatarUrl && failedAvatar !== avatarUrl ? (
+          <Image
+            source={{ uri: avatarUrl }}
+            style={styles.avatar}
+            onError={() => setFailedAvatar(avatarUrl)}
+          />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.initials}>{initials}</Text>
+          </View>
+        )}
         {conversation.unreadCount > 0 && (
           <View style={styles.unreadBadge}>
             <Text style={styles.unreadCount}>
@@ -97,29 +117,27 @@ const ConversationListItem: React.FC<ConversationListItemProps> = ({ conversatio
           </View>
         )}
       </View>
-      
+
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
           <Text style={styles.name} numberOfLines={1}>
             {conversation.otherUser.name}
           </Text>
-          <Text style={styles.time}>
-            {formatLastMessageTime(conversation.lastMessageAt)}
-          </Text>
+          <Text style={styles.time}>{formatLastMessageTime(conversation.lastMessageAt)}</Text>
         </View>
-        
+
         <View style={styles.messageRow}>
-          <Text 
+          <Text
             style={[
               styles.messagePreview,
-              conversation.unreadCount > 0 && styles.unreadMessagePreview
+              conversation.unreadCount > 0 && styles.unreadMessagePreview,
             ]}
             numberOfLines={1}
           >
             {getPreviewText()}
           </Text>
         </View>
-        
+
         <Text style={styles.propertyTitle} numberOfLines={1}>
           {conversation.propertyTitle}
         </Text>
@@ -129,9 +147,16 @@ const ConversationListItem: React.FC<ConversationListItemProps> = ({ conversatio
 };
 
 const styles = StyleSheet.create({
+  avatarFallback: {
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initials: { fontSize: 16, fontWeight: '600', color: colors.primaryDark },
   container: {
     flexDirection: 'row',
-    padding: spacing[4],
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
@@ -202,4 +227,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ConversationListItem; 
+export default ConversationListItem;

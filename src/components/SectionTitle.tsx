@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors, spacing, typography } from '../theme';
 
 interface SectionTitleProps {
@@ -12,38 +11,37 @@ interface SectionTitleProps {
   icon?: string;
 }
 
-const SectionTitle: React.FC<SectionTitleProps> = ({ 
-  title, 
-  subtitle, 
-  actionText, 
+const SectionTitle: React.FC<SectionTitleProps> = ({
+  title,
+  subtitle,
+  actionText,
   onActionPress,
-  delay = 0
 }) => {
   return (
-    <Animated.View 
-      entering={FadeIn.delay(delay).duration(400)}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>{title}</Text>
+        <Text accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
         {actionText && onActionPress && (
-          <TouchableOpacity onPress={onActionPress}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={onActionPress}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
             <Text style={styles.actionText}>{actionText}</Text>
           </TouchableOpacity>
         )}
       </View>
-      
-      {subtitle && (
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      )}
-    </Animated.View>
+
+      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing[3],
-    paddingHorizontal: spacing[4],
   },
   titleContainer: {
     flexDirection: 'row',
@@ -51,6 +49,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
+    flexShrink: 1,
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
     color: colors.gray[800],
@@ -67,4 +66,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SectionTitle; 
+export default SectionTitle;

@@ -1,5 +1,6 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, Share, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, StatusBar, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Divider, IconButton, useTheme } from 'react-native-paper';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -123,16 +124,7 @@ const QuestionDetailScreen = () => {
   };
   
   // Afficher un indicateur de chargement
-  if (isLoading) {
-    return (
-      <SafeAreaView style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>
-          {t('common.loading')}
-        </Text>
-      </SafeAreaView>
-    );
-  }
+  if (isLoading) return <SkeletonScreen variant="article" />;
   
   // Si la question n'existe pas
   if (!question) {

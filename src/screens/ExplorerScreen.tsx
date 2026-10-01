@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,6 +24,7 @@ import { useFavoritesStore } from '../store/favorites';
 import { useUserStore } from '../store/user';
 import SearchFiltersModal from '../components/SearchFiltersModal';
 import ListingCard from '../components/ListingCard';
+import AppLogo from '../components/AppLogo';
 
 const categories = [
   { id: 'all', key: 'all', icon: 'apps' },
@@ -110,9 +112,9 @@ export default function ExplorerScreen() {
     <View>
       <View style={s.intro}>
         <Text accessibilityRole="header" style={s.heading}>
-          {t('explore.findYourHome')}
+          {t('pro.exploreTitle')}
         </Text>
-        <Text style={s.subtitle}>{t('explore.shortOrLongStay')}</Text>
+        <Text style={s.subtitle}>{t('pro.exploreSubtitle')}</Text>
       </View>
       <View style={s.searchRow}>
         <View style={[s.searchField, searchFocused && s.searchFocused]}>
@@ -166,8 +168,8 @@ export default function ExplorerScreen() {
           >
             <MaterialIcons
               name={item.icon}
-              size={19}
-              color={category === item.id ? colors.onPrimary : colors.primary}
+              size={24}
+              color={category === item.id ? colors.primary : colors.inkSubtle}
             />
             <Text style={[s.categoryLabel, category === item.id && s.categoryLabelActive]}>
               {t(`explore.categories.${item.key}`)}
@@ -187,7 +189,7 @@ export default function ExplorerScreen() {
           onPress={() => navigation.navigate('MapScreen')}
           style={({ pressed }) => [s.mapButton, pressed && s.pressed]}
         >
-          <MaterialIcons name="map" size={21} color={colors.onAccent} />
+          <MaterialIcons name="map" size={19} color={colors.ink} />
           <Text style={s.mapLabel}>{t('map.title')}</Text>
         </Pressable>
       </View>
@@ -212,14 +214,10 @@ export default function ExplorerScreen() {
       <View style={s.topBar}>
         <View style={s.topInner}>
           <View style={s.brand}>
-            <View style={s.brandMark}>
-              <MaterialIcons name="roofing" size={27} color={colors.onAccent} />
-            </View>
-            <View>
-              <Text style={s.wordmark}>
-                Loca<Text style={s.wordmarkGreen}>Map</Text>
-              </Text>
-              <Text style={s.city}>{t('explore.locationGisenyi')}</Text>
+            <AppLogo size={64} />
+            <View style={s.placeBlock}>
+              <Text style={s.city}>Gisenyi</Text>
+              <Text style={s.country}>Rwanda</Text>
             </View>
           </View>
           <Pressable
@@ -250,7 +248,7 @@ export default function ExplorerScreen() {
         refreshing={refreshing}
         onRefresh={() => void refresh()}
         renderItem={({ item }) => (
-          <View style={{ width: `${100 / columns}%`, padding: 8 }}>
+          <View style={{ width: `${100 / columns}%`, paddingHorizontal: 8, paddingBottom: 28 }}>
             <ListingCard
               property={item}
               favorite={isFavorite(item.id)}
@@ -262,15 +260,7 @@ export default function ExplorerScreen() {
         ListEmptyComponent={
           isLoading ? (
             !refreshing ? (
-              <View
-                style={s.skeleton}
-                accessibilityRole="progressbar"
-                accessibilityLabel={t('common.loading')}
-              >
-                <View style={s.skeletonImage} />
-                <View style={s.skeletonLine} />
-                <View style={[s.skeletonLine, { width: '45%' }]} />
-              </View>
+              <ContentSkeleton variant="cards" columns={columns} count={columns * 2} style={{ paddingHorizontal: 8 }} />
             ) : null
           ) : !error ? (
             <View style={s.empty}>
@@ -306,11 +296,9 @@ export default function ExplorerScreen() {
   );
 }
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: colors.surface },
   topBar: {
     backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   topInner: {
     width: '100%',
@@ -320,20 +308,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 6,
   },
-  brand: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  brandMark: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wordmark: { fontSize: 24, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
-  wordmarkGreen: { color: colors.primary },
-  city: { fontSize: 12, color: colors.inkSubtle, marginTop: 1 },
+  brand: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  placeBlock: { borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 14, gap: 2 },
+  city: { fontSize: 15, fontWeight: '600', color: colors.ink },
+  country: { fontSize: 12, color: colors.inkSubtle },
   avatar: {
     height: 44,
     width: 44,
@@ -351,19 +331,19 @@ const s = StyleSheet.create({
     maxWidth: 1120,
     alignSelf: 'center',
     paddingHorizontal: 12,
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   columns: { alignItems: 'stretch' },
-  intro: { paddingHorizontal: 8, paddingTop: 26, paddingBottom: 20, gap: 8 },
+  intro: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 22, gap: 8 },
   heading: {
-    fontSize: 28,
-    lineHeight: 35,
+    fontSize: 27,
+    lineHeight: 34,
     fontWeight: '700',
     color: colors.ink,
     maxWidth: 580,
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 16, lineHeight: 23, color: colors.inkSubtle },
+  subtitle: { fontSize: 15, lineHeight: 23, color: colors.inkSubtle },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 8 },
   searchField: {
     flex: 1,
@@ -375,8 +355,8 @@ const s = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.borderMid,
-    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   searchFocused: { borderColor: colors.primary, borderWidth: 2, paddingLeft: 13, paddingRight: 4 },
   input: { flex: 1, minWidth: 0, fontSize: 15, color: colors.ink, paddingVertical: 14 },
@@ -391,38 +371,38 @@ const s = StyleSheet.create({
   filterButton: {
     width: 54,
     height: 56,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.borderMid,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categories: { gap: 8, paddingHorizontal: 8, paddingTop: 18, paddingBottom: 24 },
+  categories: { gap: 20, paddingHorizontal: 8, paddingTop: 24, paddingBottom: 24 },
   category: {
-    minHeight: 44,
-    flexDirection: 'row',
+    minHeight: 66,
+    minWidth: 58,
     alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  categoryActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryLabel: { fontSize: 14, fontWeight: '500', color: colors.ink },
-  categoryLabelActive: { color: colors.onPrimary },
+  categoryActive: { borderBottomColor: colors.primary },
+  categoryLabel: { fontSize: 12, fontWeight: '500', color: colors.inkSubtle },
+  categoryLabelActive: { color: colors.primaryDark, fontWeight: '700' },
   resultsRow: {
     paddingHorizontal: 8,
-    paddingBottom: 10,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 8,
   },
-  results: { fontSize: 20, fontWeight: '700', color: colors.ink },
+  results: { fontSize: 21, fontWeight: '700', color: colors.ink },
   resultsSummary: { flex: 1, gap: 4 },
   count: { fontSize: 14, color: colors.inkSubtle },
   error: { margin: 8, padding: 16, backgroundColor: '#FFF0ED', borderRadius: 12 },
@@ -463,9 +443,11 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 16,
-    backgroundColor: colors.accent,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    borderRadius: 10,
   },
-  mapLabel: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
+  mapLabel: { color: colors.ink, fontSize: 14, fontWeight: '600' },
   pressed: { opacity: 0.8 },
 });

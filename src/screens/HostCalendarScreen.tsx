@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
@@ -10,18 +11,11 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HostPage, HostHeader, HostNotice, HostEmpty } from '../components/host/HostUI';
 import { Text } from 'react-native-paper';
-import Animated, {
-  FadeInDown,
-  FadeIn,
-  useSharedValue,
-  withTiming,
-  useAnimatedStyle,
-  Easing,
-} from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { colors } from '../theme';
 import { useUserStore } from '../store/user';
 import {
@@ -34,13 +28,14 @@ import {
 } from '../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MONTHS_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
-];
-const DAYS_FR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MIN_PRICE = 5000;
 type ActionMode = 'available' | 'blocked';
+
+export function getCalendarListingType(type: string | null | undefined, fallback: string, labels: Record<string, string> = {}) {
+  const code = type?.trim();
+  const label = code ? labels[code] || code : fallback;
+  return { label, initial: label.charAt(0).toUpperCase() };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const toKey = (year: number, month: number, day: number): string => {
@@ -65,27 +60,6 @@ const getDayCells = (year: number, month: number): (number | null)[] => {
 const isWeekend = (year: number, month: number, day: number): boolean => {
   const dow = new Date(year, month, day).getDay();
   return dow === 0 || dow === 6;
-};
-
-const formatSelectionLabel = (dates: string[]): string => {
-  if (dates.length === 0) return '';
-  if (dates.length === 1) {
-    const parts = dates[0].split('-');
-    return `${parseInt(parts[2])} ${MONTHS_FR[parseInt(parts[1]) - 1]}`;
-  }
-  const sorted = [...dates].sort();
-  const isContiguous = sorted.every((dk, i) => {
-    if (i === 0) return true;
-    const a = new Date(sorted[i - 1]);
-    const b = new Date(dk);
-    return (b.getTime() - a.getTime()) / 86400000 === 1;
-  });
-  const fmtShort = (dk: string) => {
-    const p = dk.split('-');
-    return `${parseInt(p[2])} ${MONTHS_FR[parseInt(p[1]) - 1].slice(0, 4)}.`;
-  };
-  if (isContiguous) return `${fmtShort(sorted[0])} – ${fmtShort(sorted[sorted.length - 1])}`;
-  return `${dates.length} dates`;
 };
 
 interface CalendarState {
@@ -143,16 +117,56 @@ export function createCalendarSession(
   };
 }
 
+interface CalendarListingsState {
+  userId: string | null;
+  listings: HostListing[];
+  selectedListing: HostListing | null;
+  loading: boolean;
+  error: string | null;
+}
+
+// Focus changes invalidate both listing requests and the existing calendar
+// read/write session. Selection is restored only from the fresh eligible rows.
+export function createCalendarFocusSession(
+  onChange: (state: CalendarListingsState) => void,
+  calendar: { invalidate: () => void },
+  service: Pick<typeof hostService, 'getHostListings'> = hostService,
+) {
+  let generation = 0;
+  return {
+    invalidate() { ++generation; calendar.invalidate(); },
+    async load({ userId, preferredId, requestedId }: { userId: string | null; preferredId?: string; requestedId?: string }) {
+      const request = ++generation;
+      calendar.invalidate();
+      const empty: CalendarListingsState = { userId, listings: [], selectedListing: null, loading: true, error: null };
+      onChange(empty);
+      try {
+        const listings = userId ? await service.getHostListings() : [];
+        if (request !== generation) return;
+        const selectedListing = listings.find(row => row.id === preferredId)
+          ?? listings.find(row => row.id === requestedId) ?? listings[0] ?? null;
+        onChange({ ...empty, listings, selectedListing, loading: false });
+      } catch (error) {
+        if (request === generation) onChange({ ...empty, loading: false, error: calendarError(error) });
+      }
+    },
+  };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
-const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}}) => {
-  const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+const HostCalendarScreen = ({ route, navigation }: { route?: { name?: string; params?: { propertyId?: string } }; navigation?: { goBack: () => void } }) => {
+  const { t, i18n } = useTranslation();
+  const focused = useIsFocused();
+  const dedicated = route?.name === 'HostCalendar';
+  const locale = i18n.language;
+  const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) => date.toLocaleDateString(locale, { timeZone: 'Africa/Kigali', ...options });
+  const weekdays = Array.from({ length: 7 }, (_, day) => formatDate(new Date(Date.UTC(2026, 0, 5 + day, 12)), { weekday: 'narrow' }));
   const userId = useUserStore(state => state.authUser?.id ?? null);
 
   // ── View state ─────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    const parts = new Intl.DateTimeFormat('en', { timeZone: 'Africa/Kigali', year: 'numeric', month: 'numeric' }).formatToParts(new Date());
+    return new Date(Number(parts.find(p => p.type === 'year')!.value), Number(parts.find(p => p.type === 'month')!.value) - 1, 1);
   });
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -168,12 +182,26 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
   const [listingsError, setListingsError] = useState<string | null>(null);
   const [listingsRetry, setListingsRetry] = useState(0);
   const [calendarRetry, setCalendarRetry] = useState(0);
+  const lastSelection = useRef<{ userId: string | null; id?: string }>({ userId: null });
+  const lastRequestedProperty = useRef(route?.params?.propertyId);
+  const focusGeneration = useRef(0);
+  const listingsLoadingRef = useRef(true);
+  const focusSession = useRef<ReturnType<typeof createCalendarFocusSession> | null>(null);
+  if (!focusSession.current) focusSession.current = createCalendarFocusSession(next => {
+    listingsLoadingRef.current = next.loading;
+    setListings(next.listings);
+    setSelectedListing(next.selectedListing);
+    setListingsUserId(next.userId);
+    setLoadingListings(next.loading);
+    setListingsError(next.error);
+    if (next.selectedListing) lastSelection.current = { userId: next.userId, id: next.selectedListing.id };
+  }, session.current);
   const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
   const calendarScope = `${userId}:${selectedListing?.id}:${monthStr}`;
   const currentScope = useRef(calendarScope);
   currentScope.current = calendarScope;
   const calendarMatches = calendar.scope === calendarScope;
-  const calendarReady = calendarMatches && calendar.ready;
+  const calendarReady = focused && !loadingListings && calendarMatches && calendar.ready;
   const loadingCalendar = !calendarMatches || calendar.loading;
   const saving = calendarMatches && calendar.saving;
   const calendarFailure = calendarMatches && calendar.error !== null;
@@ -191,42 +219,20 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
   const [actionMode, setActionMode] = useState<ActionMode>('available');
   const [blockReason, setBlockReason] = useState<BlockReason>('personal');
 
-  // ── Panel slide animation ──────────────────────────────────────────────────
-  const panelY = useSharedValue(300);
-  const panelStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: panelY.value }],
-  }));
-
-  useEffect(() => {
-    panelY.value = withTiming(selectedDates.length > 0 ? 0 : 300, {
-      duration: 320,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [selectedDates.length]);
-
-  // ── Load listings on mount ─────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingListings(true);
-    setListings([]);
-    setSelectedListing(null);
-    setListingsError(null);
-    session.current?.invalidate();
-    (async () => {
-      try {
-        if (!userId) return;
-        const data = await hostService.getHostListings();
-        if (cancelled) return;
-        setListings(data);
-        if (data.length > 0) setSelectedListing(data.find(item=>item.id===route?.params?.propertyId) ?? data[0]);
-      } catch (error) {
-        if (!cancelled) setListingsError(calendarError(error) || t('hostCalendar.errorListings'));
-      } finally {
-        if (!cancelled) { setListingsUserId(userId); setLoadingListings(false); }
-      }
-    })();
-    return () => { cancelled = true; session.current?.invalidate(); };
-  }, [userId, listingsRetry, route?.params?.propertyId, t]);
+  // Tabs stay mounted: every visit refreshes both eligible properties and days.
+  useFocusEffect(useCallback(() => {
+    ++focusGeneration.current;
+    const requestedId = route?.params?.propertyId;
+    const routeChanged = lastRequestedProperty.current !== requestedId;
+    lastRequestedProperty.current = requestedId;
+    const preferredId = routeChanged ? requestedId : lastSelection.current.userId === userId ? lastSelection.current.id : undefined;
+    void focusSession.current?.load({ userId, preferredId, requestedId });
+    return () => {
+      ++focusGeneration.current;
+      focusSession.current?.invalidate();
+      setCalendar(emptyCalendar);
+    };
+  }, [userId, listingsRetry, route?.params?.propertyId]));
 
   // ── Load calendar when listing or month changes ────────────────────────────
   useEffect(() => {
@@ -235,11 +241,11 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
     setApplySuccess(false);
     setPriceInput('');
     setMinNights(1);
-    if (selectedListing && userId && listingsUserId === userId) {
+    if (focused && !listingsLoadingRef.current && !loadingListings && listingsError === null && selectedListing && userId && listingsUserId === userId) {
       void session.current?.load(calendarScope, selectedListing.id, monthStr);
     }
     return () => session.current?.invalidate();
-  }, [calendarScope, selectedListing, monthStr, userId, listingsUserId, calendarRetry]);
+  }, [calendarScope, selectedListing, monthStr, userId, listingsUserId, calendarRetry, focused, loadingListings, listingsError]);
 
   useEffect(() => {
     if (!applySuccess) return;
@@ -278,6 +284,7 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
   const applyChanges = async () => {
     if (!selectedListing || selectedDates.length === 0 || !calendarReady || saving) return;
     const scope = calendarScope;
+    const focus = focusGeneration.current;
     setApplySuccess(false);
 
     const patch = {
@@ -291,7 +298,7 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
     };
 
     const saved = await session.current?.save(scope, selectedListing.id, monthStr, patch);
-    if (currentScope.current === scope) {
+    if (currentScope.current === scope && focusGeneration.current === focus) {
       setSelectedDates([]);
       if (saved) setApplySuccess(true);
     }
@@ -327,29 +334,17 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (loadingListings || listingsUserId !== userId) {
-    return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  if (listingsError || listings.length === 0) {
-    return (
-      <View style={s.centered}>
-        <MaterialIcons name="home-work" size={40} color={colors.inkDisabled} />
-        <Text style={s.emptyText}>
-          {listingsError ?? t('hostCalendar.publishFirst')}
-        </Text>
-        {listingsError && <TouchableOpacity onPress={() => setListingsRetry(value => value + 1)} accessibilityRole="button">
-          <Text style={s.hint}>{t('common.retry')}</Text>
-        </TouchableOpacity>}
-      </View>
-    );
+  if (loadingListings || listingsUserId !== userId || listingsError !== null || listings.length === 0) {
+    return <HostPage bottomSafe={dedicated}>
+      <HostHeader title={t('hostCalendar.title')} onBack={dedicated ? navigation?.goBack : undefined} />
+      {loadingListings || listingsUserId !== userId ? <ContentSkeleton variant="calendar" />
+        : listingsError !== null ? <HostNotice message={listingsError || t('hostCalendar.errorListings')} onRetry={() => setListingsRetry(value => value + 1)} />
+        : <HostEmpty icon="calendar-today" title={t('hostCalendar.publishFirst')} />}
+    </HostPage>;
   }
 
   return (
+    <HostPage scroll={false} bottomSafe={dedicated}>
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -358,16 +353,17 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
         <ScrollView
           contentContainerStyle={[
             s.scroll,
-            { paddingTop: insets.top + 20, paddingBottom: 200 },
+            { paddingTop: 8, paddingBottom: 24, width: '100%', maxWidth: 760, alignSelf: 'center' },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Header ── */}
-          <Animated.View entering={FadeInDown.duration(340)} style={s.header}>
-            <Text style={s.headerTitle}>{t('hostCalendar.title')}</Text>
+          <HostHeader title={t('hostCalendar.title')} onBack={dedicated ? navigation?.goBack : undefined} />
+          <View style={s.header}>
             <TouchableOpacity
               style={s.listingPicker}
+              accessibilityRole="button" accessibilityLabel={t('hostCalendar.chooseListing')}
               disabled={saving}
               onPress={() => setDropdownOpen(true)}
               activeOpacity={0.8}
@@ -377,42 +373,42 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
               </Text>
               <MaterialIcons name="keyboard-arrow-down" size={18} color={colors.primary} />
             </TouchableOpacity>
-          </Animated.View>
+          </View>
 
           {/* ── Stats strip ── */}
-          {calendarReady && <Animated.View entering={FadeInDown.delay(60).duration(320)} style={s.statsStrip}>
+          {calendarReady && <View style={s.statsStrip}>
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.primary }]} />
-              <Text style={s.statText}>{monthStats.booked} {t('hostCalendar.booked')}</Text>
+              <Text style={s.statText}>{t('hostFlow.calendar.bookedDays', { count: monthStats.booked })}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.inkDisabled }]} />
-              <Text style={s.statText}>{monthStats.blocked} {t('hostCalendar.blocked')}</Text>
+              <Text style={s.statText}>{t('hostFlow.calendar.blockedDays', { count: monthStats.blocked })}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
               <View style={[s.statDot, { backgroundColor: colors.success }]} />
               <Text style={s.statText}>
-                {monthStats.total - monthStats.booked - monthStats.blocked} {t('hostCalendar.free')}
+                {t('hostFlow.calendar.availableDays', { count: monthStats.total - monthStats.booked - monthStats.blocked })}
               </Text>
             </View>
-          </Animated.View>}
+          </View>}
 
           {/* ── Month navigator ── */}
-          <Animated.View entering={FadeInDown.delay(100).duration(320)} style={s.monthNav}>
-            <TouchableOpacity onPress={goToPrevMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
+          <View style={s.monthNav}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('hostFlow.calendar.previousMonth')} onPress={goToPrevMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
               <MaterialIcons name="chevron-left" size={26} color={colors.inkMid} />
             </TouchableOpacity>
-            <Text style={s.monthLabel}>{MONTHS_FR[month]} {year}</Text>
-            <TouchableOpacity onPress={goToNextMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
+            <Text style={s.monthLabel}>{formatDate(new Date(Date.UTC(year, month, 1, 12)), { month: 'long', year: 'numeric' })}</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('hostFlow.calendar.nextMonth')} onPress={goToNextMonth} disabled={saving} style={s.monthNavBtn} activeOpacity={0.7}>
               <MaterialIcons name="chevron-right" size={26} color={colors.inkMid} />
             </TouchableOpacity>
-          </Animated.View>
+          </View>
 
           {/* ── Day headers ── */}
           <View style={s.dayHeaders}>
-            {DAYS_FR.map((d, i) => (
+            {weekdays.map((d, i) => (
               <Text
                 key={i}
                 style={[s.dayHeader, (i === 5 || i === 6) && s.dayHeaderWeekend]}
@@ -424,9 +420,7 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
 
           {/* ── Grid ── */}
           {loadingCalendar ? (
-            <View style={s.gridLoader}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
+            <ContentSkeleton variant="calendar" />
           ) : calendarFailure ? (
             <View style={s.centered}>
               <Text accessibilityRole="alert" style={{ color: colors.error }}>{calendar.error || t('common.error')}</Text>
@@ -435,7 +429,7 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
               </TouchableOpacity>
             </View>
           ) : (
-            <Animated.View entering={FadeInDown.delay(140).duration(320)} style={s.calendarGrid}>
+            <View style={s.calendarGrid}>
               {cells.map((day, idx) => {
                 if (day === null) return <View key={`e-${idx}`} style={s.dayCellEmpty} />;
                 const key = toKey(year, month, day);
@@ -444,6 +438,9 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                 return (
                   <TouchableOpacity
                     key={key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${formatDate(new Date(`${key}T12:00:00Z`), { day: 'numeric', month: 'long', year: 'numeric' })}, ${t(`hostFlow.calendar.${data?.status ?? 'available'}`)}`}
+                    accessibilityState={{ selected: selectedDates.includes(key), disabled: saving || !calendarReady }}
                     onPress={() => handleDayPress(day)}
                     disabled={saving || !calendarReady}
                     activeOpacity={0.75}
@@ -466,12 +463,12 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                   </TouchableOpacity>
                 );
               })}
-            </Animated.View>
+            </View>
           )}
 
           {/* ── Booking tooltip ── */}
           {calendarReady && tooltipKey && dayMap[tooltipKey] && (
-            <Animated.View entering={FadeInDown.duration(240)} style={s.tooltip}>
+            <View style={s.tooltip}>
               <View style={s.tooltipHeader}>
                 <MaterialIcons name="event" size={14} color={colors.primary} />
                 <Text style={s.tooltipTitle}>{t('hostCalendar.confirmedBooking')}</Text>
@@ -479,20 +476,20 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
               <Text style={s.tooltipGuest}>{dayMap[tooltipKey]!.guestName}</Text>
               {dayMap[tooltipKey]!.nights != null && (
                 <Text style={s.tooltipMeta}>
-                  {dayMap[tooltipKey]!.nights} nuit{dayMap[tooltipKey]!.nights! > 1 ? 's' : ''}
+                  {t('hostFlow.calendar.nights', { count: dayMap[tooltipKey]!.nights })}
                 </Text>
               )}
               {dayMap[tooltipKey]!.amount != null && (
                 <Text style={s.tooltipAmount}>{formatFC(dayMap[tooltipKey]!.amount!)}</Text>
               )}
-              <TouchableOpacity style={s.tooltipClose} onPress={() => setTooltipKey(null)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} style={s.tooltipClose} onPress={() => setTooltipKey(null)}>
                 <MaterialIcons name="close" size={15} color={colors.inkSubtle} />
               </TouchableOpacity>
-            </Animated.View>
+            </View>
           )}
 
           {/* ── Legend ── */}
-          <Animated.View entering={FadeInDown.delay(200).duration(320)} style={s.legend}>
+          <View style={s.legend}>
             <Text style={s.legendTitle}>{t('hostCalendar.legend')}</Text>
             <View style={s.legendRow}>
               <View style={s.legendItem}>
@@ -512,30 +509,28 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                 <Text style={s.legendLabel}>{t('hostCalendar.legendSelected')}</Text>
               </View>
             </View>
-          </Animated.View>
+          </View>
 
           {calendarReady && selectedDates.length === 0 && !tooltipKey && (
             <Text style={s.hint}>{t('hostCalendar.tapHint')}</Text>
           )}
 
           {applySuccess && (
-            <Animated.View entering={FadeIn.duration(200)} style={s.toast}>
+            <View style={s.toast}>
               <MaterialIcons name="check-circle" size={15} color={colors.success} />
               <Text style={s.toastText}>{t('hostCalendar.saved')}</Text>
-            </Animated.View>
+            </View>
           )}
-        </ScrollView>
 
-        {/* ── Action panel ── */}
-        {calendarReady && <Animated.View pointerEvents={saving ? 'none' : 'auto'} style={[s.actionPanel, panelStyle]}>
-          <View style={s.actionHandle} />
+        {/* Editing stays in the scroll flow, only while dates are selected. */}
+        {calendarReady && selectedDates.length > 0 && <View pointerEvents={saving ? 'none' : 'auto'} style={s.actionPanel}>
 
           <View style={s.actionHeaderRow}>
             <View>
               <Text style={s.actionLabel}>{t('hostCalendar.selection')}</Text>
-              <Text style={s.actionSelection}>{formatSelectionLabel(selectedDates)}</Text>
+              <Text style={s.actionSelection}>{t('hostFlow.calendar.selected', { count: selectedDates.length })}</Text>
             </View>
-            <TouchableOpacity onPress={() => setSelectedDates([])} style={s.clearBtn}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.cancel')} onPress={() => setSelectedDates([])} style={s.clearBtn}>
               <MaterialIcons name="close" size={17} color={colors.inkSubtle} />
             </TouchableOpacity>
           </View>
@@ -543,7 +538,11 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
           {/* Mode toggle */}
           <View style={s.modeToggle}>
             <TouchableOpacity
-              style={[s.modeBtn, actionMode === 'available' && selectedListing?.canSetPricing && s.modeBtnActive]}
+              accessibilityRole="button"
+              accessibilityLabel={t('hostCalendar.available')}
+              accessibilityState={{ selected: actionMode === 'available', disabled: saving }}
+              disabled={saving}
+              style={[s.modeBtn, actionMode === 'available' && s.modeBtnActive]}
               onPress={() => setActionMode('available')}
               activeOpacity={0.8}
             >
@@ -552,11 +551,15 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                 size={14}
                 color={actionMode === 'available' ? colors.primary : colors.inkDisabled}
               />
-              <Text style={[s.modeBtnText, actionMode === 'available' && selectedListing?.canSetPricing && s.modeBtnTextActive]}>
+              <Text style={[s.modeBtnText, actionMode === 'available' && s.modeBtnTextActive]}>
                 {t('hostCalendar.available')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t('hostCalendar.block')}
+              accessibilityState={{ selected: actionMode === 'blocked', disabled: saving }}
+              disabled={saving}
               style={[s.modeBtn, actionMode === 'blocked' && s.modeBtnBlockActive]}
               onPress={() => setActionMode('blocked')}
               activeOpacity={0.8}
@@ -581,12 +584,14 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                 <Text style={s.fieldLabel}>{t('hostCalendar.priceNight')}</Text>
                 <View style={s.priceInputWrap}>
                   <TextInput
+                    accessibilityLabel={t('hostCalendar.priceNight') + ' (RWF)'}
+                    editable={!saving}
                     style={s.priceInput}
                     value={priceInput}
                     onChangeText={v => setPriceInput(v.replace(/\D/g, ''))}
                     keyboardType="numeric"
                     placeholder={String(MIN_PRICE)}
-                    placeholderTextColor={colors.inkDisabled}
+                    placeholderTextColor={colors.inkSubtle}
                   />
                   <Text style={s.priceSuffix}>RWF</Text>
                 </View>
@@ -594,10 +599,13 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                   <Text style={s.priceWarning}>{t('hostCalendar.minPrice')} {formatFC(MIN_PRICE)}</Text>
                 )}
               </View>
-              <View style={[s.fieldGroup, { marginLeft: 12 }]}>
+              <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>{t('hostCalendar.minStay')}</Text>
                 <View style={s.stepper}>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={t('hostFlow.calendar.decreaseStay')}
+                    disabled={minNights <= 1 || saving}
                     style={s.stepperBtn}
                     onPress={() => setMinNights(n => Math.max(1, n - 1))}
                   >
@@ -605,6 +613,9 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                   </TouchableOpacity>
                   <Text style={s.stepperValue}>{minNights}</Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={t('hostFlow.calendar.increaseStay')}
+                    disabled={minNights >= 30 || saving}
                     style={s.stepperBtn}
                     onPress={() => setMinNights(n => Math.min(30, n + 1))}
                   >
@@ -628,6 +639,10 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
               ).map(r => (
                 <TouchableOpacity
                   key={r.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={r.label}
+                  accessibilityState={{ selected: blockReason === r.key, disabled: saving }}
+                  disabled={saving}
                   style={[s.reasonChip, blockReason === r.key && s.reasonChipActive]}
                   onPress={() => setBlockReason(r.key)}
                   activeOpacity={0.8}
@@ -644,6 +659,9 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
 
           {/* Apply */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t(selectedDates.length > 1 ? 'hostCalendar.applyToPlural' : 'hostCalendar.applyTo', { count: selectedDates.length })}
+            accessibilityState={{ busy: saving }}
             style={[
               s.applyBtn,
               actionMode === 'blocked' && s.applyBtnBlocked,
@@ -662,14 +680,16 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
             {saving ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Text style={s.applyBtnText}>
+              <Text style={[s.applyBtnText, actionMode === 'blocked' && { color: colors.white }]}>
                 {selectedDates.length > 1
                   ? t('hostCalendar.applyToPlural', { count: selectedDates.length })
                   : t('hostCalendar.applyTo', { count: selectedDates.length })}
               </Text>
             )}
           </TouchableOpacity>
-        </Animated.View>}
+        </View>}
+
+        </ScrollView>
 
         {/* ── Listing picker modal ── */}
         <Modal
@@ -683,16 +703,22 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
             activeOpacity={1}
             onPress={() => setDropdownOpen(false)}
           >
-            <Animated.View entering={FadeInDown.duration(220)} style={s.dropdownCard}>
+            <ScrollView style={s.dropdownCard} keyboardShouldPersistTaps="handled">
               <Text style={s.dropdownTitle}>{t('hostCalendar.chooseListing')}</Text>
-              {listings.map(l => (
+              {listings.map(l => {
+                const type = getCalendarListingType(l.type, t('hostFlow.calendar.unspecifiedType'), t('property.types', { returnObjects: true }) as Record<string, string>);
+                return (
                 <TouchableOpacity
                   key={l.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${l.title}, ${type.label}`}
+                  accessibilityState={{ selected: selectedListing?.id === l.id }}
                   style={[
                     s.dropdownItem,
                     selectedListing?.id === l.id && s.dropdownItemActive,
                   ]}
                   onPress={() => {
+                    lastSelection.current = { userId, id: l.id };
                     setSelectedListing(l);
                     setDropdownOpen(false);
                   }}
@@ -701,24 +727,26 @@ const HostCalendarScreen = ({route}: {route?: {params?: {propertyId?: string}}})
                   <View style={s.dropdownItemLeft}>
                     <View style={s.dropdownTypeChip}>
                       <Text style={s.dropdownTypeInitial}>
-                        {l.type.charAt(0).toUpperCase()}
+                        {type.initial}
                       </Text>
                     </View>
                     <View>
                       <Text style={s.dropdownItemTitle}>{l.title}</Text>
-                      <Text style={s.dropdownItemSub}>{l.type}</Text>
+                      <Text style={s.dropdownItemSub}>{type.label}</Text>
                     </View>
                   </View>
                   {selectedListing?.id === l.id && (
                     <MaterialIcons name="check" size={17} color={colors.primary} />
                   )}
                 </TouchableOpacity>
-              ))}
-            </Animated.View>
+                );
+              })}
+            </ScrollView>
           </TouchableOpacity>
         </Modal>
       </View>
     </KeyboardAvoidingView>
+    </HostPage>
   );
 };
 
@@ -764,7 +792,8 @@ const s = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    maxWidth: 180,
+    maxWidth: '100%',
+    minHeight: 48,
   },
   listingPickerText: {
     fontSize: 12,
@@ -791,6 +820,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   statDot: {
     width: 8,
@@ -801,6 +831,8 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: colors.inkMid,
     fontWeight: '500',
+    flexShrink: 1,
+    textAlign: 'center',
   },
   statDivider: {
     width: 1,
@@ -816,8 +848,8 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   monthNavBtn: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 18,
     backgroundColor: colors.surfaceSunken,
     borderWidth: 1,
@@ -835,6 +867,7 @@ const s = StyleSheet.create({
   // Day headers
   dayHeaders: {
     flexDirection: 'row',
+    marginHorizontal: -14,
     marginBottom: 8,
   },
   dayHeader: {
@@ -857,6 +890,7 @@ const s = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginHorizontal: -14,
     marginBottom: 16,
   },
   dayCellEmpty: {
@@ -957,15 +991,6 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     padding: 14,
     marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.09,
-        shadowRadius: 8,
-      },
-      android: { elevation: 3 },
-    }),
   },
   tooltipHeader: {
     flexDirection: 'row',
@@ -998,8 +1023,8 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: colors.surfaceSunken,
     alignItems: 'center',
@@ -1011,16 +1036,15 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   legendTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.inkDisabled,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.inkSubtle,
     marginBottom: 8,
   },
   legendRow: {
     flexDirection: 'row',
-    gap: 16,
+    flexWrap: 'wrap',
+    gap: 12,
   },
   legendItem: {
     flexDirection: 'row',
@@ -1033,7 +1057,7 @@ const s = StyleSheet.create({
     borderRadius: 4,
   },
   legendLabel: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.inkSubtle,
   },
   swatchAvailable: {
@@ -1055,7 +1079,7 @@ const s = StyleSheet.create({
 
   hint: {
     fontSize: 12,
-    color: colors.inkDisabled,
+    color: colors.inkSubtle,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -1086,24 +1110,12 @@ const s = StyleSheet.create({
 
   // Action panel
   actionPanel: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
+    marginTop: 24,
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 18,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.13,
-        shadowRadius: 18,
-      },
-      android: { elevation: 12 },
-    }),
+    padding: 16,
   },
   actionHandle: {
     width: 36,
@@ -1120,10 +1132,9 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   actionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.inkDisabled,
-    letterSpacing: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.inkSubtle,
   },
   actionSelection: {
     fontSize: 15,
@@ -1132,8 +1143,8 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   clearBtn: {
-    width: 30,
-    height: 30,
+    width: 44,
+    height: 44,
     borderRadius: 15,
     backgroundColor: colors.surfaceSunken,
     alignItems: 'center',
@@ -1151,6 +1162,7 @@ const s = StyleSheet.create({
   },
   modeBtn: {
     flex: 1,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1161,6 +1173,7 @@ const s = StyleSheet.create({
   modeBtnActive: { backgroundColor: colors.primaryLight },
   modeBtnBlockActive: { backgroundColor: colors.error },
   modeBtnText: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600',
     color: colors.inkDisabled,
@@ -1170,7 +1183,8 @@ const s = StyleSheet.create({
 
   // Fields
   fieldsRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
+    gap: 16,
     marginBottom: 16,
   },
   fieldGroup: { flex: 1 },
@@ -1179,7 +1193,6 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: colors.inkSubtle,
     marginBottom: 6,
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   priceInputWrap: {
@@ -1190,7 +1203,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: 10,
-    height: 42,
+    height: 48,
   },
   priceInput: {
     flex: 1,
@@ -1217,11 +1230,11 @@ const s = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: colors.border,
-    height: 42,
+    height: 48,
     overflow: 'hidden',
   },
   stepperBtn: {
-    width: 34,
+    width: 44,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1246,6 +1259,8 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
   },
   reasonChip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
@@ -1266,8 +1281,8 @@ const s = StyleSheet.create({
 
   // Apply button
   applyBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1276,7 +1291,7 @@ const s = StyleSheet.create({
   applyBtnBlocked: { backgroundColor: colors.error },
   applyBtnDisabled: { opacity: 0.4 },
   applyBtnText: {
-    color: colors.white,
+    color: colors.onAccent,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1287,7 +1302,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(15, 31, 31, 0.42)',
     justifyContent: 'flex-end',
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   dropdownCard: {
     backgroundColor: colors.surface,
@@ -1300,7 +1315,6 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.inkSubtle,
-    textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 14,
   },

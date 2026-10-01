@@ -1,19 +1,19 @@
+import ContentSkeleton from '../components/ContentSkeleton';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Share,
   TextInput,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { HostPage, HostHeader } from '../components/host/HostUI';
 import {
   referralService,
   ReferralCode,
@@ -171,7 +171,7 @@ const rc = StyleSheet.create({
   avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarTxt:   { fontSize: 15, fontWeight: '700', color: colors.primary },
   name:        { fontSize: 14, fontWeight: '700', color: colors.ink },
-  date:        { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
+  date:        { fontSize: 13, color: colors.inkSubtle, marginTop: 1 },
   bonusBadge:  { backgroundColor: colors.success + '18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   bonusTxt:    { fontSize: 12, fontWeight: '700', color: colors.success },
   failedBadge: { backgroundColor: colors.error + '12', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
@@ -180,7 +180,7 @@ const rc = StyleSheet.create({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const HostReferralScreen = () => {
-  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { t } = useTranslation();
 
   const [refCode, setRefCode] = useState<ReferralCode | null>(null);
@@ -235,41 +235,35 @@ const HostReferralScreen = () => {
   // ─── Loading / error ───────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[s.root, { paddingTop: insets.top }, s.centered]}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
+      <HostPage><HostHeader title={t('hostReferral.title')} onBack={() => navigation.goBack()} /><ContentSkeleton variant="dashboard" /></HostPage>
     );
   }
 
   if (error) {
     return (
-      <View style={[s.root, { paddingTop: insets.top }, s.centered]}>
+      <HostPage scroll={false}><HostHeader title={t('hostReferral.title')} onBack={() => navigation.goBack()} /><View style={[s.root, s.centered]}>
         <MaterialIcons name="cloud-off" size={36} color={colors.inkDisabled} />
         <Text style={s.errorTxt}>{error}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={load} activeOpacity={0.8}>
           <Text style={s.retryTxt}>Réessayer</Text>
         </TouchableOpacity>
-      </View>
+      </View></HostPage>
     );
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+    <HostPage scroll={false}><View style={s.root}>
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <Animated.View entering={FadeInDown.duration(320)} style={s.header}>
-          <Text style={s.title}>{t('hostReferral.title')}</Text>
-          <Text style={s.subtitle}>
-            {t('hostReferral.subtitle')}
-          </Text>
-        </Animated.View>
-
-        {/* Credits balance */}
+        <View style={{ paddingHorizontal: 0, paddingTop: 8 }}>
+        <HostHeader title={t('hostReferral.title')} subtitle={t('hostReferral.subtitle')} onBack={() => navigation.goBack()} />
+      </View>
+{/* Credits balance */}
         {credits && (
-          <Animated.View entering={FadeInDown.delay(60).duration(300)} style={s.creditsCard}>
+          <View style={s.creditsCard}>
             <View style={s.creditsLeft}>
               <Text style={s.creditsLbl}>{t('hostReferral.balanceLabel')}</Text>
               <Text style={s.creditsVal}>{formatRWF(credits.balance)}</Text>
@@ -282,12 +276,12 @@ const HostReferralScreen = () => {
             <View style={s.creditsIcon}>
               <MaterialIcons name="account-balance-wallet" size={28} color={colors.primary} />
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {/* Stats strip */}
         {stats && (
-          <Animated.View entering={FadeInDown.delay(100).duration(300)} style={s.statsStrip}>
+          <View style={s.statsStrip}>
             <View style={s.statCell}>
               <Text style={s.statVal}>{stats.qualifiedReferrals}</Text>
               <Text style={s.statLbl}>{t('hostReferral.qualified')}</Text>
@@ -302,11 +296,11 @@ const HostReferralScreen = () => {
               <Text style={s.statVal}>{stats.annualUsed}/{stats.annualCap}</Text>
               <Text style={s.statLbl}>{t('hostReferral.annualQuota')}</Text>
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {/* Code + share */}
-        <Animated.View entering={FadeInDown.delay(140).duration(300)} style={s.codeSection}>
+        <View style={s.codeSection}>
           <Text style={s.sectionLabel}>{t('hostReferral.codeLabel')}</Text>
 
           {refCode ? (
@@ -339,14 +333,14 @@ const HostReferralScreen = () => {
                 onPress={handleShare}
                 activeOpacity={0.85}
               >
-                <MaterialIcons name="share" size={18} color={colors.white} />
+                <MaterialIcons name="share" size={18} color={colors.onAccent} />
                 <Text style={s.shareBtnTxt}>{t('hostReferral.share')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <Text style={s.noCodeTxt}>Code non disponible</Text>
           )}
-        </Animated.View>
+        </View>
 
         {/* Rewards summary */}
         <View style={s.rewardsCard}>
@@ -360,7 +354,7 @@ const HostReferralScreen = () => {
           }}><Text style={s.shareBtnTxt}>{redeeming ? 'Enregistrement…' : 'Enregistrer le code'}</Text></TouchableOpacity>
           {!!actionNote && <Text accessibilityLiveRegion="polite" style={[s.rewardDetail,{margin:14}]}>{actionNote}</Text>}
         </View>
-        <Animated.View entering={FadeInDown.delay(180).duration(300)} style={s.rewardsCard}>
+        <View style={s.rewardsCard}>
           <Text style={s.sectionLabel}>{t('hostReferral.rewardsTitle')}</Text>
           <View style={s.rewardRow}>
             <View style={s.rewardIconWrap}>
@@ -380,22 +374,22 @@ const HostReferralScreen = () => {
               <Text style={s.rewardDetail}>Enregistrez le code avant votre premier séjour terminé. Aucun encaissement ni réduction automatique de commission n’est disponible.</Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Referrals list */}
         {stats && stats.entries.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(220).duration(300)}>
+          <View>
             <Text style={[s.sectionLabel, { marginBottom: 12 }]}>
               {t('hostReferral.refereesTitle', { count: stats.totalReferrals })}
             </Text>
             {stats.entries.map(entry => (
               <ReferralCard key={entry.id} entry={entry} />
             ))}
-          </Animated.View>
+          </View>
         )}
 
         {/* FAQ accordion */}
-        <Animated.View entering={FadeInDown.delay(260).duration(300)} style={s.faqSection}>
+        <View style={s.faqSection}>
           <Text style={s.sectionLabel}>{t('hostReferral.faqTitle')}</Text>
           <View style={s.faqCard}>
             <FaqItem
@@ -419,11 +413,11 @@ const HostReferralScreen = () => {
               a="Vous ne pouvez pas utiliser votre propre code. Pour les autres situations, contactez le support avant de compter sur un crédit."
             />
           </View>
-        </Animated.View>
+        </View>
 
         {/* Credits history */}
         {credits && credits.history.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(300).duration(300)} style={{ marginTop: 8 }}>
+          <View style={{ marginTop: 8 }}>
             <Text style={[s.sectionLabel, { marginBottom: 12 }]}>{t('hostReferral.creditsHistory')}</Text>
             <View style={s.historyCard}>
               {credits.history.map((h, i) => (
@@ -449,18 +443,18 @@ const HostReferralScreen = () => {
                 </View>
               ))}
             </View>
-          </Animated.View>
+          </View>
         )}
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: colors.background },
+  root:     { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   errorTxt: { fontSize: 14, color: colors.inkSubtle, textAlign: 'center' },
   retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary },
@@ -474,40 +468,40 @@ const s = StyleSheet.create({
   // Credits balance
   creditsCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.primary, borderRadius: 14,
+    backgroundColor: colors.primaryLight, borderRadius: 14,
     padding: 18, marginBottom: 14,
   },
   creditsLeft:   { flex: 1 },
-  creditsLbl:    { fontSize: 11, fontWeight: '700', color: colors.white + 'BB', textTransform: 'uppercase', letterSpacing: 0.6 },
-  creditsVal:    { fontSize: 26, fontWeight: '700', color: colors.white, letterSpacing: -0.5, marginTop: 4 },
-  creditsExpiry: { fontSize: 11, color: colors.white + 'AA', marginTop: 6 },
+  creditsLbl:    { fontSize: 11, fontWeight: '700', color: colors.primaryDark,  letterSpacing: 0.6 },
+  creditsVal:    { fontSize: 24, fontWeight: '700', color: colors.primaryDark, letterSpacing: -0.5, marginTop: 4 },
+  creditsExpiry: { fontSize: 11, color: colors.primaryDark, marginTop: 6 },
   creditsIcon:   { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.white + '22', alignItems: 'center', justifyContent: 'center' },
 
   // Stats strip
   statsStrip:  { flexDirection: 'row', backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, marginBottom: 16 },
   statCell:    { flex: 1, alignItems: 'center' },
   statVal:     { fontSize: 18, fontWeight: '700', color: colors.ink },
-  statLbl:     { fontSize: 11, color: colors.inkSubtle, marginTop: 2 },
+  statLbl:     { fontSize: 13, color: colors.inkSubtle, marginTop: 2 },
   statDivider: { width: 1, backgroundColor: colors.border },
 
   // Code section
   codeSection: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 14 },
-  sectionLabel:{ fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
-  codePill:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primaryLight, borderRadius: 10, borderWidth: 1.5, borderColor: colors.primary + '44', paddingVertical: 12, paddingHorizontal: 16, marginBottom: 8 },
-  codeText:    { fontSize: 22, fontWeight: '800', color: colors.primary, letterSpacing: 2 },
+  sectionLabel:{ fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 12 },
+  codePill:    { flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primaryLight, borderRadius: 10, borderWidth: 1.5, borderColor: colors.primary + '44', paddingVertical: 12, paddingHorizontal: 16, marginBottom: 8 },
+  codeText:    { fontSize: 18, flexShrink: 1, fontWeight: '800', color: colors.primary, letterSpacing: 2 },
   copyBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary + '44', backgroundColor: colors.surface },
   copyBtnDone: { borderColor: colors.success + '44', backgroundColor: colors.success + '0E' },
   copyTxt:     { fontSize: 12, fontWeight: '700', color: colors.primary },
   copyTxtDone: { color: colors.success },
-  linkPreview: { fontSize: 11, color: colors.inkSubtle, marginBottom: 12 },
-  shareBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 13 },
-  shareBtnTxt: { fontSize: 15, fontWeight: '700', color: colors.white },
+  linkPreview: { fontSize: 13, color: colors.inkSubtle, marginBottom: 12 },
+  shareBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.accent, borderRadius: 12, minHeight: 48, paddingVertical: 13 },
+  shareBtnTxt: { fontSize: 15, fontWeight: '700', color: colors.onAccent },
   noCodeTxt:   { fontSize: 13, color: colors.inkSubtle, textAlign: 'center', paddingVertical: 8 },
 
   // Rewards
   rewardsCard: { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 14 },
   rewardRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
-  rewardIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  rewardIconWrap: { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   rewardTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 3 },
   rewardDetail:{ fontSize: 12, color: colors.inkMid, lineHeight: 17 },
 
@@ -520,7 +514,7 @@ const s = StyleSheet.create({
   historyRow:     { flexDirection: 'row', alignItems: 'flex-start', padding: 14 },
   historyRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   historyReason:  { fontSize: 13, fontWeight: '600', color: colors.ink },
-  historyDate:    { fontSize: 11, color: colors.inkSubtle, marginTop: 2 },
+  historyDate:    { fontSize: 13, color: colors.inkSubtle, marginTop: 2 },
   historyAmt:     { fontSize: 14, fontWeight: '700' },
 });
 

@@ -227,6 +227,22 @@ await check('identical pending reservation returns the same booking', async () =
   const second=(await db.query(sql,[property])).rows[0];
   assert.equal(first.id,second.id);
 });
+await as('host');
+const incompleteDraft = (await db.query("INSERT INTO properties(owner_id,title,status,price_per_month) VALUES($1,'Unfinished host draft','DRAFT',0) RETURNING id", [ids.host])).rows[0].id;
+await check('host can archive an unfinished draft without inventing a rent', async () => {
+  const row = (await db.query("UPDATE properties SET status='ARCHIVED' WHERE id=$1 RETURNING status,price_per_month", [incompleteDraft])).rows[0];
+  assert.equal(row.status, 'ARCHIVED'); assert.equal(Number(row.price_per_month), 0);
+});
+await db.exec('RESET ROLE');
+await check('zero-rent archived draft cannot become a published or submitted listing', async () => {
+  for (const status of ['ACTIVE', 'PENDING_REVIEW']) {
+    await assert.rejects(() => db.query('UPDATE properties SET status=$1 WHERE id=$2', [status, incompleteDraft]), error => error.code === '23514');
+  }
+});
+await as('stranger');
+await check('archived incomplete draft remains private to its owner', async () => {
+  assert.equal((await db.query('SELECT id FROM properties WHERE id=$1', [incompleteDraft])).rows.length, 0);
+});
 console.log(`${checks} security checks passed. PGlite does not exercise parallel connections, GoTrue, R2, Edge or hosted Realtime.`);
 await db.exec('RESET ROLE');
 const before=(await db.query('SELECT (SELECT count(*)::int FROM profiles) profiles,(SELECT count(*)::int FROM messages) messages,(SELECT count(*)::int FROM bookings) bookings')).rows[0];

@@ -1,5 +1,6 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, ImageBackground, TouchableOpacity, Share, Platform, StatusBar, Dimensions, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, ImageBackground, TouchableOpacity, Share, Platform, StatusBar, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Divider, IconButton, Surface } from 'react-native-paper';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -122,14 +123,7 @@ const GuideDetailScreen = () => {
   });
 
   // Afficher un indicateur de chargement
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>{t('common.loading')}</Text>
-      </SafeAreaView>
-    );
-  }
+  if (isLoading) return <SkeletonScreen variant="article" />;
 
   // Si le guide n'existe pas
   if (!guide) {

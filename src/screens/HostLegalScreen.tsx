@@ -1,25 +1,25 @@
-import {useNavigation} from '@react-navigation/native';
+import ContentSkeleton from '../components/ContentSkeleton';
+import { useFocusEffect, useNavigation, type RouteProp } from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../types';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
+  BackHandler,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   Linking,
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { HostPage, HostHeader, HostNotice } from '../components/host/HostUI';
 import {
   legalService,
   LegalDocument,
@@ -62,7 +62,7 @@ const formatDateTime = (iso: string | null | undefined): string => {
 };
 
 // ─── Document reader modal ────────────────────────────────────────────────────
-const DocumentReaderModal = ({
+const DocumentReader = ({
   slug,
   onClose,
   onConsent,
@@ -71,7 +71,6 @@ const DocumentReaderModal = ({
   onClose: () => void;
   onConsent: (documentId: string, version: string) => void;
 }) => {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [doc, setDoc] = useState<LegalDocumentFull | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,13 +78,19 @@ const DocumentReaderModal = ({
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [readerError, setReaderError] = useState('');
+  const [readerRetry, setReaderRetry] = useState(0);
+  const acceptingRef = useRef(false);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true); setReaderError('');
     legalService.getDocument(slug)
-      .then(d => { setDoc(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [slug]);
+      .then(d => { if (active) setDoc(d); })
+      .catch(failure => { if (active) setReaderError(failure instanceof Error ? failure.message : t('hostLegal.docUnavailable')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [slug, readerRetry, t]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -94,34 +99,31 @@ const DocumentReaderModal = ({
   };
 
   const handleAccept = async () => {
-    if (!doc) return;
+    if (!doc || acceptingRef.current || !scrolledToBottom) return;
+    acceptingRef.current = true;
     setAccepting(true);
+    setReaderError('');
     try {
       await legalService.giveConsent(doc.id, doc.version);
       setAccepted(true);
       onConsent(doc.id, doc.version);
-    } catch {/* silent */} finally {
+    } catch (failure) { setReaderError(failure instanceof Error ? failure.message : t('common.error')); } finally {
+      acceptingRef.current = false;
       setAccepting(false);
     }
   };
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[drm.root, { paddingTop: insets.top }]}>
+    <HostPage scroll={false}>
+      <View style={drm.root}>
         {/* Header */}
-        <View style={drm.header}>
-          <TouchableOpacity style={drm.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <MaterialIcons name="close" size={22} color={colors.ink} />
-          </TouchableOpacity>
-          <Text style={drm.headerTitle} numberOfLines={1}>
-            {doc?.title ?? 'Document'}
-          </Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <HostHeader title={doc?.title ?? t('hostLegal.title')} onBack={onClose} />
+          {!!readerError && <HostNotice message={readerError} onRetry={() => setReaderRetry(value => value + 1)} />}
         </View>
 
         {loading ? (
-          <View style={drm.centered}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <ContentSkeleton variant="article" style={{ paddingHorizontal: 20 }} />
         ) : !doc ? (
           <View style={drm.centered}>
             <MaterialIcons name="error-outline" size={36} color={colors.inkDisabled} />
@@ -149,14 +151,14 @@ const DocumentReaderModal = ({
 
             {/* Version history */}
             {showVersions && (
-              <Animated.View entering={FadeIn.duration(200)} style={drm.versionList}>
+              <View style={drm.versionList}>
                 {doc.previousVersions.map(v => (
                   <View key={v.version} style={drm.versionRow}>
                     <Text style={drm.versionRowVer}>v{v.version}</Text>
                     <Text style={drm.versionRowDate}>{formatDate(v.updatedAt)}</Text>
                   </View>
                 ))}
-              </Animated.View>
+              </View>
             )}
 
             {/* Scroll hint */}
@@ -185,7 +187,7 @@ const DocumentReaderModal = ({
 
             {/* Accept footer */}
             {doc.required && (
-              <View style={[drm.footer, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
+              <View style={[drm.footer, { paddingBottom: 20 }]}>
                 {accepted ? (
                   <View style={drm.acceptedBanner}>
                     <MaterialIcons name="check-circle" size={18} color={colors.success} />
@@ -222,14 +224,14 @@ const DocumentReaderModal = ({
           </>
         )}
       </View>
-    </Modal>
+    </HostPage>
   );
 };
 
 const drm = StyleSheet.create({
-  root:        { flex: 1, backgroundColor: colors.background },
+  root:        { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10 },
-  closeBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  closeBtn:    { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink },
   centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   errorTxt:    { fontSize: 14, color: colors.inkSubtle },
@@ -260,9 +262,9 @@ const drm = StyleSheet.create({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 type Tab = 'documents' | 'tax' | 'data';
 
-const HostLegalScreen = () => {
+const HostLegalScreen = ({ route }: { route: RouteProp<RootStackParamList, 'Legal'> }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
+  const accountRoute = route.params?.mode === 'host' ? 'HostAccount' : 'GuestAccount';
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<Tab>('documents');
@@ -327,16 +329,24 @@ const HostLegalScreen = () => {
 
   const formatRWF = (n: number) => n.toLocaleString('fr-FR') + ' RWF';
 
+  useFocusEffect(useCallback(() => {
+    if (!activeSlug) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActiveSlug(null); return true;
+    });
+    return () => subscription.remove();
+  }, [activeSlug]));
+
+  if (activeSlug) return <DocumentReader key={activeSlug} slug={activeSlug} onClose={() => setActiveSlug(null)} onConsent={handleConsentRecorded} />;
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={[s.root, { paddingTop: insets.top + 16 }]}>
+    <HostPage scroll={false}><View style={s.root}>
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(300)} style={s.header}>
-        <Text style={s.title}>{t('hostLegal.title')}</Text>
-        <Text style={s.subtitle}>{t('hostLegal.subtitle')}</Text>
-      </Animated.View>
-
-      {/* Tabs */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+        <HostHeader title={t('hostLegal.title')} subtitle={t('hostLegal.subtitle')} onBack={() => navigation.goBack()} />
+      </View>
+{/* Tabs */}
       <View style={s.tabs}>
         {(
           [
@@ -361,9 +371,7 @@ const HostLegalScreen = () => {
       {tab === 'documents' && (
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           {loadingDocs ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : documents.length === 0 ? (
             <View style={s.centered}>
               <MaterialIcons name="article" size={36} color={colors.inkDisabled} />
@@ -372,11 +380,11 @@ const HostLegalScreen = () => {
           ) : (
             <>
               <Text style={s.sectionLabel}>{t('hostLegal.sectionDocuments')}</Text>
-              {documents.map((doc, i) => {
+              {documents.map((doc) => {
                 const cfg = CATEGORY_CONFIG[doc.category];
                 const consent = getConsentForDoc(doc.id);
                 return (
-                  <Animated.View key={doc.id} entering={FadeInDown.delay(i * 45).duration(280)}>
+                  <View key={doc.id}>
                     <TouchableOpacity
                       style={s.docCard}
                       onPress={() => setActiveSlug(doc.slug)}
@@ -410,7 +418,7 @@ const HostLegalScreen = () => {
                       </View>
                       <MaterialIcons name="chevron-right" size={20} color={colors.inkDisabled} />
                     </TouchableOpacity>
-                  </Animated.View>
+                  </View>
                 );
               })}
 
@@ -438,7 +446,7 @@ const HostLegalScreen = () => {
               )}
             </>
           )}
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
@@ -469,9 +477,7 @@ const HostLegalScreen = () => {
           </View>
 
           {loadingTax ? (
-            <View style={s.centered}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            <ContentSkeleton style={{ paddingHorizontal: 20 }} />
           ) : taxError ? (
             <View style={s.taxEmptyCard}>
               <MaterialIcons name="receipt-long" size={36} color={colors.inkDisabled} />
@@ -481,7 +487,7 @@ const HostLegalScreen = () => {
               </Text>
             </View>
           ) : taxCert ? (
-            <Animated.View entering={FadeInDown.duration(300)}>
+            <View>
               <View style={s.taxCard}>
                 <View style={s.taxHeader}>
                   <MaterialIcons name="verified" size={24} color={colors.success} />
@@ -521,9 +527,9 @@ const HostLegalScreen = () => {
                   {t('hostLegal.taxNote')}
                 </Text>
               </View>
-            </Animated.View>
+            </View>
           ) : null}
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
@@ -539,7 +545,7 @@ const HostLegalScreen = () => {
                 title: t('hostLegal.rightAccess'),
                 desc: t('hostLegal.rightAccessDesc'),
                 action: t('hostLegal.requestExport'),
-                onPress: () => navigation.navigate('GuestAccount'),
+                onPress: () => navigation.navigate(accountRoute),
                 color: colors.primary,
               },
               {
@@ -547,7 +553,7 @@ const HostLegalScreen = () => {
                 title: t('hostLegal.rightRectify'),
                 desc: t('hostLegal.rightRectifyDesc'),
                 action: t('hostLegal.goSettings'),
-                onPress: () => navigation.navigate('GuestAccount'),
+                onPress: () => navigation.navigate(accountRoute),
                 color: colors.inkMid,
               },
               {
@@ -555,7 +561,7 @@ const HostLegalScreen = () => {
                 title: t('hostLegal.rightForget'),
                 desc: t('hostLegal.rightForgetDesc'),
                 action: t('hostLegal.goSettings'),
-                onPress: () => navigation.navigate('GuestAccount'),
+                onPress: () => navigation.navigate(accountRoute),
                 color: colors.error,
               },
               {
@@ -567,8 +573,8 @@ const HostLegalScreen = () => {
                 color: colors.inkSubtle,
               },
             ]
-          ).map((item, i) => (
-            <Animated.View key={item.title} entering={FadeInDown.delay(i * 60).duration(280)}>
+          ).map((item) => (
+            <View key={item.title}>
               <View style={s.dataCard}>
                 <View style={s.dataCardTop}>
                   <View style={[s.dataIcon, { backgroundColor: item.color + '14' }]}>
@@ -588,7 +594,7 @@ const HostLegalScreen = () => {
                   <MaterialIcons name="open-in-new" size={13} color={item.color} />
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
           ))}
 
           <View style={s.rgpdNote}>
@@ -596,38 +602,30 @@ const HostLegalScreen = () => {
               LocaMap traite vos données conformément aux lois rwandaises sur la protection des données personnelles et aux principes du RGPD européen. Vos données ne sont jamais vendues à des tiers.
             </Text>
           </View>
-          <View style={{ height: 110 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
 
-      {/* Document reader modal */}
-      {activeSlug && (
-        <DocumentReaderModal
-          slug={activeSlug}
-          onClose={() => setActiveSlug(null)}
-          onConsent={handleConsentRecorded}
-        />
-      )}
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: colors.background },
+  root:     { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { paddingVertical: 40, alignItems: 'center', gap: 10 },
   header:   { paddingHorizontal: 20, marginBottom: 14 },
   title:    { fontSize: 24, fontWeight: '700', color: colors.ink, letterSpacing: -0.4 },
   subtitle: { fontSize: 13, color: colors.inkSubtle, marginTop: 2 },
 
-  tabs:       { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 14, gap: 6 },
-  tab:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  tabs:       { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, marginBottom: 14, gap: 6 },
+  tab:        { flexGrow: 1, flexBasis: 85, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   tabActive:  { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  tabTxt:     { fontSize: 11, fontWeight: '600', color: colors.inkDisabled },
+  tabTxt:     { fontSize: 13, fontWeight: '600', color: colors.inkSubtle, flexShrink: 1, textAlign: 'center' },
   tabTxtActive: { color: colors.primary },
 
   scroll:         { paddingHorizontal: 20 },
-  sectionLabel:   { fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  sectionLabel:   { fontSize: 14, fontWeight: '600', color: colors.inkSubtle,   marginBottom: 12 },
 
   // Document card
   docCard:    { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10,
@@ -641,7 +639,7 @@ const s = StyleSheet.create({
   docMeta:    { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   docVersion: { fontSize: 11, fontWeight: '700', color: colors.primary },
   docDot:     { fontSize: 11, color: colors.inkDisabled },
-  docDate:    { fontSize: 11, color: colors.inkSubtle },
+  docDate:    { fontSize: 13, color: colors.inkSubtle },
   consentRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   consentTxt: { fontSize: 11, fontWeight: '500', color: colors.success },
 
@@ -650,11 +648,11 @@ const s = StyleSheet.create({
   historyRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14 },
   historyRowBorder:{ borderBottomWidth: 1, borderBottomColor: colors.border },
   historyTitle:    { fontSize: 13, fontWeight: '600', color: colors.ink },
-  historyMeta:     { fontSize: 11, color: colors.inkSubtle, marginTop: 2 },
+  historyMeta:     { fontSize: 13, color: colors.inkSubtle, marginTop: 2 },
 
   // Tax
   yearSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 20 },
-  yearBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  yearBtn:      { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   yearValue:    { fontSize: 17, fontWeight: '700', color: colors.ink, minWidth: 110, textAlign: 'center' },
   taxEmptyCard: { alignItems: 'center', gap: 10, backgroundColor: colors.surfaceSunken, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 32 },
   taxEmptyTitle:{ fontSize: 14, fontWeight: '600', color: colors.inkMid, textAlign: 'center' },
@@ -662,7 +660,7 @@ const s = StyleSheet.create({
   taxCard:      { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 14 },
   taxHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: colors.success + '0E', borderBottomWidth: 1, borderBottomColor: colors.border },
   taxHeaderTitle: { fontSize: 15, fontWeight: '700', color: colors.ink },
-  taxHeaderSub:   { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
+  taxHeaderSub:   { fontSize: 13, color: colors.inkSubtle, marginTop: 1 },
   taxRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
   taxRowNet:    { borderBottomWidth: 0, backgroundColor: colors.surfaceSunken },
   taxLbl:       { fontSize: 13, color: colors.inkMid },
@@ -678,7 +676,7 @@ const s = StyleSheet.create({
   dataIcon:      { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   dataTitle:     { fontSize: 14, fontWeight: '700', color: colors.ink, marginBottom: 4 },
   dataDesc:      { fontSize: 12, color: colors.inkSubtle, lineHeight: 17 },
-  dataActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
+  dataActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5 },
   dataActionTxt: { fontSize: 12, fontWeight: '700' },
 
   rgpdNote:    { backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginTop: 8 },

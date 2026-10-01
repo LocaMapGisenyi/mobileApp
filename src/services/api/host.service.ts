@@ -55,7 +55,7 @@ export interface HostListing {
   canSetPricing: boolean;
   id: string;
   title: string;
-  type: string;
+  type: string | null;
 }
 
 // ─── Listings management types ────────────────────────────────────────────────
@@ -237,9 +237,9 @@ export const hostService = {
     const assignments=await supabase.from('co_hosts').select('listing_ids,permissions').eq('co_host_id',userId).eq('status','ACTIVE');
     if(assignments.error)throw assignments.error;
     const ids=[...new Set((assignments.data??[]).filter(a=>a.permissions.calendar===true).flatMap(a=>a.listing_ids))].filter(id=>!owned.some(p=>p.id===id));
-    const delegated=ids.length?await supabase.from('properties').select('id,title,property_type').in('id',ids):{data:[],error:null};
+    const delegated=ids.length?await supabase.from('properties').select('id,title,property_type,status').in('id',ids):{data:[],error:null};
     if(delegated.error)throw delegated.error;
-    return [...owned.map(r=>({id:r.id,title:r.title,type:r.property_type,canSetPricing:true})),...(delegated.data??[]).map(r=>({id:r.id,title:r.title,type:r.property_type,canSetPricing:false}))];
+    return [...owned.filter(r=>r.status!=='ARCHIVED').map(r=>({id:r.id,title:r.title,type:r.property_type,canSetPricing:true})),...(delegated.data??[]).filter(r=>r.status!=='ARCHIVED').map(r=>({id:r.id,title:r.title,type:r.property_type,canSetPricing:false}))];
   },
 
   getCalendar: async (listingId: string, month: string): Promise<CalendarDay[]> => {

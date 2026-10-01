@@ -1,5 +1,5 @@
 // src/screens/GuestAccountScreen.tsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator, StatusBar,
@@ -18,6 +18,8 @@ import { useUserStore } from '../store/user';
 import { guestAccountService, hostAccountService } from '../services/api/user.service';
 import { saveAccountExport } from '../lib/accountExport';
 import AccountProfileEditor from './AccountProfileEditor';
+import type { ProfileSection } from '../utils/profileEditor';
+import ContentSkeleton from '../components/ContentSkeleton';
 import ResilientImage from '../components/ResilientImage';
 import { authService } from '../services/api/auth.service';
 import { SectionHeader, RowItem, NotifRow, DeleteAccountModal } from '../components/account';
@@ -162,7 +164,7 @@ const GuestAccountScreen = () => {
   const { user, actions } = useUserStore();
 
   const [error, setError] = useState('');
-  const [profileEditorVisible, setProfileEditorVisible] = useState(false);
+  const [profileSection, setProfileSection] = useState<ProfileSection | null>(null);
   const [notice, setNotice] = useState('');
   const [ready, setReady] = useState(false);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
@@ -179,6 +181,20 @@ const GuestAccountScreen = () => {
   const [deleting, setDeleting] = useState(false);
   const [exportRequested, setExportRequested] = useState(false);
   const [savingNotifs, setSavingNotifs] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const notificationPending = useRef(false);
+  const resetSending = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const showNotice = (message: string) => { setNotice(message); scrollRef.current?.scrollTo({ y: 0, animated: true }); };
+  const resetPassword = async () => {
+    if (!user.email || resetSending.current) return;
+    resetSending.current = true; setResetPending(true); setError('');
+    const id = user.id;
+    try { await authService.forgotPassword(user.email); if (useUserStore.getState().user.id === id) showNotice(t('profileEditor.resetSent')); }
+    catch { if (useUserStore.getState().user.id === id) { setError(t('profileEditor.resetError')); scrollRef.current?.scrollTo({ y: 0, animated: true }); } }
+    finally { resetSending.current = false; setResetPending(false); }
+  };
 
   useEffect(() => {
     let active = true;
@@ -191,16 +207,17 @@ const GuestAccountScreen = () => {
         setReady(true);
       }).catch(failure => { if (active) setError(failure instanceof Error ? failure.message : 'Chargement du compte impossible.'); });
     return () => { active = false; };
-  }, [user.id]);
+  }, [user.id, retry]);
   const handleNotifToggle = useCallback(async (key: keyof GuestNotifPrefs, value: boolean) => {
-    if (!ready || savingNotifs) return;
-    setSavingNotifs(true); setError('');
+    if (!ready || notificationPending.current) return;
+    const id = user.id;
+    notificationPending.current = true; setSavingNotifs(true); setError('');
     try {
       await hostAccountService.updateNotificationPrefs({ [key === 'alerts' ? 'alertMatches' : key]: value });
-      setNotifPrefs(p => ({ ...p, [key]: value }));
+      if (useUserStore.getState().user.id === id) setNotifPrefs(p => ({ ...p, [key]: value }));
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Préférences non enregistrées.'); }
-    finally { setSavingNotifs(false); }
-  }, [ready, savingNotifs]);
+    finally { notificationPending.current = false; setSavingNotifs(false); }
+  }, [ready, user.id]);
   const handleAddPayment = async (data: Omit<PaymentAccount, 'id' | 'isDefault'>) => {
     setError('');
     try {
@@ -231,22 +248,22 @@ const GuestAccountScreen = () => {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
-      <AccountProfileEditor visible={profileEditorVisible} onClose={() => setProfileEditorVisible(false)} />
-      {!!notice && <Text accessibilityRole="alert" style={{ color: colors.primary, padding: 16 }} onPress={() => setNotice("")}>{notice}</Text>}
+      <AccountProfileEditor visible={profileSection !== null} section={profileSection ?? 'all'} onClose={() => setProfileSection(null)} onSaved={() => showNotice(t('profileEditor.saved'))} />
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{t('guestAccount.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
+      <ScrollView ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
       >
+        {!!notice && <Text accessibilityRole="alert" style={{ color: colors.primary, padding: 20 }}>{notice}</Text>}
         {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 20 }}>{error}</Text>}
         {/* Avatar */}
         <Animated.View entering={FadeInDown.duration(320)} style={s.avatarSection}>
@@ -261,10 +278,10 @@ const GuestAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(50).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionProfile')} />
           <View style={s.card}>
-            <RowItem icon="person-outline" label={t('guestAccount.personalInfo')} value={user.fullName ?? undefined} onPress={() => setProfileEditorVisible(true)} />
-            <RowItem icon="add-a-photo"    label={t('guestAccount.profilePhoto')}                                     onPress={() => setProfileEditorVisible(true)} />
-            <RowItem icon="edit-note"      label={t('guestAccount.bio')}                                              onPress={() => setProfileEditorVisible(true)} />
-            <RowItem icon="translate"      label={t('guestAccount.languages')}                 onPress={() => setProfileEditorVisible(true)} last />
+            <RowItem icon="person-outline" label={t('guestAccount.personalInfo')} value={user.fullName ?? undefined} onPress={() => { setNotice(''); setProfileSection('personal'); } } />
+            <RowItem icon="add-a-photo"    label={t('guestAccount.profilePhoto')}                                     onPress={() => { setNotice(''); setProfileSection('photo'); } } />
+            <RowItem icon="edit-note"      label={t('guestAccount.bio')}                                              onPress={() => { setNotice(''); setProfileSection('bio'); } } />
+            <RowItem icon="translate"      label={t('guestAccount.languages')}                 onPress={() => { setNotice(''); setProfileSection('languages'); } } last />
           </View>
         </Animated.View>
 
@@ -272,12 +289,15 @@ const GuestAccountScreen = () => {
         <Animated.View entering={FadeInDown.delay(80).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionSecurity')} />
           <View style={s.card}>
-            <RowItem icon="lock-outline" label={t('guestAccount.changePassword')}                                                                                      onPress={() => { if (user.email) void authService.forgotPassword(user.email).then(() => setNotice("Lien de réinitialisation envoyé par email.")).catch(failure => setError(String(failure))); }} />
-            <RowItem icon="phone-iphone" label={t('guestAccount.twoFactor')} badge={t('guestAccount.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => setNotice("Cette fonction est indisponible actuellement.")} />
-            <RowItem icon="devices"      label={t('guestAccount.connectedDevices')}                                                                                    onPress={() => setNotice("Cette fonction est indisponible actuellement.")} last />
+            <RowItem icon="lock-outline" label={t('guestAccount.changePassword')} value={resetPending ? t('profileEditor.sending') : undefined} disabled={resetPending} onPress={() => void resetPassword()} />
+            <RowItem icon="phone-iphone" label={t('guestAccount.twoFactor')} badge={t('profileEditor.unavailable')} />
+            <RowItem icon="devices"      label={t('guestAccount.connectedDevices')}                                                                                    badge={t('profileEditor.unavailable')} last />
           </View>
         </Animated.View>
 
+        {!ready && !error && <ContentSkeleton variant="list" style={{ paddingHorizontal: 20 }} />}
+        {!ready && !!error && <TouchableOpacity accessibilityRole="button" style={{ padding: 20 }} onPress={() => setRetry(value => value + 1)}><Text style={{ color: colors.primary }}>{t('common.retry')}</Text></TouchableOpacity>}
+        {ready && <>
         {/* MÉTHODES DE PAIEMENT */}
         <Animated.View entering={FadeInDown.delay(110).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionPayments')} />
@@ -324,17 +344,18 @@ const GuestAccountScreen = () => {
             {savingNotifs && <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 20, marginRight: 20 }} />}
           </View>
           <View style={s.card}>
-            <NotifRow label={t('guestAccount.notifReservations')} value={notifPrefs.reservations} onChange={v => handleNotifToggle('reservations', v)} />
-            <NotifRow label={t('guestAccount.notifMessages')}     value={notifPrefs.messages}     onChange={v => handleNotifToggle('messages', v)} />
+            <NotifRow disabled={!ready || savingNotifs} label={t('guestAccount.notifReservations')} value={notifPrefs.reservations} onChange={v => handleNotifToggle('reservations', v)} />
+            <NotifRow disabled={!ready || savingNotifs} label={t('guestAccount.notifMessages')}     value={notifPrefs.messages}     onChange={v => handleNotifToggle('messages', v)} />
             <Text style={{ color: colors.inkSubtle, padding: 16 }}>Les alertes de recherche ne sont pas encore distribuées.</Text>
           </View>
 
           <SectionHeader title={t('guestAccount.sectionDelivery')} />
           <View style={s.card}>
-            <Text style={{ color: colors.inkSubtle, padding: 16 }}>Notifications dans l’application uniquement. Les canaux push, email et SMS ne sont pas activés.</Text>
+            <Text style={{ color: colors.inkSubtle, padding: 16 }}>{t('profileEditor.notificationsHint')}</Text>
           </View>
         </Animated.View>
 
+        </>}
         {/* CONFIDENTIALITÉ */}
         <Animated.View entering={FadeInDown.delay(170).duration(300)}>
           <SectionHeader title={t('guestAccount.sectionPrivacy')} />
@@ -366,7 +387,7 @@ const GuestAccountScreen = () => {
           </View>
           <TouchableOpacity
             style={s.becomeHostCta}
-            onPress={() => navigation.navigate('HostOnboarding' as any)}
+            onPress={() => navigation.navigate('HostOnboarding')}
             activeOpacity={0.85}
           >
             <Text style={s.becomeHostCtaTxt}>{t('guestAccount.becomeHostCta')}</Text>

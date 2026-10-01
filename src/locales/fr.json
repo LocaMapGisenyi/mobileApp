@@ -26,7 +26,8 @@
     "refreshing": "Actualisation...",
     "unknownError": "Une erreur est survenue",
     "unknownLocation": "Emplacement inconnu",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "close": "Fermer"
   },
   "tabs": {
     "explorer": "Explorer",
@@ -124,7 +125,11 @@
     "sendResetLink": "Envoyer le lien",
     "emailSentTitle": "Email envoyé !",
     "emailSentSubtitle": "Vérifiez votre boîte de réception. Le lien de réinitialisation expire dans 30 minutes.",
-    "backToLogin": "Retour à la connexion"
+    "backToLogin": "Retour à la connexion",
+    "emailUnconfirmed": "Confirmez votre adresse e-mail avant de vous connecter.",
+    "tooManyAttempts": "Trop de tentatives. Patientez quelques minutes avant de réessayer.",
+    "connectionUnavailable": "Connexion impossible. Vérifiez votre accès à Internet et réessayez.",
+    "loginUnavailable": "La connexion est momentanément indisponible. Réessayez dans un instant."
   },
   "preferences": {
     "title": "Préférences",
@@ -236,8 +241,8 @@
     "darkMode": "Mode sombre",
     "help": "Aide & Support",
     "about": "À propos",
-    "logoutConfirmTitle": "Déconnexion",
-    "logoutConfirmMessage": "Êtes-vous sûr de vouloir vous déconnecter ?",
+    "logoutConfirmTitle": "Se déconnecter ?",
+    "logoutConfirmMessage": "Vous pourrez vous reconnecter pour retrouver vos logements et vos messages.",
     "myFavorites": "Mes favoris",
     "myAlerts": "Mes alertes",
     "myGuides": "Mes guides",
@@ -252,7 +257,10 @@
     "notifications": "Notifications",
     "notificationsEnabled": "Activées",
     "notificationsDisabled": "Désactivées",
-    "avatarAltText": "Photo de profil"
+    "avatarAltText": "Photo de profil",
+    "logoutAction": "Se déconnecter",
+    "loggingOut": "Déconnexion en cours…",
+    "logoutError": "La déconnexion a échoué. Vérifiez votre connexion et réessayez."
   },
   "search": {
     "title": "Recherche",
@@ -818,7 +826,9 @@
     "launchTitle": "Des réservations sans paiement intégré",
     "launchDescription": "Au lancement, LocaMap vous permet de recevoir et d’accepter les demandes de réservation. L’application n’encaisse aucun paiement et n’effectue aucun versement.",
     "launchPaymentInfo": "Le paiement intégré pourra être ajouté après validation d’un prestataire. Aucune coordonnée financière n’est demandée pour ce dossier.",
-    "submitting": "Envoi du dossier…"
+    "submitting": "Envoi du dossier…",
+    "keyboardDone": "Terminé",
+    "birthDatePlaceholder": "JJ/MM/AAAA"
   },
   "hostCoHost": {
     "title": "Co-hôtes",
@@ -1302,5 +1312,24 @@
   },
   "readiness": {
     "recovery": "Une erreur empêche d’afficher cette page. Vous pouvez réessayer."
+  },
+  "pro": {
+    "lakeView": "Vue sur le lac Kivu à Gisenyi",
+    "authSceneTitle": "Votre prochain chez-vous, à Gisenyi.",
+    "authSceneDescription": "Découvrez les logements de la région et échangez directement avec leurs hôtes.",
+    "loginTitle": "Bienvenue sur LocaMap",
+    "loginSubtitle": "Connectez-vous pour retrouver vos logements et vos échanges.",
+    "registerTitle": "Créez votre compte",
+    "registerSubtitle": "Gardez vos favoris, échangez avec les hôtes et préparez votre prochain séjour.",
+    "confirmEmail": "Consultez votre e-mail pour confirmer votre compte, puis connectez-vous.",
+    "exploreTitle": "Votre logement à Gisenyi.",
+    "exploreSubtitle": "Comparez les logements, trouvez le vôtre.",
+    "profileTitle": "Votre espace",
+    "hostInvitation": "Proposez votre logement à Gisenyi.",
+    "stepCount": "Étape {{current}} sur {{total}}",
+    "propertyTitle": "Le logement",
+    "monthlyRental": "Location mensuelle",
+    "months": "{{count}} mois",
+    "days": "{{count}} jours"
   }
 }

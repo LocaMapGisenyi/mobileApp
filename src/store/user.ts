@@ -73,7 +73,8 @@ export const useUserStore = create<UserState>((set, get) => {
   };
   const run = async (operation: () => Promise<void>) => {
     set({ loading: true, error: null });
-    try { await operation(); } catch (error) { set({ error: errorMessage(error) }); throw error; }
+    // Form actions handle their own failures. Only background auth failures use the global notice.
+    try { await operation(); }
     finally { set({ loading: false }); }
   };
   return {

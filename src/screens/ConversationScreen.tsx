@@ -1,3 +1,4 @@
+import ContentSkeleton, { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
@@ -5,7 +6,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -86,10 +86,12 @@ const ConversationScreen = () => {
     return !previousMessage || previousMessage.user.id !== currentMessage.user.id;
   };
 
+  if (!conversation && isLoading) return <SkeletonScreen variant="conversation" />;
+
   if (!conversation) {
     return (
       <SafeAreaView style={styles.centeredContainer}>
-        {isLoading ? <ActivityIndicator color={colors.primary} /> : <Text>{error || t('messages.conversationNotFound', 'Conversation not found')}</Text>}
+        <Text>{error || t('messages.conversationNotFound', 'Conversation not found')}</Text>
       </SafeAreaView>
     );
   }
@@ -115,9 +117,7 @@ const ConversationScreen = () => {
 
         {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 12 }} onPress={() => void loadMessages(conversationId)}>{error} — Réessayer</Text>}
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
+          <View style={{ flex: 1 }}><ContentSkeleton variant="conversation" style={{ paddingHorizontal: 20 }} /></View>
         ) : (
           <Animated.View
             entering={FadeIn.duration(300)}

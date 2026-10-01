@@ -8,6 +8,10 @@ import fr from '../locales/fr.json';
 import en from '../locales/en.json';
 import rw from '../locales/rw.json';
 import sw from '../locales/sw.json';
+import hostFlow from '../locales/hostFlow';
+import hostListings from '../locales/hostListings';
+import hostWorkspace from '../locales/hostWorkspace';
+import profileEditor from '../locales/profileEditor';
 
 // Constantes pour la persistance des préférences
 export const LANGUAGE_STORAGE_KEY = '@locamap:language';
@@ -19,10 +23,10 @@ export const SUPPORTED_LANGUAGES = ['fr', 'en', 'rw', 'sw'];
 const getDeviceLanguage = (): string => {
   // Obtient la locale du dispositif (par exemple 'fr-FR', 'en-US', etc.)
   const deviceLocale = ((Localization as any).locale || (Localization.getLocales?.()[0]?.languageCode) || 'fr') as string;
-  
+
   // Extrait le code de langue principal (fr, en, etc.)
   const languageCode = deviceLocale.split('-')[0];
-  
+
   // Vérifie si cette langue est supportée, sinon retourne le français par défaut
   return SUPPORTED_LANGUAGES.includes(languageCode) ? languageCode : 'fr';
 };
@@ -33,10 +37,10 @@ i18n
   .init({
     compatibilityJSON: 'v4' as const,
     resources: {
-      fr: { translation: fr },
-      en: { translation: en },
-      rw: { translation: rw },
-      sw: { translation: sw },
+      fr: { translation: { ...fr, profileEditor: profileEditor.fr, hostFlow: { ...hostFlow.fr, ...hostListings.fr, ...hostWorkspace.fr } } },
+      en: { translation: { ...en, profileEditor: profileEditor.en, hostFlow: { ...hostFlow.en, ...hostListings.en, ...hostWorkspace.en } } },
+      rw: { translation: { ...rw, profileEditor: profileEditor.rw, hostFlow: { ...hostFlow.rw, ...hostListings.rw, ...hostWorkspace.rw } } },
+      sw: { translation: { ...sw, profileEditor: profileEditor.sw, hostFlow: { ...hostFlow.sw, ...hostListings.sw, ...hostWorkspace.sw } } },
     },
     fallbackLng: 'fr',
     interpolation: {
@@ -58,13 +62,13 @@ export const initializeLanguage = async (): Promise<string> => {
   try {
     // Essaie de récupérer la langue sauvegardée
     const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
-    
+
     // Si une langue est sauvegardée et qu'elle est supportée
     if (savedLanguage && SUPPORTED_LANGUAGES.includes(savedLanguage)) {
       i18n.changeLanguage(savedLanguage);
       return savedLanguage;
     }
-    
+
     // Sinon, utilise la langue du système (ou fr par défaut)
     const deviceLanguage = getDeviceLanguage();
     i18n.changeLanguage(deviceLanguage);
@@ -87,11 +91,11 @@ export const changeLanguage = async (language: string): Promise<void> => {
     console.warn(`Langue non supportée: ${language}`);
     return;
   }
-  
+
   try {
     // Change la langue dans i18next
     await i18n.changeLanguage(language);
-    
+
     // Sauvegarde la langue dans AsyncStorage
     await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch (error) {
@@ -108,4 +112,4 @@ export const translate = (key: string, options?: any): string => {
   return i18n.t(key, options) as string;
 };
 
-export default i18n; 
+export default i18n;

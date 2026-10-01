@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
@@ -6,7 +7,6 @@ import {
   Text,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -19,20 +19,28 @@ import { useUserStore } from '../store/user';
 import ConversationListItem from '../components/ConversationListItem';
 import { useTranslation } from 'react-i18next';
 
-type MessageListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MessagesList'>;
+type MessageListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'MessagesList'
+>;
 
 const MessageListScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<MessageListScreenNavigationProp>();
   const { conversations, loading, error, fetchConversations } = useMessagesStore();
   const userId = useUserStore(state => state.user.id);
-  useEffect(() => { if (userId) void fetchConversations(); }, [userId, fetchConversations]);
+  useEffect(() => {
+    if (userId) void fetchConversations();
+  }, [userId, fetchConversations]);
 
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
     setRefreshing(true);
-    try { await fetchConversations(); }
-    finally { setRefreshing(false); }
+    try {
+      await fetchConversations();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleConversationPress = (conversationId: string) => {
@@ -46,7 +54,8 @@ const MessageListScreen = () => {
         timeA = a.lastMessageAt.getTime();
       } else if (typeof a.lastMessageAt === 'string') {
         timeA = new Date(a.lastMessageAt).getTime();
-      } else if (typeof a.lastMessageAt === 'number') { // Handle if it's already a timestamp
+      } else if (typeof a.lastMessageAt === 'number') {
+        // Handle if it's already a timestamp
         timeA = a.lastMessageAt;
       }
     }
@@ -57,7 +66,8 @@ const MessageListScreen = () => {
         timeB = b.lastMessageAt.getTime();
       } else if (typeof b.lastMessageAt === 'string') {
         timeB = new Date(b.lastMessageAt).getTime();
-      } else if (typeof b.lastMessageAt === 'number') { // Handle if it's already a timestamp
+      } else if (typeof b.lastMessageAt === 'number') {
+        // Handle if it's already a timestamp
         timeB = b.lastMessageAt;
       }
     }
@@ -70,11 +80,11 @@ const MessageListScreen = () => {
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubble-ellipses-outline" size={60} color={colors.gray[300]} />
+      <View style={styles.emptyIcon}>
+        <Ionicons name="chatbubble-ellipses-outline" size={32} color={colors.primary} />
+      </View>
       <Text style={styles.emptyTitle}>{t('messages.noMessages')}</Text>
-      <Text style={styles.emptyText}>
-        {t('messages.startConversation')}
-      </Text>
+      <Text style={styles.emptyText}>{t('messages.startConversation')}</Text>
     </View>
   );
 
@@ -83,32 +93,45 @@ const MessageListScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
 
       <View style={styles.header}>
-        <Text style={styles.title}>{t('messages.title')}</Text>
-        <TouchableOpacity style={styles.searchButton} accessibilityLabel="Actualiser les messages" disabled={loading || refreshing} accessibilityRole="button" onPress={() => void refresh()}>
+        <Text accessibilityRole="header" style={styles.title}>
+          {t('messages.title')}
+        </Text>
+        <TouchableOpacity
+          style={styles.searchButton}
+          accessibilityLabel="Actualiser les messages"
+          disabled={loading || refreshing}
+          accessibilityRole="button"
+          onPress={() => void refresh()}
+        >
           <Ionicons name="refresh" size={22} color={colors.gray[800]} />
         </TouchableOpacity>
       </View>
-      {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 16 }}>{error}</Text>}
+      {!!error && (
+        <Text accessibilityRole="alert" style={{ color: colors.error, padding: 16 }}>
+          {error}
+        </Text>
+      )}
 
-      <View
-        style={styles.listContainer}
-      >
+      <View style={styles.listContainer}>
         <FlatList
           refreshing={refreshing}
           onRefresh={() => void refresh()}
           data={sortedConversations}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <ConversationListItem
-              conversation={item}
-              onPress={handleConversationPress}
-            />
+            <ConversationListItem conversation={item} onPress={handleConversationPress} />
           )}
-          ListEmptyComponent={loading || refreshing ? (!refreshing ? <ActivityIndicator style={{ marginTop: 24 }} color={colors.primary} accessibilityLabel="Chargement des messages" /> : null) : renderEmptyList}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={
-            sortedConversations.length === 0 ? { flex: 1 } : undefined
+          ListEmptyComponent={
+            loading || refreshing ? (
+              !refreshing ? (
+                <ContentSkeleton style={{ paddingHorizontal: 20 }} />
+              ) : null
+            ) : (
+              renderEmptyList
+            )
           }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={sortedConversations.length === 0 ? { flex: 1 } : undefined}
         />
       </View>
     </SafeAreaView>
@@ -116,35 +139,49 @@ const MessageListScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.white,
   },
   header: {
-    width: '100%', maxWidth: 760, alignSelf: 'center',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
   },
   title: {
-    fontSize: typography.fontSize.xl,
+    fontSize: 28,
+    lineHeight: 35,
     fontWeight: '700',
     color: colors.gray[800],
   },
   searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.gray[100],
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContainer: {
-    width: '100%', maxWidth: 760, alignSelf: 'center',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     flex: 1,
   },
   emptyContainer: {

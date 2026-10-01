@@ -1,5 +1,6 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useUserStore } from '../store/user';
@@ -26,7 +27,7 @@ export default function NotificationsScreen() {
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     <TouchableOpacity style={{ padding: 16 }} onPress={() => { void markAllRead().catch(() => {}); }} accessibilityRole="button"><Text style={styles.link}>Tout marquer comme lu</Text></TouchableOpacity>
     <FlatList data={notifications} keyExtractor={item => item.id} refreshing={refreshing} onRefresh={() => void refresh()}
-      ListEmptyComponent={loading || refreshing ? (!refreshing ? <ActivityIndicator color={colors.primary} /> : null) : <Text style={styles.note}>{error ? 'Tirez pour réessayer.' : 'Aucune notification.'}</Text>}
+      ListEmptyComponent={loading || refreshing ? (!refreshing ? <ContentSkeleton style={{ paddingHorizontal: 20 }} /> : null) : <Text style={styles.note}>{error ? 'Tirez pour réessayer.' : 'Aucune notification.'}</Text>}
       renderItem={({ item }) => <TouchableOpacity style={[styles.item, !item.is_read && styles.unread]} onPress={() => { void markRead(item.id).catch(() => {}); }} accessibilityRole="button" accessibilityLabel={`${item.title}${item.is_read ? '' : ', non lue'}`}>
         <Text style={{ fontWeight: item.is_read ? '500' : '700', color: colors.ink }}>{item.title}</Text>
         <Text style={{ color: colors.inkMid, marginTop: 6 }}>{item.message}</Text>

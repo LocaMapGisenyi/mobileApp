@@ -8,6 +8,8 @@ Architecture: real bottom tabs inside the existing root stack. Secondary screens
 
 Execution ruling: stay in the current `Peter` checkout. Existing mobile fixes are uncommitted and are the user's current test version. Snapshot the initial diff into ignored `.superpowers/sdd/2026-10-01-host-experience/` and preserve those edits. Controller owns commits and integration; workers do not commit overlapping files. One implementation worker at a time. User approval already authorizes implementation; no further approval gate.
 
+Integration ruling (1 October): review found `valid_property_values` disallows archiving a zero-rent draft. A narrow migration007 permits zero rent only for DRAFT or ARCHIVED; all publication, numeric, authorization and moderation rules remain. Test against PostgreSQL, apply only to the already-authorized staging project, and verify real synthetic-draft archival. This replaces the original no-migration assumption so the host can discard an unfinished listing without entering invented data.
+
 ## Task 1: Navigation, shared presentation, today, menu and host reservations (controller)
 
 Files: `src/components/host/HostUI.tsx`, `src/navigation/HostNavigator.tsx`, `src/navigation/index.tsx`, `src/types/index.ts`, `src/screens/HostDashboardScreen.tsx`, `src/screens/HostTodayScreen.tsx`, `src/screens/HostProfileScreen.tsx`, `src/screens/HostBookingsScreen.tsx`, `src/screens/HostBookingDetailScreen.tsx`, `src/services/booking.service.ts`, `src/utils/hostBookings.ts`, `tests/host-bookings.test.ts`, and translations.

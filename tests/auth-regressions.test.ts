@@ -5,6 +5,7 @@ const fake = vi.hoisted(() => ({
   session: null as any,
   profile: { full_name: 'Alice', phone_number: null, avatar_url: null },
   signOutError: null as any,
+  signInError: null as Error | null,
   profileResponse: null as Promise<any> | null,
 }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
@@ -15,13 +16,22 @@ vi.mock('../src/lib/supabase', () => ({ supabase: {
     getSession: async () => ({ data: { session: fake.session }, error: null }),
     onAuthStateChange: (listener: any) => { fake.listener = listener; return { data: { subscription: { unsubscribe() {} } } }; },
     signOut: async () => ({ error: fake.signOutError }),
+    signInWithPassword: async () => ({ data: { session: fake.session }, error: fake.signInError }),
   },
   from: () => ({ select: () => ({ eq: () => ({ single: async () => fake.profileResponse ?? ({ data: fake.profile, error: null }) }) }) }),
 } }));
 const session = (id: string) => ({ user: { id, email: `${id}@example.com`, user_metadata: {} }, access_token: 'private-token' });
 
 describe('authentication boundaries', () => {
-  beforeEach(() => { vi.resetModules(); fake.listener = null; fake.session = null; fake.signOutError = null; fake.profileResponse = null; });
+  beforeEach(() => { vi.resetModules(); fake.listener = null; fake.session = null; fake.signOutError = null; fake.signInError = null; fake.profileResponse = null; });
+  it('a rejected sign-in stays with its form instead of also creating a global banner', async () => {
+    const { useUserStore } = await import('../src/store/user');
+    fake.signInError = new Error('Invalid login credentials');
+    await expect(useUserStore.getState().actions.login('alice@example.com', 'incorrect')).rejects.toThrow('Invalid login credentials');
+    expect(useUserStore.getState().error).toBeNull();
+    expect(useUserStore.getState().loading).toBe(false);
+    expect(useUserStore.getState().user.isLoggedIn).toBe(false);
+  });
   it('auth event callbacks finish synchronously so profile requests cannot deadlock the auth lock', async () => {
     const { useUserStore } = await import('../src/store/user');
     await useUserStore.getState().actions.initAuth();

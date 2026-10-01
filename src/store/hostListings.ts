@@ -37,6 +37,7 @@ export const useHostListingsStore = create<HostListingsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
+      ensureAccount();
       if (error) throw error;
       if (!user || user.id !== accountId) throw new Error('Connectez-vous pour enregistrer une annonce.');
       const data = {
@@ -52,6 +53,17 @@ export const useHostListingsStore = create<HostListingsState>((set, get) => ({
         size: form.size > 0 ? form.size : null, visitors_allowed: form.visitorsAllowed ?? true, noise_after22: form.noiseAfter22 ?? false,
       };
       const id = existingId ?? get().draftId;
+      if (id) {
+        const previous = await propertyApi.getPropertyById(id);
+        ensureAccount();
+        // ACTIVE cannot transition directly to DRAFT. Pause before writing
+        // incomplete edits; publishing still goes through administrative review.
+        if (previous?.status === 'ACTIVE') {
+          await propertyApi.updatePropertyStatus(id, 'PAUSED');
+          ensureAccount();
+        }
+      }
+      ensureAccount();
       const row = id ? await propertyApi.updateProperty(id, data) : await propertyApi.createProperty(data);
       ensureAccount();
       set({ draftId: row.id });
@@ -75,17 +87,21 @@ export const useHostListingsStore = create<HostListingsState>((set, get) => ({
         desired.push(url);
         if (!existing.has(url)) {
           await propertyApi.addPropertyImage(row.id, url, position, position === 0);
+          ensureAccount();
           existing.add(url);
         } else {
           const photo = currentImages.find(image => image.url === url);
           if (photo && (photo.position !== position || photo.is_cover !== (position === 0))) await propertyApi.updatePropertyImage(photo.id, position, position === 0);
+          ensureAccount();
         }
       }
       for (const photo of currentImages) {
         ensureAccount();
         if (!desired.includes(photo.url)) await propertyApi.deletePropertyImage(photo.id);
+        ensureAccount();
       }
       if (mode === 'publish') {
+        ensureAccount();
         if (!form.images.length) throw new Error('Ajoutez au moins une photo.');
         await propertyApi.updateProperty(row.id, { status: 'PENDING_REVIEW' });
       }

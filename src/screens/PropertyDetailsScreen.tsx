@@ -1,5 +1,6 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity, StatusBar, Platform, Share, Linking, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity, StatusBar, Platform, Share, Linking } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -39,10 +40,7 @@ const PropertyDetailsScreen = () => {
 
   if (!selectedProperty) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>{t('property.loading')}</Text>
-      </View>
+      <SkeletonScreen variant="detail" />
     );
   }
 

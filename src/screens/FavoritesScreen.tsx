@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
@@ -6,18 +7,17 @@ import {
   Text,
   TouchableOpacity,
   StatusBar,
-  Platform,
-  ActivityIndicator
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, borderRadius } from '../theme';
+import { colors } from '../theme';
 import { useTranslation } from 'react-i18next';
 
 // Components
-import CardLogement from '../components/CardLogement';
+import ListingCard from '../components/ListingCard';
 
 // Types
 import { RootStackParamList, Property } from '../types';
@@ -29,16 +29,23 @@ type FavoritesScreenNavigationProp = NativeStackNavigationProp<RootStackParamLis
 
 const FavoritesScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const columns = width >= 1050 ? 3 : width >= 700 ? 2 : 1;
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const { favorites, removeFavorite, fetchFavorites, isLoading, error } = useFavoritesStore();
-  useEffect(() => { void fetchFavorites(); }, [fetchFavorites]);
+  useEffect(() => {
+    void fetchFavorites();
+  }, [fetchFavorites]);
   const [removedId, setRemovedId] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
     setRefreshing(true);
-    try { await fetchFavorites(); }
-    finally { setRefreshing(false); }
+    try {
+      await fetchFavorites();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handlePropertyPress = (propertyId: string) => {
@@ -47,23 +54,22 @@ const FavoritesScreen: React.FC = () => {
 
   const handleRemoveFavorite = async (propertyId: string) => {
     setRemovedId(propertyId);
-    try { await removeFavorite(propertyId); }
-    finally { setRemovedId(null); }
+    try {
+      await removeFavorite(propertyId);
+    } finally {
+      setRemovedId(null);
+    }
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="heart" size={80} color={colors.primary} />
+        <Ionicons name="heart-outline" size={34} color={colors.primary} />
       </View>
 
-      <Text style={styles.emptyTitle}>
-        {t('favorites.noFavorites')}
-      </Text>
+      <Text style={styles.emptyTitle}>{t('favorites.noFavorites')}</Text>
 
-      <Text style={styles.emptyText}>
-        {t('favorites.startBrowsing')}
-      </Text>
+      <Text style={styles.emptyText}>{t('favorites.startBrowsing')}</Text>
 
       <TouchableOpacity
         accessibilityRole="button"
@@ -71,10 +77,8 @@ const FavoritesScreen: React.FC = () => {
         onPress={() => navigation.navigate('MainTabs', { screen: 'Explorer' } as any)}
         activeOpacity={0.8}
       >
-        <Ionicons name="search" size={18} color={colors.white} style={styles.buttonIcon} />
-        <Text style={styles.exploreButtonText}>
-          {t('favorites.exploreMore')}
-        </Text>
+        <Ionicons name="search" size={18} color={colors.onAccent} style={styles.buttonIcon} />
+        <Text style={styles.exploreButtonText}>{t('favorites.exploreMore')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -82,7 +86,7 @@ const FavoritesScreen: React.FC = () => {
   const renderListHeader = () => {
     return (
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
+        <Text accessibilityRole="header" style={styles.headerTitle}>
           {t('favorites.title')}
         </Text>
         <Text style={styles.headerSubtitle}>
@@ -92,25 +96,16 @@ const FavoritesScreen: React.FC = () => {
     );
   };
 
-  const renderItem = ({ item, index }: { item: Property; index: number }) => {
-
+  const renderItem = ({ item }: { item: Property }) => {
     return (
-      <View style={styles.cardContainer}>
-        <CardLogement
-          logement={item}
-          index={index}
-          onPress={(id) => handlePropertyPress(id)}
+      <View style={{ width: `${100 / columns}%`, paddingHorizontal: 8, paddingBottom: 28 }}>
+        <ListingCard
+          property={item}
+          favorite
+          favoritePending={removedId === item.id}
+          onPress={() => handlePropertyPress(item.id)}
+          onFavorite={() => void handleRemoveFavorite(item.id)}
         />
-        <TouchableOpacity
-          style={styles.removeButton}
-          accessibilityRole="button" accessibilityLabel="Retirer des favoris"
-          accessibilityState={{ disabled: removedId === item.id, busy: removedId === item.id }}
-          disabled={removedId === item.id}
-          onPress={() => handleRemoveFavorite(item.id)}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="heart" size={22} color={colors.white} />
-        </TouchableOpacity>
       </View>
     );
   };
@@ -118,12 +113,11 @@ const FavoritesScreen: React.FC = () => {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       {error && <Text accessibilityRole="alert">{error}</Text>}
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.white}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
 
       <FlatList
+        key={columns}
+        numColumns={columns}
         data={favorites}
         refreshing={refreshing}
         onRefresh={() => void refresh()}
@@ -132,9 +126,15 @@ const FavoritesScreen: React.FC = () => {
         contentContainerStyle={[styles.listContent, favorites.length === 0 && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={isLoading || refreshing
-          ? (!refreshing ? <ActivityIndicator color={colors.primary} size="large" accessibilityLabel="Chargement des favoris" /> : null)
-          : renderEmptyState}
+        ListEmptyComponent={
+          isLoading || refreshing ? (
+            !refreshing ? (
+              <ContentSkeleton variant="cards" columns={columns} count={columns * 2} style={{ paddingHorizontal: 8 }} />
+            ) : null
+          ) : (
+            renderEmptyState
+          )
+        }
         initialNumToRender={5}
         maxToRenderPerBatch={10}
         windowSize={10}
@@ -145,136 +145,59 @@ const FavoritesScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%', maxWidth: 960, alignSelf: 'center',
+    width: '100%',
+    maxWidth: 1120,
+    alignSelf: 'center',
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
-  listContent: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[6],
-  },
-  header: {
-    marginTop: spacing[6],
-    marginBottom: spacing[5],
-  },
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  header: { paddingHorizontal: 8, marginTop: 24, marginBottom: 24 },
   headerTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: 28,
+    lineHeight: 35,
     fontWeight: '700',
-    color: colors.gray[800],
-    marginBottom: spacing[2],
+    color: colors.ink,
+    marginBottom: 8,
   },
-  headerSubtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[500],
-  },
-  cardContainer: {
-    marginBottom: spacing[4],
-    position: 'relative',
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgba(0,0,0,0.2)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  removeButton: {
-    position: 'absolute',
-    top: spacing[3],
-    right: spacing[3],
-    backgroundColor: colors.primary,
-    width: 44,
-    height: 44,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgba(0,0,0,0.3)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing[6],
-  },
+  headerSubtitle: { fontSize: 15, lineHeight: 22, color: colors.inkSubtle },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.gray[100],
-    justifyContent: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
-    marginBottom: spacing[6],
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgba(0,0,0,0.1)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: 22,
+    lineHeight: 29,
     fontWeight: '600',
-    color: colors.gray[800],
-    marginBottom: spacing[3],
     textAlign: 'center',
+    color: colors.ink,
+    marginBottom: 10,
   },
   emptyText: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray[500],
+    fontSize: 15,
+    lineHeight: 23,
     textAlign: 'center',
-    marginBottom: spacing[8],
-    maxWidth: '100%',
-    lineHeight: 22,
+    color: colors.inkSubtle,
+    maxWidth: 340,
+    marginBottom: 28,
   },
   exploreButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[6],
-    borderRadius: borderRadius.full,
+    minHeight: 50,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgba(0,0,0,0.2)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
-  buttonIcon: {
-    marginRight: spacing[2],
-  },
-  exploreButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: '600',
-  },
+  buttonIcon: { marginRight: 8 },
+  exploreButtonText: { fontSize: 15, fontWeight: '600', color: colors.onAccent },
 });
-
 export default FavoritesScreen;

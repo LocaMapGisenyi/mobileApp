@@ -9,10 +9,17 @@ import { colors, borderRadius } from '../theme';
 interface Props {
   property: Property;
   favorite: boolean;
+  favoritePending?: boolean;
   onPress: () => void;
   onFavorite: () => void;
 }
-export default function ListingCard({ property, favorite, onPress, onFavorite }: Props) {
+export default function ListingCard({
+  property,
+  favorite,
+  favoritePending,
+  onPress,
+  onFavorite,
+}: Props) {
   const { t } = useTranslation();
   const image = property.images?.[0];
   return (
@@ -23,14 +30,17 @@ export default function ListingCard({ property, favorite, onPress, onFavorite }:
         accessibilityLabel={property.title}
         style={({ pressed }) => [s.main, pressed && s.pressed]}
       >
-        <Image
-          source={image ? { uri: image } : require('../assets/images/house-logo.png')}
-          style={s.image}
-          resizeMode={image ? 'cover' : 'contain'}
-        />
+        <View style={s.media}>
+          <Image
+            source={image ? { uri: image } : require('../assets/images/house-logo.png')}
+            style={s.image}
+            resizeMode={image ? 'cover' : 'contain'}
+          />
+        </View>
         <View style={s.content}>
           <View style={s.locationRow}>
             <Text style={s.location} numberOfLines={1}>
+              {t(`property.types.${property.type}`, { defaultValue: property.type })} ·{' '}
               {property.location?.district || property.location?.city}
             </Text>
             {!!property.rating && (
@@ -57,9 +67,14 @@ export default function ListingCard({ property, favorite, onPress, onFavorite }:
       </Pressable>
       <Pressable
         onPress={onFavorite}
+        disabled={favoritePending}
         accessibilityRole="button"
         accessibilityLabel={t(favorite ? 'design.removeFavorite' : 'design.addFavorite')}
-        accessibilityState={{ selected: favorite }}
+        accessibilityState={{
+          selected: favorite,
+          disabled: favoritePending,
+          busy: favoritePending,
+        }}
         style={({ pressed }) => [s.favorite, pressed && s.pressed]}
       >
         <MaterialIcons
@@ -75,28 +90,26 @@ const s = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
   },
   main: { flex: 1 },
   pressed: { opacity: 0.8 },
-  image: { width: '100%', aspectRatio: 1.55, backgroundColor: colors.surfaceSunken },
-  content: { padding: 16, gap: 6 },
+  media: { borderRadius: 12, overflow: 'hidden' },
+  image: { width: '100%', aspectRatio: 1.4, backgroundColor: colors.surfaceSunken },
+  content: { paddingTop: 14, paddingHorizontal: 2, gap: 6 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  location: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.inkSubtle },
+  location: { flex: 1, fontSize: 13, lineHeight: 20, color: colors.inkSubtle },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { color: colors.ink, fontSize: 14, fontWeight: '600' },
-  title: { color: colors.ink, fontSize: 19, lineHeight: 25, fontWeight: '700' },
+  title: { color: colors.ink, fontSize: 18, lineHeight: 24, fontWeight: '600' },
   details: { fontSize: 14, lineHeight: 21, color: colors.inkSubtle },
   priceRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'baseline',
     columnGap: 6,
-    marginTop: 8,
+    marginTop: 5,
   },
-  price: { color: colors.primaryDark, fontSize: 20, fontWeight: '700' },
+  price: { color: colors.ink, fontSize: 20, fontWeight: '700' },
   period: { fontSize: 14, color: colors.inkSubtle },
   favorite: {
     position: 'absolute',

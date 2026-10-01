@@ -8,12 +8,15 @@ interface NotifRowProps {
   value: boolean;
   onChange: (v: boolean) => void;
   last?: boolean;
+  disabled?: boolean;
 }
 
-const NotifRow = ({ label, value, onChange, last }: NotifRowProps) => (
+const NotifRow = ({ label, value, onChange, last, disabled }: NotifRowProps) => (
   <View style={[s.row, !last && s.rowBorder]}>
     <Text style={s.label}>{label}</Text>
     <Switch
+      accessibilityLabel={label}
+      disabled={disabled}
       value={value}
       onValueChange={onChange}
       trackColor={{ false: colors.border, true: colors.primary }}

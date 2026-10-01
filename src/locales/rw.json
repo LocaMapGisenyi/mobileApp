@@ -26,7 +26,8 @@
     "refreshing": "Kuvugurura...",
     "unknownError": "Hari ikosa ryabaye",
     "unknownLocation": "Aho hantu ntahazwi",
-    "retry": "Ongera ugerageze"
+    "retry": "Ongera ugerageze",
+    "close": "Funga"
   },
   "tabs": {
     "explorer": "Gushakisha",
@@ -124,7 +125,11 @@
     "fullNamePlaceholder": "Amazina yawe yose",
     "confirmPasswordPlaceholder": "Ongera wandike ijambo ry'ibanga",
     "accountCreated": "Konti yafunguwe neza!",
-    "loginSuccess": "Winjiye neza!"
+    "loginSuccess": "Winjiye neza!",
+    "emailUnconfirmed": "Emeza aderesi ya imeli yawe mbere yo kwinjira.",
+    "tooManyAttempts": "Wagerageje inshuro nyinshi. Tegereza iminota mike wongere ugerageze.",
+    "connectionUnavailable": "Ntibishobotse guhuza. Reba ko ufite interineti wongere ugerageze.",
+    "loginUnavailable": "Kwinjira ntibishoboka muri aka kanya. Ongera ugerageze mu kanya."
   },
   "preferences": {
     "title": "Ibyo Ukunda",
@@ -236,8 +241,8 @@
     "darkMode": "Ibara rirabukije",
     "help": "Ubufasha",
     "about": "Ibisobanuro",
-    "logoutConfirmTitle": "Gusohoka",
-    "logoutConfirmMessage": "Uremeza ko ushaka gusohoka?",
+    "logoutConfirmTitle": "Urashaka gusohoka?",
+    "logoutConfirmMessage": "Ushobora kongera kwinjira kugira ngo ubone inzu zawe n’ubutumwa bwawe.",
     "myFavorites": "Ibyo nkunda",
     "myAlerts": "Imenyesha yanjye",
     "myGuides": "Ingendanshusho zanjye",
@@ -252,7 +257,10 @@
     "notifications": "Imenyesha",
     "notificationsEnabled": "Byemewe",
     "notificationsDisabled": "Byahagaritswe",
-    "avatarAltText": "Ifoto y'umwirondoro"
+    "avatarAltText": "Ifoto y'umwirondoro",
+    "logoutAction": "Sohoka",
+    "loggingOut": "Gusohoka…",
+    "logoutError": "Gusohoka ntibyakunze. Reba interineti yawe, wongere ugerageze."
   },
   "search": {
     "title": "Gushakisha",
@@ -818,7 +826,9 @@
     "launchTitle": "Gusaba gukodesha nta kwishyura muri porogaramu",
     "launchDescription": "Mu itangizwa, LocaMap igufasha kwakira no kwemeza ubusabe bwo gukodesha. Porogaramu ntiyakira kandi ntiyohereza amafaranga.",
     "launchPaymentInfo": "Kwishyura muri porogaramu bishobora kongerwamo nyuma yo kwemeza utanga serivisi yo kwishyura. Nta makuru ya konti y’amafaranga asabwa muri iyi dosiye.",
-    "submitting": "Dosiye irimo koherezwa…"
+    "submitting": "Dosiye irimo koherezwa…",
+    "keyboardDone": "Birarangiye",
+    "birthDatePlaceholder": "DD/MM/YYYY"
   },
   "hostCoHost": {
     "title": "Co-hosts",
@@ -1302,5 +1312,24 @@
   },
   "readiness": {
     "recovery": "Iyi paji yanze gufunguka. Ongera ugerageze."
+  },
+  "pro": {
+    "lakeView": "Ikiyaga cya Kivu i Gisenyi",
+    "authSceneTitle": "Inzu yawe nshya, i Gisenyi.",
+    "authSceneDescription": "Reba amazu yo muri aka gace maze uvugane na ba nyirayo.",
+    "loginTitle": "Murakaza neza kuri LocaMap",
+    "loginSubtitle": "Injira urebe amazu wabitse n’ubutumwa bwawe.",
+    "registerTitle": "Fungura konti yawe",
+    "registerSubtitle": "Bika amazu ukunda, uvugane na ba nyirayo kandi utegure urugendo rwawe.",
+    "confirmEmail": "Reba imeli yawe wemeze konti, hanyuma winjire.",
+    "exploreTitle": "Inzu yawe i Gisenyi.",
+    "exploreSubtitle": "Gereranya amazu, uhitemo ikubereye.",
+    "profileTitle": "Konti yawe",
+    "hostInvitation": "Shyira inzu yawe yo i Gisenyi ku rubuga.",
+    "stepCount": "Intambwe {{current}} kuri {{total}}",
+    "propertyTitle": "Inzu",
+    "monthlyRental": "Ubukode bwa buri kwezi",
+    "months": "Amezi {{count}}",
+    "days": "Iminsi {{count}}"
   }
 }

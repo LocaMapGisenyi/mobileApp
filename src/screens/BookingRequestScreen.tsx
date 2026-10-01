@@ -1,5 +1,6 @@
+import { SkeletonScreen } from '../components/ContentSkeleton';
 import React, { useRef,useState } from 'react';
-import { ScrollView, View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, TextInput, StyleSheet } from 'react-native';
 import { Button } from 'react-native-paper';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +31,7 @@ export default function BookingRequestScreen({route, navigation}: NativeStackScr
     } catch (failure) { setQuote(null); setError(failure instanceof Error ? failure.message : t('bookingFlow.error', 'Impossible de traiter cette demande.')); }
     finally { sending.current=false; setBusy(false); }
   };
-  if (isLoading) return <ActivityIndicator style={{margin: 32}} color={colors.primary} />;
+  if (isLoading) return <SkeletonScreen variant="form" />;
   if (!listing) return <Text style={s.error}>{loadError || t('bookingFlow.unavailable', 'Logement indisponible.')}</Text>;
   return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
     <Text style={s.title}>{listing.title}</Text>

@@ -1,14 +1,15 @@
+import { SkeletonScreen } from './src/components/ContentSkeleton';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, DefaultTheme, configureFonts } from 'react-native-paper';
 import AppNavigator from './src/navigation';
-import { View, StyleSheet, ActivityIndicator, AppState, Platform, Text, Pressable } from 'react-native';
+import { View, StyleSheet, AppState, Platform, Text, Pressable } from 'react-native';
 import { colors } from './src/theme';
 import { usePreferences } from './src/store/preferences';
 import { useUserStore } from './src/store/user';
-import { I18nextProvider } from 'react-i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n, { initializeLanguage } from './src/utils/i18n';
 import ToastManager from './src/components/ToastManager';
 import { installAuthLinkListener } from './src/lib/authLinks';
@@ -120,6 +121,7 @@ const theme = {
 
 // Wrapper pour le theme
 const AppContent = () => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const recovery = useUserStore(s => s.passwordRecovery);
   const userId = useUserStore(s => s.authUser?.id);
@@ -163,21 +165,19 @@ const AppContent = () => {
     };
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  if (isLoading) return <SkeletonScreen variant="cards" count={2} />;
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      {authError && <View accessibilityRole="alert" style={{padding: 12, backgroundColor: colors.surfaceSunken}}>
-        <Text style={{color: colors.error}}>{authError}</Text>
-        <Pressable onPress={() => useUserStore.getState().actions.clearError()} accessibilityRole="button"><Text>Fermer</Text></Pressable>
-      </View>}
+      {authError && <SafeAreaView edges={['top', 'left', 'right']} style={{backgroundColor: colors.surfaceSunken}}>
+        <View style={styles.authNotice}>
+          <Text accessibilityRole="alert" style={styles.authNoticeText}>{authError}</Text>
+          <Pressable style={styles.dismissNotice} onPress={() => useUserStore.getState().actions.clearError()} accessibilityRole="button">
+            <Text style={{color: colors.ink, fontWeight: '600'}}>{t('common.close')}</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>}
       {recovery ? <NewPasswordScreen /> : <AppNavigator />}
       <ToastManager />
     </View>
@@ -201,6 +201,9 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  authNotice: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  authNoticeText: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.error },
+  dismissNotice: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   container: {
     flex: 1,
     backgroundColor: colors.background,

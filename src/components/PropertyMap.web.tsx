@@ -1,5 +1,6 @@
+import ContentSkeleton from './ContentSkeleton';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Map as WebMap, Marker, setWorkerUrl } from 'maplibre-gl';
@@ -102,7 +103,7 @@ const PropertyMap = forwardRef<PropertyMapHandle, PropertyMapProps>(function Pro
 
   return <View style={[styles.root, props.style]}>
     <div ref={container} aria-label={t('map.title')} style={{ position: 'absolute', inset: 0 }} />
-    {!ready && !error && <ActivityIndicator style={styles.loading} color={colors.primary} accessibilityLabel={t('common.loading')} />}
+    {!ready && !error && <ContentSkeleton variant="map" style={styles.loading} />}
     {error && <View style={styles.error}>
       <Text accessibilityRole="alert">{t('map.networkError')}</Text>
       <Button onPress={() => setAttempt(value => value + 1)}>{t('common.retry')}</Button>
@@ -112,7 +113,7 @@ const PropertyMap = forwardRef<PropertyMapHandle, PropertyMapProps>(function Pro
 
 const styles = StyleSheet.create({
   root: { overflow: 'hidden', backgroundColor: colors.surface },
-  loading: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
+  loading: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.surface },
   error: { position: 'absolute', top: 8, left: 8, right: 8, padding: 12, borderRadius: 8, backgroundColor: colors.white },
 });
 export default PropertyMap;

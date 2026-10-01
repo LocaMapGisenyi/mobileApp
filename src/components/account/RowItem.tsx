@@ -13,12 +13,15 @@ interface RowItemProps {
   badgeBg?: string;
   badgeColor?: string;
   last?: boolean;
+  disabled?: boolean;
 }
 
-const RowItem = ({ icon, label, value, onPress, badge, badgeBg, badgeColor, last }: RowItemProps) => (
+const RowItem = ({ icon, label, value, onPress, badge, badgeBg, badgeColor, last, disabled }: RowItemProps) => (
   <TouchableOpacity
     accessibilityRole={onPress ? 'button' : undefined}
     accessibilityLabel={[label, value, badge].filter(Boolean).join(', ')}
+    accessibilityState={{ disabled: !onPress || disabled }}
+    disabled={!onPress || disabled}
     style={[s.row, !last && s.rowBorder]}
     onPress={onPress}
     activeOpacity={onPress ? 0.7 : 1}

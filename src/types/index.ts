@@ -1,6 +1,16 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import type { AuthStackParamList } from '../navigation/AuthNavigator';
 
+export type HostTabParamList = {
+  HostToday: undefined;
+  HostAvailability: undefined;
+  HostProperties: undefined;
+  HostInbox: undefined;
+  HostMenu: undefined;
+};
+export type HostBookingFilter = 'all' | 'requests' | 'upcoming' | 'current' | 'history' | 'arrivals' | 'departures';
+export type HostListingSection = 'information' | 'location' | 'photos' | 'pricing' | 'rules';
+
 // Type pour les propriétés de navigation
 export type RootStackParamList = {
   // Auth flow
@@ -41,15 +51,22 @@ export type RootStackParamList = {
   GuideDetail: { guideId: string };
 
   // Host screens
-  HostDashboard: undefined;
+  HostDashboard: NavigatorScreenParams<HostTabParamList> | undefined;
+  HostListing: { propertyId: string; saveResult?: 'draft' | 'publish' };
+  HostBookings: { filter?: HostBookingFilter } | undefined;
+  HostBookingDetail: { bookingId: string };
+  HostConversation: { conversationId: string };
+  HostResources: undefined;
+  HostReferral: undefined;
+  HostCoHost: undefined;
   HostOnboarding: undefined;
-  CreateListing: { propertyId?: string } | undefined;
+  CreateListing: { propertyId?: string; section?: HostListingSection } | undefined;
   BookingRequest: { propertyId: string };
   Bookings: undefined;
   Notifications: undefined;
   RecentlyViewed: undefined;
   Support: undefined;
-  Legal: undefined;
+  Legal: { mode: 'host' | 'guest' } | undefined;
   About: undefined;
   HostCalendar: { propertyId: string };
 

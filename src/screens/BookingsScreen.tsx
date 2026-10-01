@@ -1,5 +1,6 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useCallback,useRef, useState } from 'react';
-import { ScrollView, Text, View, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, RefreshControl } from 'react-native';
 import { Button } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,7 +37,7 @@ export default function BookingsScreen({navigation}: NativeStackScreenProps<Root
   return <ScrollView contentContainerStyle={s.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
     {<View style={s.actions}><Button mode={role==='guest'?'contained':'outlined'} disabled={!!busy} onPress={()=>setRole('guest')}>{t('bookingFlow.myStays','Mes séjours')}</Button><Button mode={role==='host'?'contained':'outlined'} disabled={!!busy} onPress={()=>setRole('host')}>{t('bookingFlow.received','Demandes reçues')}</Button></View>}
     {!!(error || actionError) && <Text accessibilityRole="alert" style={s.error}>{error || actionError}</Text>}
-    {loading && !refreshing && !bookings.length && <ActivityIndicator color={colors.primary} />}
+    {loading && !refreshing && !bookings.length && <ContentSkeleton />}
     {!loading && !refreshing && !error && !bookings.length && <Text style={s.text}>{t('bookingFlow.empty','Aucune réservation pour le moment.')}</Text>}
     {bookings.map(booking => <View key={booking.id} style={s.card}>
       <Text style={s.title}>{booking.property?.title ?? t('bookingFlow.unavailable','Logement indisponible.')}</Text>

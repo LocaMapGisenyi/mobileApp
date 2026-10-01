@@ -43,6 +43,13 @@ import HostSupportScreen from '../screens/HostSupportScreen';
 import HostLegalScreen from '../screens/HostLegalScreen';
 import HostCalendarScreen from '../screens/HostCalendarScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import HostBookingsScreen from '../screens/HostBookingsScreen';
+import HostListingScreen from '../screens/HostListingScreen';
+import HostConversationScreen from '../screens/HostConversationScreen';
+import HostBookingDetailScreen from '../screens/HostBookingDetailScreen';
+import HostResourcesScreen from '../screens/HostResourcesScreen';
+import HostReferralScreen from '../screens/HostReferralScreen';
+import HostCoHostScreen from '../screens/HostCoHostScreen';
 
 // Navigators
 import AuthNavigator from './AuthNavigator';
@@ -60,7 +67,9 @@ class NavigationErrorBoundary extends Component<
   { hasError: boolean }
 > {
   state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Navigation error:', error, info);
   }
@@ -83,10 +92,10 @@ const Tab = createBottomTabNavigator();
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 const TAB_CONFIGS = [
-  { name: 'Explorer',     icon: 'search',            labelKey: 'tabs.explorer' },
-  { name: 'Favorites',    icon: 'favorite-border',   labelKey: 'tabs.favorites' },
+  { name: 'Explorer', icon: 'search', labelKey: 'tabs.explorer' },
+  { name: 'Favorites', icon: 'favorite-border', labelKey: 'tabs.favorites' },
   { name: 'MessagesList', icon: 'chat-bubble-outline', labelKey: 'tabs.messages' },
-  { name: 'Profile',      icon: 'account-circle',    labelKey: 'tabs.profile' },
+  { name: 'Profile', icon: 'account-circle', labelKey: 'tabs.profile' },
 ] as const;
 
 const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
@@ -95,13 +104,20 @@ const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
   const { favoriteIds } = useFavoritesStore();
 
   const getBadge = (name: string) => {
-    if (name === 'Favorites') return favoriteIds.length > 0 ? String(favoriteIds.length > 9 ? '9+' : favoriteIds.length) : null;
-    if (name === 'MessagesList') return totalUnreadCount > 0 ? String(totalUnreadCount > 9 ? '9+' : totalUnreadCount) : null;
+    if (name === 'Favorites')
+      return favoriteIds.length > 0
+        ? String(favoriteIds.length > 9 ? '9+' : favoriteIds.length)
+        : null;
+    if (name === 'MessagesList')
+      return totalUnreadCount > 0 ? String(totalUnreadCount > 9 ? '9+' : totalUnreadCount) : null;
     return null;
   };
 
   return (
-    <View style={[tabStyles.wrapper, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+    <View
+      style={[tabStyles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}
+      pointerEvents="box-none"
+    >
       <View style={tabStyles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -109,7 +125,11 @@ const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
           const badge = getBadge(route.name);
 
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name as any);
           };
 
@@ -127,7 +147,7 @@ const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
               <View style={[tabStyles.iconWrap, isFocused && tabStyles.iconWrapActive]}>
                 <MaterialIcons
                   name={cfg.icon as any}
-                  size={26}
+                  size={23}
                   color={isFocused ? colors.primary : colors.inkSubtle}
                 />
                 {badge && (
@@ -141,7 +161,6 @@ const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
                 {t(cfg.labelKey) as string}
               </Text>
               {/* Active dot */}
-
             </TouchableOpacity>
           );
         })}
@@ -152,33 +171,31 @@ const CustomTabBar = ({ state, insets, navigation }: BottomTabBarProps) => {
 
 const tabStyles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
     alignItems: 'center',
   },
   bar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 16,
     maxWidth: 720,
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 0,
     width: '100%',
-    borderWidth: 1,
-    borderColor: colors.border,
-
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 56,
     paddingVertical: 4,
     gap: 2,
   },
-  iconWrap: { position: 'relative', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 14 },
-  iconWrapActive: { backgroundColor: colors.accentLight },
+  iconWrap: { position: 'relative', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+  iconWrapActive: { backgroundColor: colors.primaryLight },
   badge: {
     position: 'absolute',
     top: -5,
@@ -221,13 +238,13 @@ const tabStyles = StyleSheet.create({
 const TabNavigator = () => {
   return (
     <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Explorer"     component={ExplorerScreen} />
-      <Tab.Screen name="Favorites"    component={FavoritesScreen} />
+      <Tab.Screen name="Explorer" component={ExplorerScreen} />
+      <Tab.Screen name="Favorites" component={FavoritesScreen} />
       <Tab.Screen name="MessagesList" component={MessageListScreen} />
-      <Tab.Screen name="Profile"      component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
@@ -261,19 +278,12 @@ const AppNavigator = () => {
 
   return (
     <NavigationErrorBoundary>
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={screenOptions}
-      >
-        {!isAuthenticated ? (
-          // Flux d'authentification
-          <Stack.Screen
-            name="Auth"
-            component={AuthNavigator}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          // Flux après authentification
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={screenOptions}>
+          {!isAuthenticated ? (
+            // Flux d'authentification
+            <Stack.Screen name="Auth" component={AuthNavigator} options={{ headerShown: false }} />
+          ) : // Flux après authentification
           !hasCompletedOnboarding ? (
             <Stack.Screen
               name="PreferenceCarousel"
@@ -288,14 +298,42 @@ const AppNavigator = () => {
                 component={TabNavigator}
                 options={{ headerShown: false }}
               />
-              <Stack.Screen name="BookingRequest" component={BookingRequestScreen} options={{title:'Demande de réservation'}} />
-              <Stack.Screen name="Bookings" component={BookingsScreen} options={{title:'Réservations'}} />
-              <Stack.Screen name="RecentlyViewed" component={RecentlyViewedScreen} options={{title:'Historique'}} />
-              <Stack.Screen name="About" component={AboutScreen} options={{title:'À propos'}} />
-              <Stack.Screen name="Support" component={HostSupportScreen} options={{title:'Assistance'}} />
-              <Stack.Screen name="Legal" component={HostLegalScreen} options={{title:'Documents légaux'}} />
-              <Stack.Screen name="HostCalendar" component={HostCalendarScreen} options={{title:'Calendrier'}} />
-              <Stack.Screen name="Notifications" component={NotificationsScreen} options={{headerShown:false}} />
+              <Stack.Screen
+                name="BookingRequest"
+                component={BookingRequestScreen}
+                options={{ title: 'Demande de réservation' }}
+              />
+              <Stack.Screen
+                name="Bookings"
+                component={BookingsScreen}
+                options={{ title: 'Réservations' }}
+              />
+              <Stack.Screen
+                name="RecentlyViewed"
+                component={RecentlyViewedScreen}
+                options={{ title: 'Historique' }}
+              />
+              <Stack.Screen name="About" component={AboutScreen} options={{ title: 'À propos' }} />
+              <Stack.Screen
+                name="Support"
+                component={HostSupportScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Legal"
+                component={HostLegalScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="HostCalendar"
+                component={HostCalendarScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{ headerShown: false }}
+              />
               <Stack.Screen
                 name="PropertyDetails"
                 component={LogementDetailScreen}
@@ -386,6 +424,13 @@ const AppNavigator = () => {
                   animation: 'slide_from_right',
                 }}
               />
+              <Stack.Screen name="HostBookings" component={HostBookingsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostListing" component={HostListingScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostConversation" component={HostConversationScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostBookingDetail" component={HostBookingDetailScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostResources" component={HostResourcesScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostReferral" component={HostReferralScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="HostCoHost" component={HostCoHostScreen} options={{ headerShown: false }} />
               <Stack.Screen
                 name="HostOnboarding"
                 component={HostOnboardingScreen}
@@ -403,10 +448,9 @@ const AppNavigator = () => {
                 }}
               />
             </>
-          )
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
     </NavigationErrorBoundary>
   );
 };

@@ -1,1018 +1,1098 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import ContentSkeleton from '../components/ContentSkeleton';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Platform,
-  TouchableOpacity,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
   TextInput,
-  ActivityIndicator,
-  StatusBar,
-  Dimensions,
+  View,
 } from 'react-native';
-import PropertyMap, { PropertyMapHandle, Region } from '../components/PropertyMap';
+import {
+  useNavigation,
+  usePreventRemove,
+  useRoute,
+  type NavigationAction,
+  type RouteProp,
+} from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text } from 'react-native-paper';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { colors, borderRadius } from '../theme';
-import { RootStackParamList } from '../types';
-import { NewListingFormData, useHostListingsStore, toForm } from '../store/hostListings';
-
+import PropertyMap, { type PropertyMapHandle, type Region } from '../components/PropertyMap';
+import {
+  HostButton,
+  HostHeader,
+  HostNotice,
+  HostPage,
+  HostRow,
+  hostStyles,
+} from '../components/host/HostUI';
+import { useFormKeyboardScroll } from '../hooks/useFormKeyboardScroll';
 import { getPropertyById } from '../services/property.service';
+import { NewListingFormData, toForm, useHostListingsStore } from '../store/hostListings';
+import {
+  createListingAction,
+  createListingForm,
+  listingValidation,
+  listingSaveAction,
+} from '../utils/hostListingForm';
+import { onAccountChange } from '../lib/accountScope';
+import type { HostListingSection, RootStackParamList } from '../types';
+import { colors } from '../theme';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'CreateListing'>;
-
-// ─── Static constants (no i18n needed) ────────────────────────────────────────
-const PROPERTY_TYPE_VALUES = [
-  { value: 'apartment', icon: 'apartment' as const },
-  { value: 'house',      icon: 'home' as const },
-  { value: 'studio',      icon: 'single-bed' as const },
-  { value: 'villa',       icon: 'villa' as const },
-  { value: 'room',     icon: 'bed' as const },
-];
-
-const ACCOMMODATION_TYPE_VALUES = [
-  { value: 'entier' },
-  { value: 'privee' },
-  { value: 'partagee' },
-];
-
-const AMENITY_ICONS: { key: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
-  { key: 'wifi',              icon: 'wifi' },
-  { key: 'water',             icon: 'water-drop' },
-  { key: 'hotWater',          icon: 'hot-tub' },
-  { key: 'electricity',       icon: 'bolt' },
-  { key: 'generator',         icon: 'electrical-services' },
-  { key: 'kitchen',           icon: 'kitchen' },
-  { key: 'fridge',            icon: 'kitchen' },
-  { key: 'tv',                icon: 'tv' },
-  { key: 'ac',                icon: 'ac-unit' },
-  { key: 'fan',               icon: 'air' },
-  { key: 'parking',           icon: 'local-parking' },
-  { key: 'security',          icon: 'security' },
-  { key: 'balcony',           icon: 'balcony' },
-  { key: 'lake_view',          icon: 'water' },
-  { key: 'garden',            icon: 'grass' },
-  { key: 'washing_machine',            icon: 'local-laundry-service' },
-  { key: 'furnished',         icon: 'chair' },
-  { key: 'regideso',          icon: 'plumbing' },
-];
-
-const MIN_DURATION_VALUES = [
-  { value: 1 },
-  { value: 3 },
-  { value: 6 },
-  { value: 12 },
-];
-
-const NOTICE_PERIOD_VALUES = [
-  { value: 15 },
-  { value: 30 },
-  { value: 60 },
-];
-
-
-const HOUSE_RULE_KEYS: { key: string; ruleKey: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
-  { key: 'smoking',   ruleKey: 'smokingAllowed',  icon: 'smoking-rooms' },
-  { key: 'pets',      ruleKey: 'petsAllowed',     icon: 'pets' },
-  { key: 'visitors',  ruleKey: 'visitorsAllowed', icon: 'people' },
-  { key: 'noise',     ruleKey: 'noiseAfter22',    icon: 'nights-stay' },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const Counter = ({
-  value,
-  onDecrement,
-  onIncrement,
-  min = 1,
-}: {
-  value: number;
-  onDecrement: () => void;
-  onIncrement: () => void;
-  min?: number;
-}) => (
-  <View style={ct.wrap}>
-    <TouchableOpacity
-      style={[ct.btn, value <= min && ct.btnDisabled]}
-      onPress={onDecrement}
-      disabled={value <= min}
-      activeOpacity={0.7}
-    >
-      <MaterialIcons name="remove" size={16} color={value <= min ? colors.inkDisabled : colors.inkMid} />
-    </TouchableOpacity>
-    <Text style={ct.value}>{value}</Text>
-    <TouchableOpacity style={ct.btn} onPress={onIncrement} activeOpacity={0.7}>
-      <MaterialIcons name="add" size={16} color={colors.inkMid} />
-    </TouchableOpacity>
-  </View>
-);
-const ct = StyleSheet.create({
-  wrap:       { flexDirection: 'row', alignItems: 'center', gap: 0 },
-  btn:        { width: 36, height: 36, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  btnDisabled:{ borderColor: colors.border, backgroundColor: colors.surfaceSunken },
-  value:      { width: 44, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.ink },
-});
-
-const FieldInput = ({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  multiline,
-  keyboardType,
-  suffix,
-  error,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: 'numeric' | 'default';
-  suffix?: string;
-  error?: string;
-}) => (
-  <View style={fi.wrap}>
-    <Text style={fi.label}>{label}</Text>
-    <View style={[fi.inputRow, !!error && fi.inputRowError]}>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.inkDisabled}
-        style={[fi.input, multiline && fi.inputMulti]}
-        multiline={multiline}
-        keyboardType={keyboardType ?? 'default'}
-        textAlignVertical={multiline ? 'top' : 'center'}
-      />
-      {suffix && <Text style={fi.suffix}>{suffix}</Text>}
-    </View>
-    {!!error && <Text style={fi.errorTxt}>{error}</Text>}
-  </View>
-);
-const fi = StyleSheet.create({
-  wrap:           { marginBottom: 16 },
-  label:          { fontSize: 13, fontWeight: '600', color: colors.inkMid, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  inputRow:       { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSunken, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border, paddingHorizontal: 12 },
-  inputRowError:  { borderColor: colors.error },
-  input:          { flex: 1, fontSize: 15, color: colors.ink, paddingVertical: 11 },
-  inputMulti:     { minHeight: 100, paddingTop: 12 },
-  suffix:         { fontSize: 13, fontWeight: '600', color: colors.inkSubtle, marginLeft: 6 },
-  errorTxt:       { fontSize: 11, color: colors.error, marginTop: 4 },
-});
-
-// ─── Progress indicator ────────────────────────────────────────────────────────
-const ProgressRail = ({
-  step,
-  total,
-  labels,
-}: {
-  step: number;
-  total: number;
-  labels: string[];
-}) => (
-  <View style={pr.outer}>
-    {/* Dots + line row */}
-    <View style={pr.rail}>
-      {Array.from({ length: total }).map((_, i) => (
-        <React.Fragment key={i}>
-          <View style={[pr.dot, i < step && pr.dotDone, i === step && pr.dotActive]}>
-            {i < step
-              ? <MaterialIcons name="check" size={11} color={colors.white} />
-              : <Text style={[pr.dotNum, i === step && pr.dotNumActive]}>{i + 1}</Text>
-            }
-          </View>
-          {i < total - 1 && (
-            <View style={[pr.line, i < step && pr.lineDone]} />
-          )}
-        </React.Fragment>
-      ))}
-    </View>
-    {/* Labels row — aligned under each dot */}
-    <View style={pr.labelsRow}>
-      {labels.map((lbl, i) => (
-        <View key={i} style={pr.labelCell}>
-          <Text style={[pr.labelTxt, i === step && pr.labelActive]}>{lbl}</Text>
-        </View>
-      ))}
-    </View>
-  </View>
-);
-const pr = StyleSheet.create({
-  outer:       { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
-  rail:        { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  dot:         { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  dotDone:     { backgroundColor: colors.primary },
-  dotActive:   { backgroundColor: colors.primary, borderWidth: 3, borderColor: colors.primaryLight },
-  dotNum:      { fontSize: 11, fontWeight: '700', color: colors.inkDisabled },
-  dotNumActive:{ color: colors.white },
-  line:        { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 3 },
-  lineDone:    { backgroundColor: colors.primary },
-  labelsRow:   { flexDirection: 'row' },
-  labelCell:   { flex: 1, alignItems: 'center' },
-  labelTxt:    { fontSize: 10, fontWeight: '500', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.4 },
-  labelActive: { color: colors.primary, fontWeight: '700' },
-});
-
-// Gisenyi / Rubavu centre-ville
-const GISENYI_REGION: Region = {
+const GISENYI: Region = {
   latitude: -1.6977,
   longitude: 29.2558,
   latitudeDelta: 0.04,
   longitudeDelta: 0.04,
 };
+const STEPS = ['information', 'location', 'photos', 'pricing'] as const;
+const SECTION_STEP: Record<HostListingSection, number> = {
+  information: 0,
+  location: 1,
+  photos: 2,
+  pricing: 3,
+  rules: 3,
+};
+const TYPES = [
+  ['apartment', 'propAppartement', 'apartment'],
+  ['house', 'propMaison', 'home'],
+  ['studio', 'propStudio', 'single-bed'],
+  ['villa', 'propVilla', 'villa'],
+  ['room', 'propChambre', 'bed'],
+] as const;
+const ACCOMMODATION = [
+  ['entier', 'accomEntire', 'accomEntireSub'],
+  ['privee', 'accomPrivate', 'accomPrivateSub'],
+  ['partagee', 'accomShared', 'accomSharedSub'],
+] as const;
+const AMENITIES = [
+  ['wifi', 'amenityWifi'],
+  ['water', 'amenityWater'],
+  ['hotWater', 'amenityHotWater'],
+  ['electricity', 'amenityElec'],
+  ['generator', 'amenityGenerator'],
+  ['kitchen', 'amenityKitchen'],
+  ['fridge', 'amenityFridge'],
+  ['tv', 'amenityTV'],
+  ['ac', 'amenityAC'],
+  ['fan', 'amenityFan'],
+  ['parking', 'amenityParking'],
+  ['security', 'amenitySecurity'],
+  ['balcony', 'amenityBalcony'],
+  ['lake_view', 'amenityLakeView'],
+  ['garden', 'amenityGarden'],
+  ['washing_machine', 'amenityWasher'],
+  ['furnished', 'amenityFurnished'],
+  ['regideso', 'amenityRegideso'],
+] as const;
+const RULES = [
+  ['smokingAllowed', 'ruleSmoking', 'ruleSmokingSub'],
+  ['petsAllowed', 'rulePets', 'rulePetsSub'],
+  ['visitorsAllowed', 'ruleVisitors', 'ruleVisitorsSub'],
+  ['noiseAfter22', 'ruleNoise', 'ruleNoiseSub'],
+] as const;
 
-const MAP_HEIGHT = Dimensions.get('window').width * 0.55;
+type Visibility = ReturnType<typeof useFormKeyboardScroll>;
+function Field({
+  label,
+  value,
+  onChangeText,
+  error,
+  multiline,
+  numeric,
+  placeholder,
+  visibility,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  error?: string;
+  multiline?: boolean;
+  numeric?: boolean;
+  placeholder?: string;
+  visibility: Visibility;
+}) {
+  const ref = useRef<TextInput>(null);
+  return (
+    <View style={s.field}>
+      <Text style={s.label}>{label}</Text>
+      <TextInput
+        ref={ref}
+        accessibilityLabel={label}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.inkSubtle}
+        multiline={multiline}
+        keyboardType={numeric ? 'numeric' : 'default'}
+        style={[s.input, multiline && s.multiline, !!error && s.invalid]}
+        onFocus={() => visibility.onFocus(ref.current)}
+        onBlur={() => visibility.onBlur(ref.current)}
+        textAlignVertical={multiline ? 'top' : 'center'}
+      />
+      {error && (
+        <Text accessibilityRole="alert" style={s.error}>
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+}
+function Counter({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 100,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={s.counter}>
+      <Text style={[s.label, s.grow]}>{label}</Text>
+      <View style={s.counterControls}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('hostFlow.editor.decrease', { label })}
+          accessibilityState={{ disabled: value <= min }}
+          disabled={value <= min}
+          onPress={() => onChange(Math.max(min, value - 1))}
+          style={[s.counterButton, value <= min && s.disabled]}
+        >
+          <MaterialIcons name="remove" size={20} color={colors.ink} />
+        </Pressable>
+        <Text style={s.counterValue}>{value}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('hostFlow.editor.increase', { label })}
+          accessibilityState={{ disabled: value >= max }}
+          disabled={value >= max}
+          onPress={() => onChange(Math.min(max, value + 1))}
+          style={[s.counterButton, value >= max && s.disabled]}
+        >
+          <MaterialIcons name="add" size={20} color={colors.ink} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
-const CreateListingScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
-  const navigation = useNavigation<Nav>();
-  const { addListing, resetDraft } = useHostListingsStore();
+export default function CreateListingScreen() {
+  const { t, i18n } = useTranslation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'CreateListing'>>();
   const propertyId = route.params?.propertyId;
-  const mapRef = useRef<PropertyMapHandle>(null);
-  const { t } = useTranslation();
-
-  // ── Translated dynamic data (computed inside component) ───────────────────
-  const STEPS = useMemo(() => [
-    { label: t('createListing.stepType'),    icon: 'home' as const },
-    { label: t('createListing.stepAddress'), icon: 'location-on' as const },
-    { label: t('createListing.stepDetails'), icon: 'list' as const },
-    { label: t('createListing.stepFinish'),  icon: 'photo-library' as const },
-  ], [t]);
-
-  const PROPERTY_TYPES = useMemo(() => [
-    { label: t('createListing.propAppartement'), value: 'apartment', icon: 'apartment' as const },
-    { label: t('createListing.propMaison'),      value: 'house',      icon: 'home' as const },
-    { label: t('createListing.propStudio'),      value: 'studio',      icon: 'single-bed' as const },
-    { label: t('createListing.propVilla'),       value: 'villa',       icon: 'villa' as const },
-    { label: t('createListing.propChambre'),     value: 'room',     icon: 'bed' as const },
-  ], [t]);
-
-  const ACCOMMODATION_TYPES = useMemo(() => [
-    { label: t('createListing.accomEntire'),  value: 'entier',   sub: t('createListing.accomEntireSub') },
-    { label: t('createListing.accomPrivate'), value: 'privee',   sub: t('createListing.accomPrivateSub') },
-    { label: t('createListing.accomShared'),  value: 'partagee', sub: t('createListing.accomSharedSub') },
-  ], [t]);
-
-  const AMENITIES = useMemo<{ label: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[]>(() => [
-    { label: t('createListing.amenityWifi'),       icon: 'wifi' },
-    { label: t('createListing.amenityWater'),      icon: 'water-drop' },
-    { label: t('createListing.amenityHotWater'),   icon: 'hot-tub' },
-    { label: t('createListing.amenityElec'),       icon: 'bolt' },
-    { label: t('createListing.amenityGenerator'),  icon: 'electrical-services' },
-    { label: t('createListing.amenityKitchen'),    icon: 'kitchen' },
-    { label: t('createListing.amenityFridge'),     icon: 'kitchen' },
-    { label: t('createListing.amenityTV'),         icon: 'tv' },
-    { label: t('createListing.amenityAC'),         icon: 'ac-unit' },
-    { label: t('createListing.amenityFan'),        icon: 'air' },
-    { label: t('createListing.amenityParking'),    icon: 'local-parking' },
-    { label: t('createListing.amenitySecurity'),   icon: 'security' },
-    { label: t('createListing.amenityBalcony'),    icon: 'balcony' },
-    { label: t('createListing.amenityLakeView'),   icon: 'water' },
-    { label: t('createListing.amenityGarden'),     icon: 'grass' },
-    { label: t('createListing.amenityWasher'),     icon: 'local-laundry-service' },
-    { label: t('createListing.amenityFurnished'),  icon: 'chair' },
-    { label: t('createListing.amenityRegideso'),   icon: 'plumbing' },
-  ], [t]);
-
-  const MIN_DURATIONS = useMemo(() => [
-    { label: t('createListing.duration1m'),  value: 1 },
-    { label: t('createListing.duration3m'),  value: 3 },
-    { label: t('createListing.duration6m'),  value: 6 },
-    { label: t('createListing.duration1y'),  value: 12 },
-  ], [t]);
-
-  const NOTICE_PERIODS = useMemo(() => [
-    { label: t('createListing.notice15d'), value: 15 },
-    { label: t('createListing.notice1m'),  value: 30 },
-    { label: t('createListing.notice2m'),  value: 60 },
-  ], [t]);
-
-  const HOUSE_RULES = useMemo<{ key: string; label: string; sub: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[]>(() => [
-    { key: 'smokingAllowed',  label: t('createListing.ruleSmoking'),   sub: t('createListing.ruleSmokingSub'),   icon: 'smoking-rooms' },
-    { key: 'petsAllowed',     label: t('createListing.rulePets'),      sub: t('createListing.rulePetsSub'),      icon: 'pets' },
-    { key: 'visitorsAllowed', label: t('createListing.ruleVisitors'),  sub: t('createListing.ruleVisitorsSub'), icon: 'people' },
-    { key: 'noiseAfter22',    label: t('createListing.ruleNoise'),     sub: t('createListing.ruleNoiseSub'),    icon: 'nights-stay' },
-  ], [t]);
-
-  const [step, setStep] = useState(0);
-  const [saving, setSaving] = useState(false);
+  const initialSection = route.params?.section;
+  const [section, setSection] = useState<HostListingSection | undefined>(initialSection);
+  const [step, setStep] = useState(initialSection ? SECTION_STEP[initialSection] : 0);
+  const [form, setForm] = useState<NewListingFormData>(createListingForm);
+  const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(!!propertyId);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [saving, setSaving] = useState<'draft' | 'publish' | null>(null);
+  const [saved, setSaved] = useState<{ id: string; mode: 'draft' | 'publish' } | null>(null);
+  const [amenitiesExpanded, setAmenitiesExpanded] = useState(!!propertyId);
+  const [wasPublished, setWasPublished] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [exitAction, setExitAction] = useState<NavigationAction | null>(null);
   const [locating, setLocating] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const generation = useRef(0);
+  const busy = useRef(false);
+  const lastSaveMode = useRef<'draft' | 'publish'>('draft');
+  const mediaBusy = useRef(false);
+  const locationBusy = useRef(false);
+  const run = useRef(createListingAction()).current;
+  const mapRef = useRef<PropertyMapHandle>(null);
+  const visibility = useFormKeyboardScroll(step);
+  const { addListing, resetDraft } = useHostListingsStore();
 
-  const [form, setForm] = useState<NewListingFormData & { accommodationType: string }>({
-    title: '',
-    description: '',
-    price: 0,
-    currency: 'RWF',
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 0,
-    amenities: [],
-    type: 'apartment',
-    accommodationType: 'entier',
-    address: '',
-    city: 'Gisenyi',
-    district: '',
-    images: [],
-    maxGuests: 2,
-    smokingAllowed: false,
-    petsAllowed: false,
-    latitude: GISENYI_REGION.latitude,
-    longitude: GISENYI_REGION.longitude,
-    // Long-term rental specific
-    minDurationMonths: 1,
-    noticePeriodDays: 30,
-    depositMonths: 1,
-    visitorsAllowed: true,
-    noiseAfter22: false,
-  } as any);
-
+  useEffect(
+    () =>
+      onAccountChange(() => {
+        generation.current++;
+        setForm(createListingForm());
+        setDirty(false);
+        setSaved(null);
+        setExitAction(null);
+        setLoadFailed(true);
+      }),
+    [],
+  );
+  const load = useCallback(async () => {
+    const request = ++generation.current;
+    if (!propertyId) return;
+    setLoading(true);
+    setLoadFailed(false);
+    setErrors({});
+    try {
+      const row = await getPropertyById(propertyId);
+      if (!row) throw new Error('Missing property');
+      const loaded = toForm(row);
+      if (request === generation.current) {
+        setForm(loaded);
+        setWasPublished(row.status === 'ACTIVE');
+        setDirty(false);
+        if (row.status === 'PAUSED' && !initialSection) setStep(4);
+      }
+    } catch {
+      if (request === generation.current) setLoadFailed(true);
+    } finally {
+      if (request === generation.current) setLoading(false);
+    }
+  }, [propertyId, initialSection]);
   useEffect(() => {
     resetDraft();
-    let cancelled = false;
-    if (propertyId) {
-      setLoadFailed(false);
-      setSaving(true);
-      getPropertyById(propertyId).then(row => {
-        if (!cancelled && row) setForm({ ...toForm(row), accommodationType: row.accommodation_type ?? 'entier' });
-        if (!row) throw new Error('Brouillon introuvable.');
-      }).catch(error => { if (!cancelled) { setLoadFailed(true); setErrors({ submit: error.message }); } })
-        .finally(() => { if (!cancelled) setSaving(false); });
+    setForm(createListingForm());
+    setDirty(false);
+    setSaved(null);
+    setWasPublished(false);
+    setAmenitiesExpanded(!!propertyId);
+    setSection(initialSection);
+    setStep(initialSection ? SECTION_STEP[initialSection] : 0);
+    void load();
+    return () => {
+      generation.current++;
+    };
+  }, [propertyId, initialSection, load, resetDraft]);
+
+  usePreventRemove(dirty || !!saving, ({ data }) => {
+    if (busy.current) return;
+    Keyboard.dismiss();
+    setExitAction(data.action);
+  });
+  // The committed render has already disabled removal prevention before this
+  // effect sends the intentional return action to the native stack.
+  useEffect(() => {
+    if (!saved || dirty || saving) return;
+    const state = navigation.getState();
+    navigation.dispatch(
+      listingSaveAction(state.routes.slice(0, state.index), saved.id, saved.mode),
+    );
+  }, [dirty, navigation, saved, saving]);
+  const patch = <K extends keyof NewListingFormData>(key: K, value: NewListingFormData[K]) => {
+    if (busy.current || loadFailed || saved) return;
+    setDirty(true);
+    setForm(previous => ({ ...previous, [key]: value }));
+    setErrors(previous => {
+      const next = { ...previous };
+      delete next[key];
+      delete next.submit;
+      return next;
+    });
+  };
+  const changeSection = (next: HostListingSection) => {
+    setSection(next);
+    setStep(SECTION_STEP[next]);
+  };
+  const back = () => {
+    if (busy.current || saved) return;
+    if (!section && step > 0) {
+      setStep(value => value - 1);
+      return;
     }
-    return () => { cancelled = true; };
-  }, [propertyId, resetDraft]);
-
-  const pickPhotos = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 10 - form.images.length, quality: 0.85 });
-    if (!result.canceled) setForm(previous => ({ ...previous,
-      images: [...new Set([...previous.images, ...result.assets.map(asset => asset.uri)])].slice(0, 10),
-      imageMimeTypes: { ...previous.imageMimeTypes, ...Object.fromEntries(result.assets.map(asset => [asset.uri, asset.mimeType ?? 'image/jpeg'])) },
-    }));
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.replace('HostDashboard', { screen: 'HostProperties' });
   };
 
-  const patch = (key: string, value: unknown) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
-  };
-
-  const detectLocation = useCallback(async () => {
-    setLocating(true);
+  const save = async (mode: 'draft' | 'publish') => {
+    if (saved || loading || loadFailed || busy.current || mediaBusy.current || locationBusy.current)
+      return;
+    const validation = listingValidation(form, mode);
+    if (Object.keys(validation).length) {
+      setErrors(
+        Object.fromEntries(
+          Object.entries(validation).map(([key, value]) => [
+            key,
+            t(`hostFlow.editor.validation.${value}`),
+          ]),
+        ),
+      );
+      setSection(undefined);
+      setStep(4);
+      visibility.scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+    const request = generation.current;
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrors(prev => ({ ...prev, location: t('createListing.permissionDenied') }));
-        return;
-      }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { latitude, longitude } = pos.coords;
-      patch('latitude', latitude);
-      patch('longitude', longitude);
-      // Reverse geocoding
-      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
-      if (geo.length > 0) {
-        const g = geo[0];
-        if (g.street) patch('address', g.street);
-        if (g.subregion || g.district) patch('district', g.subregion ?? g.district ?? '');
-        if (g.city) patch('city', g.city);
-      }
-      mapRef.current?.animateToRegion(
-        { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
-        600,
+      await run(
+        async () => {
+          busy.current = true;
+          lastSaveMode.current = mode;
+          setSaving(mode);
+          setErrors({});
+          Keyboard.dismiss();
+          try {
+            return await addListing(form, mode, propertyId);
+          } finally {
+            busy.current = false;
+            setSaving(null);
+          }
+        },
+        id => {
+          if (request !== generation.current) return;
+          setDirty(false);
+          setExitAction(null);
+          setSaved({ id, mode });
+          resetDraft();
+        },
       );
     } catch {
-      setErrors(prev => ({ ...prev, location: t('createListing.locationError') }));
+      if (request === generation.current)
+        setErrors(previous => ({ ...previous, submit: t('hostFlow.editor.submitError') }));
+    }
+  };
+  const pickPhotos = async () => {
+    if (mediaBusy.current || busy.current || form.images.length >= 10) return;
+    mediaBusy.current = true;
+    setPicking(true);
+    const request = generation.current;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 10 - form.images.length,
+        quality: 0.85,
+      });
+      if (!result.canceled && request === generation.current) {
+        setDirty(true);
+        setForm(previous => ({
+          ...previous,
+          images: [
+            ...new Set([...previous.images, ...result.assets.map(asset => asset.uri)]),
+          ].slice(0, 10),
+          imageMimeTypes: {
+            ...previous.imageMimeTypes,
+            ...Object.fromEntries(
+              result.assets.map(asset => [asset.uri, asset.mimeType ?? 'image/jpeg']),
+            ),
+          },
+        }));
+        setErrors(previous => {
+          const next = { ...previous };
+          delete next.images;
+          return next;
+        });
+      }
+    } catch {
+      if (request === generation.current)
+        setErrors(previous => ({ ...previous, images: t('hostFlow.editor.photoError') }));
     } finally {
+      mediaBusy.current = false;
+      setPicking(false);
+    }
+  };
+  const detectLocation = async () => {
+    if (locationBusy.current || busy.current) return;
+    locationBusy.current = true;
+    setLocating(true);
+    const request = generation.current;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (request !== generation.current) return;
+      if (permission.status !== 'granted') {
+        setErrors(previous => ({ ...previous, location: t('createListing.permissionDenied') }));
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      if (request !== generation.current) return;
+      const { latitude, longitude } = position.coords;
+      setDirty(true);
+      setForm(previous => ({ ...previous, latitude, longitude }));
+      setErrors(previous => {
+        const next = { ...previous };
+        delete next.location;
+        return next;
+      });
+      mapRef.current?.animateToRegion(
+        { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        300,
+      );
+      const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (request !== generation.current || !addresses[0]) return;
+      const address = addresses[0];
+      setForm(previous => ({
+        ...previous,
+        address: previous.address || address.street || '',
+        district: previous.district || address.subregion || address.district || '',
+        city: address.city || previous.city,
+      }));
+    } catch {
+      if (request === generation.current)
+        setErrors(previous => ({ ...previous, location: t('createListing.locationError') }));
+    } finally {
+      locationBusy.current = false;
       setLocating(false);
     }
-  }, [t]);
-
-  const toggleAmenity = (a: string) => {
-    patch('amenities',
-      form.amenities.includes(a)
-        ? form.amenities.filter(x => x !== a)
-        : [...form.amenities, a],
-    );
   };
-
-  // ── Validation per step ────────────────────────────────────────────────────
-  const validateStep = (): boolean => {
-    const e: Record<string, string> = {};
-    if (step === 0) {
-      if (form.title.trim().length < 10) e.title = t('createListing.validTitle');
-      if (form.description.trim().length < 50) e.description = t('createListing.validDesc');
-    }
-    if (step === 1) {
-      if (!form.district.trim()) e.district = t('createListing.validDistrict');
-      if (!form.address.trim()) e.address = t('createListing.validAddress');
-    }
-    if (step === 2) {
-      if (!form.price || form.price < 20000) e.price = t('createListing.validPrice');
-    }
-    if (step === 3) {
-      if (form.images.length < 1) e.images = t('createListing.validImages');
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const goNext = () => {
-    if (!validateStep()) return;
-    if (step < 3) setStep(s => s + 1);
-    else handleSave('draft');
-  };
-
-  const goBack = () => {
-    if (step > 0) setStep(s => s - 1);
-    else navigation.goBack();
-  };
-
-  const handleSave = async (mode: 'draft' | 'publish') => {
-    if (saving || loadFailed) return;
-    if (mode === 'publish' && !validateStep()) return;
-    setSaving(true);
-    try {
-      await addListing(form, mode, propertyId);
-      navigation.navigate('HostDashboard');
-    } catch (error) {
-      setErrors({ submit: (error as Error).message || t('createListing.submitError') });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ── Step content ───────────────────────────────────────────────────────────
-  const renderStep0 = () => (
-    <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>{t('createListing.step0Title')}</Text>
-      <Text style={s.stepSub}>{t('createListing.step0Sub')}</Text>
-
-      <View style={s.typeGrid}>
-        {PROPERTY_TYPES.map(pt => (
-          <TouchableOpacity
-            key={pt.value}
-            style={[s.typeCard, form.type === pt.value && s.typeCardActive]}
-            onPress={() => patch('type', pt.value)}
-            activeOpacity={0.8}
+  const field = (
+    key: 'title' | 'description' | 'address' | 'district' | 'city',
+    label: string,
+    multiline = false,
+  ) => (
+    <Field
+      key={key}
+      label={label}
+      value={form[key]}
+      onChangeText={value => patch(key, value)}
+      error={errors[key]}
+      multiline={multiline}
+      visibility={visibility}
+    />
+  );
+  const numericField = (key: 'price' | 'size', label: string) => (
+    <Field
+      label={label}
+      value={form[key] ? String(form[key]) : ''}
+      numeric
+      onChangeText={value => patch(key, Number(value.replace(/[^0-9]/g, '')) || 0)}
+      error={errors[key]}
+      visibility={visibility}
+    />
+  );
+  const renderInformation = () => (
+    <>
+      {field('title', t('createListing.titleLabel'))}
+      <Text style={s.sectionLabel}>{t('createListing.stepType')}</Text>
+      <View style={s.options}>
+        {TYPES.map(([value, label, icon]) => (
+          <Pressable
+            key={value}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: form.type === value }}
+            onPress={() => patch('type', value)}
+            style={[s.option, form.type === value && s.selected]}
           >
             <MaterialIcons
-              name={pt.icon}
-              size={26}
-              color={form.type === pt.value ? colors.primary : colors.inkSubtle}
+              name={icon}
+              size={22}
+              color={form.type === value ? colors.primary : colors.inkSubtle}
             />
-            <Text style={[s.typeLabel, form.type === pt.value && s.typeLabelActive]}>
-              {pt.label}
-            </Text>
-          </TouchableOpacity>
+            <Text style={s.optionText}>{t(`createListing.${label}`)}</Text>
+          </Pressable>
         ))}
       </View>
-
-      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>{t('createListing.accomTypeLabel')}</Text>
-      {ACCOMMODATION_TYPES.map(at => (
-        <TouchableOpacity
-          key={at.value}
-          style={[s.accomRow, form.accommodationType === at.value && s.accomRowActive]}
-          onPress={() => patch('accommodationType', at.value)}
-          activeOpacity={0.8}
+      <Text style={s.sectionLabel}>{t('createListing.accomTypeLabel')}</Text>
+      {ACCOMMODATION.map(([value, label, hint]) => (
+        <Pressable
+          key={value}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: form.accommodationType === value }}
+          onPress={() => patch('accommodationType', value)}
+          style={[s.accommodation, form.accommodationType === value && s.selected]}
         >
-          <View style={s.accomRadio}>
-            {form.accommodationType === at.value && <View style={s.accomRadioInner} />}
+          <MaterialIcons
+            name={
+              form.accommodationType === value ? 'radio-button-checked' : 'radio-button-unchecked'
+            }
+            size={22}
+            color={colors.primary}
+          />
+          <View style={s.grow}>
+            <Text style={s.label}>{t(`createListing.${label}`)}</Text>
+            <Text style={hostStyles.muted}>{t(`createListing.${hint}`)}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.accomLabel, form.accommodationType === at.value && s.accomLabelActive]}>
-              {at.label}
-            </Text>
-            <Text style={s.accomSub}>{at.sub}</Text>
-          </View>
-        </TouchableOpacity>
+        </Pressable>
       ))}
-
-      <View style={{ marginTop: 24 }}>
-        <FieldInput
-          label={t('createListing.titleLabel')}
-          value={form.title}
-          onChangeText={v => patch('title', v)}
-          placeholder={t('createListing.titlePlaceholder')}
-          error={errors.title}
-        />
-        <FieldInput
-          label={t('createListing.descriptionLabel')}
-          value={form.description}
-          onChangeText={v => patch('description', v)}
-          placeholder={t('createListing.descriptionPlaceholder')}
-          multiline
-          error={errors.description}
-        />
-        {form.description.length > 0 && (
-          <Text style={s.charCount}>{form.description.length} / 500 {t('createListing.chars')}</Text>
-        )}
-      </View>
-    </Animated.View>
-  );
-
-  const renderStep1 = () => (
-    <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>{t('createListing.step1Title')}</Text>
-      <Text style={s.stepSub}>{t('createListing.step1Sub')}</Text>
-
-      {/* Auto-localisation */}
-      <TouchableOpacity
-        style={[s.locateBtn, locating && s.locateBtnLoading]}
-        onPress={detectLocation}
-        disabled={locating}
-        activeOpacity={0.8}
+      <Text style={s.sectionLabel}>{t('createListing.capacityLabel')}</Text>
+      <Counter
+        label={t('createListing.bedroomsLabel')}
+        value={form.bedrooms}
+        onChange={value => patch('bedrooms', value)}
+        max={20}
+      />
+      <Counter
+        label={t('createListing.bathroomsLabel')}
+        value={form.bathrooms}
+        onChange={value => patch('bathrooms', value)}
+        max={20}
+      />
+      <Counter
+        label={t('hostFlow.editor.guests')}
+        value={form.maxGuests}
+        min={1}
+        onChange={value => patch('maxGuests', value)}
+      />
+      {numericField('size', t('hostFlow.editor.size'))}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: amenitiesExpanded }}
+        onPress={() => setAmenitiesExpanded(expanded => !expanded)}
+        style={s.amenitiesToggle}
       >
-        {locating
-          ? <ActivityIndicator size="small" color={colors.primary} />
-          : <MaterialIcons name="my-location" size={16} color={colors.primary} />
-        }
-        <Text style={s.locateTxt}>
-          {locating ? t('createListing.locating') : t('createListing.locateBtn')}
-        </Text>
-      </TouchableOpacity>
-      {errors.location && (
-        <Text style={[s.errorInline, { marginBottom: 10 }]}>{errors.location}</Text>
+        <View style={s.grow}>
+          <Text style={s.label}>{t('hostFlow.editor.optionalAmenities')}</Text>
+          <Text style={hostStyles.muted}>
+            {t('hostFlow.editor.amenitiesSelected', { count: form.amenities.length })}
+          </Text>
+        </View>
+        <MaterialIcons
+          name={amenitiesExpanded ? 'expand-less' : 'expand-more'}
+          size={24}
+          color={colors.ink}
+        />
+      </Pressable>
+      {amenitiesExpanded && (
+        <View style={s.options}>
+          {AMENITIES.map(([key, label]) => (
+            <Pressable
+              key={key}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: form.amenities.includes(key) }}
+              onPress={() =>
+                patch(
+                  'amenities',
+                  form.amenities.includes(key)
+                    ? form.amenities.filter(item => item !== key)
+                    : [...form.amenities, key],
+                )
+              }
+              style={[s.option, form.amenities.includes(key) && s.selected]}
+            >
+              <MaterialIcons
+                name={form.amenities.includes(key) ? 'check-box' : 'check-box-outline-blank'}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={s.optionText}>{t(`createListing.${label}`)}</Text>
+            </Pressable>
+          ))}
+        </View>
       )}
-
-      {/* Carte */}
-      <View style={s.mapWrap}>
+    </>
+  );
+  const renderLocation = () => (
+    <>
+      <HostButton
+        variant="secondary"
+        icon="my-location"
+        label={t('createListing.locateBtn')}
+        busy={locating}
+        onPress={() => void detectLocation()}
+      />
+      {errors.location && (
+        <Text accessibilityRole="alert" style={s.error}>
+          {errors.location}
+        </Text>
+      )}
+      <View style={s.map}>
         <PropertyMap
           ref={mapRef}
-          style={s.map}
-          initialRegion={GISENYI_REGION}
-          markers={form.latitude != null && form.longitude != null ? [{
-            id: 'listing-location', latitude: form.latitude, longitude: form.longitude, draggable: true,
-          }] : []}
+          style={s.fill}
+          initialRegion={
+            form.latitude != null && form.longitude != null
+              ? { ...GISENYI, latitude: form.latitude, longitude: form.longitude }
+              : GISENYI
+          }
+          markers={
+            form.latitude != null && form.longitude != null
+              ? [
+                  {
+                    id: 'listing',
+                    latitude: form.latitude,
+                    longitude: form.longitude,
+                    draggable: true,
+                  },
+                ]
+              : []
+          }
           onMapPress={({ latitude, longitude }) => {
             patch('latitude', latitude);
             patch('longitude', longitude);
+            setErrors(previous => {
+              const next = { ...previous };
+              delete next.location;
+              return next;
+            });
           }}
           onMarkerDragEnd={(_id, { latitude, longitude }) => {
             patch('latitude', latitude);
             patch('longitude', longitude);
           }}
         />
-        <View pointerEvents="none" style={s.mapHintBadge}>
-          <MaterialIcons name="touch-app" size={13} color={colors.white} />
-          <Text style={s.mapHintTxt}>{t('createListing.mapHint')}</Text>
-        </View>
       </View>
-
-      {/* Coordonnées affichées */}
-      {form.latitude != null && (
-        <View style={s.coordsRow}>
-          <MaterialIcons name="gps-fixed" size={12} color={colors.inkSubtle} />
-          <Text style={s.coordsTxt}>
-            {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
-          </Text>
-        </View>
-      )}
-
-      {/* Champs texte */}
-      <View style={{ marginTop: 16 }}>
-        <FieldInput
-          label={t('createListing.quarterLabel')}
-          value={form.district}
-          onChangeText={v => patch('district', v)}
-          placeholder={t('createListing.quarterPlaceholder')}
-          error={errors.district}
-        />
-        <FieldInput
-          label={t('createListing.addressLabel')}
-          value={form.address}
-          onChangeText={v => patch('address', v)}
-          placeholder={t('createListing.addressPlaceholder')}
-          error={errors.address}
-        />
-        <FieldInput
-          label={t('createListing.cityLabel')}
-          value={form.city}
-          onChangeText={v => patch('city', v)}
-          placeholder="Gisenyi"
-        />
-      </View>
-    </Animated.View>
+      <Text style={hostStyles.muted}>{t('createListing.mapHint')}</Text>
+      {field('district', t('createListing.quarterLabel'))}
+      {field('address', t('createListing.addressLabel'))}
+      {field('city', t('createListing.cityLabel'))}
+    </>
   );
-
-  const renderStep2 = () => {
-    return (
-      <Animated.View entering={FadeInDown.duration(320)}>
-        <Text style={s.stepTitle}>{t('createListing.step2Title')}</Text>
-        <Text style={s.stepSub}>{t('createListing.step2Sub')}</Text>
-
-        {/* Capacité */}
-        <Text style={s.fieldGroupLabel}>{t('createListing.capacityLabel')}</Text>
-        <View style={s.counterGrid}>
-          {[
-            { label: t('createListing.bedroomsLabel'),   key: 'bedrooms',  value: form.bedrooms },
-            { label: t('createListing.bathroomsLabel'),  key: 'bathrooms', value: form.bathrooms },
-          ].map(item => (
-            <View key={item.key} style={[s.counterRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-              <Text style={s.counterLabel}>{item.label}</Text>
-              <Counter
-                value={item.value}
-                onDecrement={() => patch(item.key, Math.max(1, item.value - 1))}
-                onIncrement={() => patch(item.key, item.value + 1)}
-              />
-            </View>
-          ))}
-        </View>
-
-        {/* Loyer */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.rentLabel')}</Text>
-        <FieldInput
-          label={t('createListing.priceLabel')}
-          value={form.price > 0 ? String(form.price) : ''}
-          onChangeText={v => patch('price', parseInt(v.replace(/\D/g, '')) || 0)}
-          placeholder={t('createListing.pricePlaceholder')}
-          keyboardType="numeric"
-          suffix="RWF"
-          error={errors.price}
-        />
-        {form.price > 0 && (
-          <View style={s.pricePreview}>
-            <View style={s.pricePreviewRow}>
-              <Text style={s.pricePreviewLbl}>{t('createListing.grossRent')}</Text>
-              <Text style={s.pricePreviewVal}>{form.price.toLocaleString('fr-FR')} RWF</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Caution */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.depositLabel')}</Text>
-        <View style={s.counterGrid}>
-          <View style={s.counterRow}>
-            <View>
-              <Text style={s.counterLabel}>{t('createListing.depositMonths')}</Text>
-              <Text style={s.counterSub}>{t('createListing.depositNote')}</Text>
-            </View>
-            <Counter
-              value={(form as any).depositMonths ?? 1}
-              onDecrement={() => patch('depositMonths', Math.max(1, ((form as any).depositMonths ?? 1) - 1))}
-              onIncrement={() => patch('depositMonths', Math.min(3, ((form as any).depositMonths ?? 1) + 1))}
-              min={1}
-            />
-          </View>
-        </View>
-
-        {/* Durée minimale */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.minDurationLabel')}</Text>
-        <View style={s.chipRow}>
-          {MIN_DURATIONS.map(d => {
-            const active = (form as any).minDurationMonths === d.value;
-            return (
-              <TouchableOpacity
-                key={d.value}
-                style={[s.selectChip, active && s.selectChipActive]}
-                onPress={() => patch('minDurationMonths', d.value)}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.selectChipTxt, active && s.selectChipTxtActive]}>{d.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Préavis */}
-        <Text style={[s.fieldGroupLabel, { marginTop: 20 }]}>{t('createListing.noticeLabel')}</Text>
-        <View style={s.chipRow}>
-          {NOTICE_PERIODS.map(n => {
-            const active = (form as any).noticePeriodDays === n.value;
-            return (
-              <TouchableOpacity
-                key={n.value}
-                style={[s.selectChip, active && s.selectChipActive]}
-                onPress={() => patch('noticePeriodDays', n.value)}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.selectChipTxt, active && s.selectChipTxtActive]}>{n.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </Animated.View>
-    );
-  };
-
-  const renderStep3 = () => (
-    <Animated.View entering={FadeInDown.duration(320)}>
-      <Text style={s.stepTitle}>{t('createListing.step3Title')}</Text>
-      <Text style={s.stepSub}>{t('createListing.step3Sub')}</Text>
-
-      {/* Équipements */}
-      <Text style={s.fieldGroupLabel}>{t('createListing.amenitiesLabel')}</Text>
-      <View style={s.amenitiesGrid}>
-        {AMENITIES.map((a, index) => {
-          const key = AMENITY_ICONS[index].key;
-          const active = form.amenities.includes(key);
-          return (
-            <TouchableOpacity
-              key={a.label}
-              style={[s.amenityChip, active && s.amenityChipActive]}
-              onPress={() => toggleAmenity(key)}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons
-                name={a.icon}
-                size={14}
-                color={active ? colors.primary : colors.inkSubtle}
-              />
-              <Text style={[s.amenityTxt, active && s.amenityTxtActive]}>{a.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      {form.amenities.length < 5 && (
-        <Text style={s.amenityHint}>{t('createListing.amenitiesHint')}</Text>
-      )}
-
-      {/* Règles */}
-      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>{t('createListing.rulesLabel')}</Text>
-      <View style={s.rulesCard}>
-        {HOUSE_RULES.map((rule, i) => {
-          const active = (form as any)[rule.key] ?? false;
-          return (
-            <TouchableOpacity
-              key={rule.key}
-              style={[s.ruleRow, i < HOUSE_RULES.length - 1 && s.ruleRowBorder]}
-              onPress={() => patch(rule.key, !active)}
-              activeOpacity={0.8}
-            >
-              <View style={s.ruleIconWrap}>
-                <MaterialIcons name={rule.icon} size={18} color={active ? colors.primary : colors.inkDisabled} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.ruleLabel}>{rule.label}</Text>
-                <Text style={s.ruleSub}>{rule.sub}</Text>
-              </View>
-              <View style={[s.toggle, active && s.toggleOn]}>
-                <View style={[s.toggleThumb, active && s.toggleThumbOn]} />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Photos */}
-      <Text style={[s.fieldGroupLabel, { marginTop: 24 }]}>
-        {t('createListing.photosLabel')}{' '}
-        <Text style={{ color: colors.inkDisabled, textTransform: 'none', letterSpacing: 0 }}>
-          ({form.images.length} / 10)
-        </Text>
+  const renderPhotos = () => (
+    <>
+      {field('description', t('createListing.descriptionLabel'), true)}
+      <Text style={s.sectionLabel}>
+        {t('createListing.photosLabel')} ({form.images.length}/10)
       </Text>
-      {errors.images && <Text style={s.errorInline}>{errors.images}</Text>}
-      <View style={s.photosGrid}>
-        {form.images.map((uri, i) => (
-          <View key={i} style={s.photoThumb}>
-            <Image source={{ uri }} style={s.photoImg} resizeMode="cover" />
-            {i === 0 && (
-              <View style={s.coverBadge}>
-                <Text style={s.coverBadgeTxt}>{t('createListing.photoCover')}</Text>
-              </View>
+      <Text style={hostStyles.muted}>{t('createListing.photoHint')}</Text>
+      {errors.images && (
+        <Text accessibilityRole="alert" style={s.error}>
+          {errors.images}
+        </Text>
+      )}
+      <View style={s.photos}>
+        {form.images.map((uri, index) => (
+          <View key={uri} style={s.photoItem}>
+            <View style={s.photoFrame}>
+              <Image source={{ uri }} style={s.fill} />
+              <Pressable
+                style={s.removePhoto}
+                accessibilityRole="button"
+                accessibilityLabel={t('hostFlow.editor.removePhoto', { number: index + 1 })}
+                onPress={() =>
+                  patch(
+                    'images',
+                    form.images.filter(image => image !== uri),
+                  )
+                }
+              >
+                <MaterialIcons name="close" size={22} color={colors.white} />
+              </Pressable>
+            </View>
+            {index === 0 ? (
+              <Text style={s.coverText}>{t('createListing.photoCover')}</Text>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                style={s.coverAction}
+                onPress={() =>
+                  patch('images', [uri, ...form.images.filter(image => image !== uri)])
+                }
+              >
+                <Text style={s.coverText}>{t('hostFlow.editor.makeCover')}</Text>
+              </Pressable>
             )}
-            <TouchableOpacity
-              style={s.photoRemove}
-              onPress={() => patch('images', form.images.filter((_, j) => j !== i))}
-            >
-              <MaterialIcons name="close" size={13} color={colors.white} />
-            </TouchableOpacity>
           </View>
         ))}
-        {form.images.length < 10 && (
-          <TouchableOpacity
-            style={s.photoAdd}
-            onPress={() => { void pickPhotos().catch(error => setErrors({ images: error.message })); }}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="add-photo-alternate" size={26} color={colors.inkDisabled} />
-            <Text style={s.photoAddTxt}>{t('createListing.photoAdd')}</Text>
-          </TouchableOpacity>
-        )}
       </View>
-      <Text style={s.photoHint}>{t('createListing.photoHint')}</Text>
-
-      {errors.submit && (
-        <View style={s.submitError}>
-          <MaterialIcons name="error-outline" size={15} color={colors.error} />
-          <Text style={s.submitErrorTxt}>{errors.submit}</Text>
-        </View>
+      {form.images.length < 10 && (
+        <HostButton
+          variant="secondary"
+          icon="add-photo-alternate"
+          label={t('createListing.photoAdd')}
+          busy={picking}
+          onPress={() => void pickPhotos()}
+        />
       )}
-    </Animated.View>
+    </>
   );
-
-  const STEP_RENDERERS = [renderStep0, renderStep1, renderStep2, renderStep3];
-  const isLastStep = step === STEPS.length - 1;
-
-  return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>{t('createListing.headerTitle')}</Text>
-        <TouchableOpacity
-          style={s.draftBtn}
-          onPress={() => handleSave('draft')}
-          disabled={saving || loadFailed}
-          activeOpacity={0.8}
-        >
-          <Text style={s.draftTxt}>{t('createListing.draftBtn')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress + labels */}
-      <ProgressRail
-        step={step}
-        total={STEPS.length}
-        labels={STEPS.map(st => st.label)}
+  const renderPricing = () => (
+    <>
+      {numericField('price', `${t('createListing.priceLabel')} (RWF)`)}
+      <Counter
+        label={t('createListing.depositMonths')}
+        value={form.depositMonths ?? 1}
+        min={0}
+        max={12}
+        onChange={value => patch('depositMonths', value)}
       />
-
-      {/* Content */}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-      >
-        {STEP_RENDERERS[step]()}
-        <View style={{ height: 24 }} />
-      </ScrollView>
-
-      {errors.submit && step !== 3 && <Text accessibilityRole="alert" style={s.errorInline}>{errors.submit}</Text>}
-      {/* Footer */}
-      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
-        {isLastStep ? (
-          <View style={s.footerRow}>
-            <TouchableOpacity
-              style={s.secondaryFooterBtn}
-              onPress={() => handleSave('draft')}
-              disabled={saving || loadFailed}
-              activeOpacity={0.8}
-            >
-              <Text style={s.secondaryFooterTxt}>{t('createListing.save')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.primaryFooterBtn, saving && s.btnDisabled]}
-              onPress={() => handleSave('publish')}
-              disabled={saving || loadFailed}
-              activeOpacity={0.85}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={colors.onAccent} />
-              ) : (
-                <>
-                  <Text style={s.primaryFooterTxt}>{t('createListing.publish')}</Text>
-                  <MaterialIcons name="arrow-forward" size={16} color={colors.onAccent} />
-                </>
-              )}
-            </TouchableOpacity>
+      <Counter
+        label={t('hostFlow.editor.minimumMonths')}
+        value={form.minDurationMonths ?? 1}
+        min={1}
+        max={120}
+        onChange={value => patch('minDurationMonths', value)}
+      />
+      <Counter
+        label={t('hostFlow.editor.noticeDays')}
+        value={form.noticePeriodDays ?? 30}
+        min={0}
+        max={365}
+        onChange={value => patch('noticePeriodDays', value)}
+      />
+    </>
+  );
+  const renderRules = () => (
+    <View>
+      {RULES.map(([key, label, hint]) => (
+        <View key={key} style={s.rule}>
+          <View style={s.grow}>
+            <Text style={s.label}>{t(`createListing.${label}`)}</Text>
+            <Text style={hostStyles.muted}>{t(`createListing.${hint}`)}</Text>
           </View>
-        ) : (
-          <TouchableOpacity
-            style={s.primaryFooterBtnFull}
-            onPress={goNext}
-            activeOpacity={0.85}
-          >
-            <Text style={s.primaryFooterTxt}>
-              {t('createListing.continueStep', { stepName: STEPS[step + 1 < STEPS.length ? step + 1 : step].label })}
-            </Text>
-            <MaterialIcons name="arrow-forward" size={16} color={colors.onAccent} />
-          </TouchableOpacity>
-        )}
-      </View>
+          <Switch
+            accessibilityLabel={t(`createListing.${label}`)}
+            value={!!form[key]}
+            onValueChange={value => patch(key, value)}
+            trackColor={{ false: colors.borderMid, true: colors.primary }}
+            thumbColor={colors.white}
+          />
+        </View>
+      ))}
     </View>
   );
-};
+  const missing = t('hostFlow.editor.missing');
+  const price = form.price
+    ? `${new Intl.NumberFormat(i18n.language).format(form.price)} RWF ${t('hostFlow.listings.monthly')}`
+    : missing;
+  const renderReview = () => (
+    <>
+      {Object.keys(errors).some(key => key !== 'submit') && (
+        <HostNotice tone="error" message={t('hostFlow.editor.validationError')} />
+      )}
+      {form.images[0] && <Image source={{ uri: form.images[0] }} style={s.reviewImage} />}
+      <HostRow
+        title={t('hostFlow.listings.information')}
+        description={`${form.title || missing}\n${t('hostFlow.listings.informationSummary', { bedrooms: form.bedrooms, bathrooms: form.bathrooms })}`}
+        onPress={() => changeSection('information')}
+      />
+      {errors.title && <Text style={s.error}>{errors.title}</Text>}
+      <HostRow
+        title={t('hostFlow.listings.location')}
+        description={[form.address, form.district, form.city].filter(Boolean).join(', ') || missing}
+        onPress={() => changeSection('location')}
+      />
+      {['address', 'district', 'city', 'location']
+        .filter(key => errors[key])
+        .map(key => (
+          <Text key={key} style={s.error}>
+            {errors[key]}
+          </Text>
+        ))}
+      <HostRow
+        title={t('hostFlow.editor.photos')}
+        description={`${t('hostFlow.listings.photosCount', { count: form.images.length })}\n${form.description || missing}`}
+        onPress={() => changeSection('photos')}
+      />
+      {['description', 'images']
+        .filter(key => errors[key])
+        .map(key => (
+          <Text key={key} style={s.error}>
+            {errors[key]}
+          </Text>
+        ))}
+      <HostRow
+        title={t('hostFlow.listings.pricing')}
+        description={`${price}\n${t('hostFlow.listings.rulesSummary', { duration: form.minDurationMonths ?? 1, notice: form.noticePeriodDays ?? 30 })}`}
+        onPress={() => changeSection('pricing')}
+      />
+      {errors.price && <Text style={s.error}>{errors.price}</Text>}
+      <HostRow
+        title={t('hostFlow.listings.rules')}
+        description={RULES.map(
+          ([key, label]) =>
+            `${t(`createListing.${label}`)} : ${t(form[key] ? 'common.yes' : 'common.no')}`,
+        ).join('\n')}
+        onPress={() => changeSection('rules')}
+      />
+    </>
+  );
+  const content =
+    step === 4 ? (
+      renderReview()
+    ) : step === 0 ? (
+      renderInformation()
+    ) : step === 1 ? (
+      renderLocation()
+    ) : step === 2 ? (
+      renderPhotos()
+    ) : (
+      <>
+        {section !== 'rules' && renderPricing()}
+        {section !== 'pricing' && (
+          <>
+            <Text style={s.sectionLabel}>{t('hostFlow.editor.rules')}</Text>
+            {renderRules()}
+          </>
+        )}
+      </>
+    );
+  const stage = step === 4 ? 'review' : section === 'rules' ? 'rules' : STEPS[step];
+  const blocked = !!saved || !!saving || loading || loadFailed || picking || locating;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const PHOTO_SIZE = 100;
+  return (
+    <HostPage scroll={false}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.flex}>
+        <View
+          ref={visibility.viewportRef}
+          collapsable={false}
+          onLayout={visibility.reveal}
+          style={s.flex}
+        >
+          <ScrollView
+            ref={visibility.scrollRef}
+            onScroll={event => visibility.onScroll(event.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={s.content}
+          >
+            <HostHeader
+              title={t(propertyId ? 'hostFlow.editor.editTitle' : 'hostFlow.editor.title')}
+              onBack={back}
+            />
+            <>
+              {loading ? (
+                <ContentSkeleton variant="form" count={4} />
+              ) : loadFailed ? (
+                <HostNotice
+                  tone="error"
+                  message={t('hostFlow.editor.loadError')}
+                  onRetry={() => void load()}
+                />
+              ) : (
+                <>
+                  {!section && step < 4 && (
+                    <Text style={s.progress}>
+                      {t('hostFlow.editor.step', { current: step + 1, total: 4 })}
+                    </Text>
+                  )}
+                  <Text accessibilityRole="header" style={hostStyles.section}>
+                    {t(`hostFlow.editor.${stage}`)}
+                  </Text>
+                  {stage !== 'rules' && (
+                    <Text style={s.hint}>{t(`hostFlow.editor.${stage}Hint`)}</Text>
+                  )}
+                  {wasPublished && <HostNotice tone="info" message={t('hostFlow.editor.editHint')} />}
+                  <View pointerEvents={saving || saved ? 'none' : 'auto'} style={s.fields}>
+                    {content}
+                  </View>
+                  {errors.submit && (
+                    <HostNotice
+                      tone="error"
+                      message={errors.submit}
+                      onRetry={() => void save(lastSaveMode.current)}
+                    />
+                  )}
+                  <View style={s.actions}>
+                    {step === 4 ? (
+                      <HostButton
+                        label={t('hostFlow.editor.publish')}
+                        busy={saving === 'publish'}
+                        disabled={blocked && saving !== 'publish'}
+                        onPress={() => void save('publish')}
+                      />
+                    ) : (
+                      <HostButton
+                        label={t(
+                          section || step === 3
+                            ? 'hostFlow.editor.reviewButton'
+                            : 'hostFlow.editor.next',
+                        )}
+                        disabled={blocked}
+                        onPress={() => {
+                          setStep(section || step === 3 ? 4 : step + 1);
+                          setSection(undefined);
+                        }}
+                      />
+                    )}
+                    <HostButton
+                      variant="secondary"
+                      label={t('hostFlow.editor.saveQuit')}
+                      busy={saving === 'draft' && !exitAction}
+                      disabled={blocked}
+                      onPress={() => void save('draft')}
+                    />
+                    {!propertyId && (
+                      <Text style={hostStyles.muted}>{t('hostFlow.editor.draftHint')}</Text>
+                    )}
+                  </View>
+                </>
+              )}
+            </>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+      <Modal
+        visible={!!exitAction}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!busy.current) setExitAction(null);
+        }}
+      >
+        <View style={s.backdrop}>
+          <View accessibilityViewIsModal style={s.dialog}>
+            <ScrollView contentContainerStyle={s.dialogContent} keyboardShouldPersistTaps="handled">
+              <Text style={hostStyles.title}>{t('hostFlow.editor.exitTitle')}</Text>
+              <Text style={hostStyles.body}>{t('hostFlow.editor.exitHint')}</Text>
+              {errors.submit && <HostNotice tone="error" message={errors.submit} />}
+              <HostButton
+                label={t('hostFlow.editor.saveQuit')}
+                busy={!!saving}
+                onPress={() => void save('draft')}
+              />
+              <HostButton
+                variant="secondary"
+                label={t('hostFlow.editor.stay')}
+                disabled={!!saving}
+                onPress={() => setExitAction(null)}
+              />
+              <HostButton
+                variant="quiet"
+                label={t('hostFlow.editor.discard')}
+                disabled={!!saving}
+                onPress={() => {
+                  const action = exitAction;
+                  setDirty(false);
+                  setExitAction(null);
+                  if (action) navigation.dispatch(action);
+                }}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </HostPage>
+  );
+}
 
 const s = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.background },
-  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
-  headerTitle:  { fontSize: 16, fontWeight: '700', color: colors.ink },
-  draftBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border },
-  draftTxt:     { fontSize: 12, fontWeight: '600', color: colors.inkMid },
-
-
-
-  scrollContent:  { paddingHorizontal: 20, paddingTop: 8 },
-  stepTitle:      { fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 6, letterSpacing: -0.3 },
-  stepSub:        { fontSize: 13, color: colors.inkSubtle, marginBottom: 24, lineHeight: 18 },
-  fieldGroupLabel:{ fontSize: 11, fontWeight: '700', color: colors.inkDisabled, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
-  charCount:      { fontSize: 11, color: colors.inkDisabled, textAlign: 'right', marginTop: -8, marginBottom: 16 },
-  errorInline:    { fontSize: 12, color: colors.error, marginBottom: 8 },
-
-  // Property type grid
-  typeGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
-  typeCard:     { width: '30%', aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  typeCardActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  typeLabel:    { fontSize: 11, fontWeight: '600', color: colors.inkSubtle, textAlign: 'center' },
-  typeLabelActive: { color: colors.primary },
-
-  // Accommodation type
-  accomRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, marginBottom: 10, backgroundColor: colors.surface },
-  accomRowActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  accomRadio:     { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  accomRadioInner:{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  accomLabel:     { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 2 },
-  accomLabelActive:{ color: colors.primary },
-  accomSub:       { fontSize: 12, color: colors.inkSubtle, lineHeight: 16 },
-
-  // Location
-  locateBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryLight, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1.5, borderColor: colors.primary + '44' },
-  locateBtnLoading: { opacity: 0.7 },
-  locateTxt:      { fontSize: 13, fontWeight: '600', color: colors.primary },
-  mapWrap:        { borderRadius: 14, overflow: 'hidden', height: MAP_HEIGHT, marginBottom: 8, borderWidth: 1.5, borderColor: colors.border, position: 'relative' },
-  map:            { width: '100%', height: '100%' },
-  mapHintBadge:   { position: 'absolute', bottom: 30, left: '50%', transform: [{ translateX: -80 }], flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(15,31,31,0.65)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  mapHintTxt:     { fontSize: 11, color: colors.white, fontWeight: '500' },
-  coordsRow:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
-  coordsTxt:      { fontSize: 11, color: colors.inkSubtle, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-
-  // Counter grid
-  counterGrid:  { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 8 },
-  counterRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  counterLabel: { fontSize: 14, fontWeight: '500', color: colors.ink },
-
-  // Counter sub-label
-  counterSub:     { fontSize: 11, color: colors.inkSubtle, marginTop: 2 },
-
-  // Chip selector (duration, notice)
-  chipRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  selectChip:     { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-  selectChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  selectChipTxt:  { fontSize: 13, fontWeight: '600', color: colors.inkSubtle },
-  selectChipTxtActive: { color: colors.primary },
-
-  // Price preview
-  pricePreview:    { backgroundColor: colors.surfaceSunken, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginTop: 4, marginBottom: 8 },
-  pricePreviewRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  pricePreviewLbl: { fontSize: 12, color: colors.inkSubtle },
-  pricePreviewVal: { fontSize: 13, fontWeight: '600', color: colors.ink },
-
-  // Amenities
-  amenitiesGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  amenityChip:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-  amenityChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  amenityTxt:     { fontSize: 12, fontWeight: '500', color: colors.inkMid },
-  amenityTxtActive: { color: colors.primary, fontWeight: '600' },
-  amenityHint:    { fontSize: 11, color: colors.warning, marginTop: 8 },
-
-  // Rules
-  rulesCard:    { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  ruleRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
-  ruleRowBorder:{ borderBottomWidth: 1, borderBottomColor: colors.border },
-  ruleIconWrap: { width: 34, height: 34, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
-  ruleLabel:    { fontSize: 14, fontWeight: '600', color: colors.ink },
-  ruleSub:      { fontSize: 11, color: colors.inkSubtle, marginTop: 1 },
-  toggle:       { width: 44, height: 24, borderRadius: 12, backgroundColor: colors.border, justifyContent: 'center', paddingHorizontal: 2 },
-  toggleOn:     { backgroundColor: colors.primary },
-  toggleThumb:  { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.white },
-  toggleThumbOn:{ transform: [{ translateX: 20 }] },
-
-  // Photos
-  photosGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoThumb:   { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10, overflow: 'hidden', position: 'relative' },
-  photoImg:     { width: '100%', height: '100%' },
-  coverBadge:   { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.primary + 'CC', paddingVertical: 3, alignItems: 'center' },
-  coverBadgeTxt:{ fontSize: 9, fontWeight: '700', color: colors.white },
-  photoRemove:  { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.ink + 'BB', alignItems: 'center', justifyContent: 'center' },
-  photoAdd:     { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: colors.surfaceSunken },
-  photoAddTxt:  { fontSize: 11, color: colors.inkDisabled },
-  photoHint:    { fontSize: 11, color: colors.inkSubtle, marginTop: 8, lineHeight: 16 },
-
-  // Submit error
-  submitError:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.error + '12', borderRadius: 8, padding: 10, marginTop: 16 },
-  submitErrorTxt: { fontSize: 13, color: colors.error, fontWeight: '500' },
-
-  // Footer
-  footer:              { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 20, paddingTop: 14 },
-  footerRow:           { flexDirection: 'row', gap: 10 },
-  // Bouton plein dans footerRow (last step)
-  primaryFooterBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14 },
-  // Bouton pleine largeur (steps 1-3)
-  primaryFooterBtnFull:{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 15 },
-  primaryFooterTxt:    { fontSize: 16, fontWeight: '700', color: colors.onAccent },
-  secondaryFooterBtn:  { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  secondaryFooterTxt:  { fontSize: 14, fontWeight: '600', color: colors.inkMid },
-  btnDisabled:         { opacity: 0.45 },
+  flex: { flex: 1 },
+  grow: { flex: 1, minWidth: 0 },
+  fill: { width: '100%', height: '100%' },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    flexGrow: 1,
+  },
+  progress: { color: colors.primaryDark, fontSize: 14, fontWeight: '600', marginBottom: 10 },
+  hint: { color: colors.inkSubtle, fontSize: 16, lineHeight: 24, marginTop: 8, marginBottom: 24 },
+  fields: { gap: 16 },
+  field: { gap: 8, marginTop: 4 },
+  label: { fontSize: 16, fontWeight: '500', lineHeight: 23, color: colors.ink },
+  input: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 16,
+  },
+  multiline: { minHeight: 150 },
+  invalid: { borderColor: colors.error },
+  error: { color: colors.error, fontSize: 14, lineHeight: 21, marginVertical: 4 },
+  sectionLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 26,
+    color: colors.ink,
+    marginTop: 16,
+  },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    maxWidth: '100%',
+  },
+  optionText: { fontSize: 15, color: colors.ink, flexShrink: 1 },
+  selected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  accommodation: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  counter: {
+    minHeight: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  counterControls: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  counterButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+  },
+  counterValue: {
+    minWidth: 32,
+    textAlign: 'center',
+    fontSize: 16,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  disabled: { opacity: 0.4 },
+  map: { height: 260, overflow: 'hidden', borderRadius: 12, backgroundColor: colors.surfaceSunken },
+  photos: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  photoItem: { width: 124 },
+  photoFrame: { width: 124, height: 124, borderRadius: 10, overflow: 'hidden' },
+  removePhoto: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverAction: { minHeight: 44, justifyContent: 'center' },
+  coverText: { color: colors.primaryDark, fontSize: 14, lineHeight: 20, paddingVertical: 8 },
+  rule: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  reviewImage: { width: '100%', aspectRatio: 1.8, borderRadius: 12 },
+  actions: { gap: 12, paddingTop: 32 },
+  amenitiesToggle: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  skeleton: { height: 250, borderRadius: 12, backgroundColor: colors.border },
+  backdrop: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialog: {
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '90%',
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+  },
+  dialogContent: { padding: 24, gap: 18 },
 });
-
-export default CreateListingScreen;

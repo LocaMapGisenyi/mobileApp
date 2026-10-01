@@ -1,3 +1,4 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -5,20 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Switch,
   ActivityIndicator,
   StatusBar,
   Modal,
-  Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
+import { HostPage, HostHeader, HostNotice } from '../components/host/HostUI';
 import { RootStackParamList } from '../types';
 import { useUserStore } from '../store/user';
 import { saveAccountExport } from '../lib/accountExport';
@@ -46,9 +44,6 @@ const PAYOUT_TYPES: { type: PayoutType; label: string; prefix: string; color: st
 
 type KycConfig = Record<KycStatus, { label: string; color: string; bg: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }>;
 
-const LANGUAGES_RW = [
-  'Kinyarwanda', 'Français', 'English', 'Swahili', 'Arabic',
-];
 
 // ─── Add payout modal ─────────────────────────────────────────────────────────
 const AddPayoutModal = ({
@@ -98,8 +93,8 @@ const AddPayoutModal = ({
               style={pm.input}
               value={name}
               onChangeText={setName}
-              placeholder="Jean Bosco Hakizimana"
-              placeholderTextColor={colors.inkDisabled}
+              placeholder={labels.holder}
+              placeholderTextColor={colors.inkSubtle}
             />
           </View>
 
@@ -113,7 +108,7 @@ const AddPayoutModal = ({
                   value={number}
                   onChangeText={setNumber}
                   placeholder="78 XXX XXX"
-                  placeholderTextColor={colors.inkDisabled}
+                  placeholderTextColor={colors.inkSubtle}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -145,8 +140,8 @@ const pm = StyleSheet.create({
   overlay:    { flex: 1, backgroundColor: 'rgba(15,31,31,0.5)', justifyContent: 'flex-end' },
   card:       { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 36, borderTopWidth: 1, borderColor: colors.border },
   title:      { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 20 },
-  label:      { fontSize: 11, fontWeight: '700', color: colors.inkSubtle, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  typeChip:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border },
+  label:      { fontSize: 11, fontWeight: '700', color: colors.inkSubtle,  letterSpacing: 0.5, marginBottom: 8 },
+  typeChip:   { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border },
   typeChipTxt:{ fontSize: 12, fontWeight: '500', color: colors.inkMid },
   inputWrap:  { backgroundColor: colors.surfaceSunken, borderRadius: 8, borderWidth: 1.5, borderColor: colors.border, paddingHorizontal: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' },
   input:      { fontSize: 15, color: colors.ink, paddingVertical: 11 },
@@ -162,7 +157,6 @@ const pm = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const HostAccountScreen = () => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { user, actions } = useUserStore();
 
@@ -271,43 +265,29 @@ const HostAccountScreen = () => {
 
   if (loading) {
     return (
-      <View style={[s.root, { paddingTop: insets.top }]}>
-        <View style={s.loadingHeader}>
-          <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>{t('editProfile.title')}</Text>
-          <View style={{ width: 36 }} />
-        </View>
-        <View style={s.centered}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
-      </View>
+      <HostPage scroll={false}><View style={s.root}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}><HostHeader title={t('hostFlow.menu.account')} onBack={() => navigation.goBack()} /></View>
+        <ScrollView contentContainerStyle={{ padding: 20 }}><ContentSkeleton variant="profile" /></ScrollView>
+      </View></HostPage>
     );
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <HostPage scroll={false}><View style={s.root}>
       <StatusBar barStyle="dark-content" />
       <AccountProfileEditor visible={profileEditorVisible} onClose={() => setProfileEditorVisible(false)} />
       {!!notice && <Text accessibilityRole="alert" style={{ color: colors.primary, padding: 16 }} onPress={() => setNotice("")}>{notice}</Text>}
 
       {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>{t('editProfile.title')}</Text>
-        <View style={{ width: 36 }} />
-      </View>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}><HostHeader title={t('hostFlow.menu.account')} onBack={() => navigation.goBack()} /></View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
         {!!error && <Text accessibilityRole="alert" style={{ color: colors.error, padding: 20 }}>{error}</Text>}
         {/* Avatar + KYC badge */}
-        <Animated.View entering={FadeInDown.duration(320)} style={s.avatarSection}>
+        <View style={s.avatarSection}>
           <View style={s.avatar}>
             {user.photoURL ? <ResilientImage accessibilityLabel={t('editProfile.profilePhoto')} source={{uri:user.photoURL}} style={{width:64,height:64,borderRadius:32}} /> : <Text style={s.avatarTxt}>{initials}</Text>}
           </View>
@@ -319,10 +299,10 @@ const HostAccountScreen = () => {
             <MaterialIcons name={kyc.icon} size={13} color={kyc.color} />
             <Text style={[s.kycBadgeTxt, { color: kyc.color }]}>{kyc.label}</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {/* MON PROFIL */}
-        <Animated.View entering={FadeInDown.delay(50).duration(300)}>
+        <View>
           <SectionHeader title={t('editProfile.sectionProfile')} />
           <View style={s.card}>
             <RowItem icon="person-outline" label={t('editProfile.personalInfo')}  value={user.fullName ?? undefined} onPress={() => setProfileEditorVisible(true)} />
@@ -330,21 +310,24 @@ const HostAccountScreen = () => {
             <RowItem icon="edit-note"      label={t('editProfile.bio')}                                              onPress={() => setProfileEditorVisible(true)} />
             <RowItem icon="translate"      label={t('editProfile.languages')}                 onPress={() => setProfileEditorVisible(true)} last />
           </View>
-        </Animated.View>
+        </View>
 
         {/* SÉCURITÉ */}
-        <Animated.View entering={FadeInDown.delay(80).duration(300)}>
+        <View>
           <SectionHeader title={t('editProfile.sectionSecurity')} />
           <View style={s.card}>
             <RowItem icon="lock-outline" label={t('editProfile.changePassword')}                                                                                  onPress={() => { if (user.email) void authService.forgotPassword(user.email).then(() => setNotice("Lien de réinitialisation envoyé par email.")).catch(failure => setError(String(failure))); }} />
             <RowItem icon="phone-iphone" label={t('editProfile.twoFactor')} badge={t('editProfile.twoFactorBadge')} badgeBg={colors.error + '12'} badgeColor={colors.error} onPress={() => setNotice("Cette fonction est indisponible actuellement.")} />
             <RowItem icon="devices"      label={t('editProfile.connectedDevices')}                                                                                onPress={() => setNotice("Cette fonction est indisponible actuellement.")} last />
           </View>
-        </Animated.View>
+        </View>
 
         {/* PAIEMENTS */}
-        <Animated.View entering={FadeInDown.delay(110).duration(300)}>
+        <View>
           <SectionHeader title={t('editProfile.sectionPayments')} />
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+            <HostNotice tone="info" message={t('hostFlow.workspace.payoutUnavailable')} />
+          </View>
           <View style={s.card}>
             {payoutAccounts.length === 0 ? (
               <View style={s.emptyPayout}>
@@ -385,10 +368,10 @@ const HostAccountScreen = () => {
               <Text style={s.addPayoutTxt}>{t('editProfile.addAccount')}</Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </View>
 
         {/* NOTIFICATIONS */}
-        <Animated.View entering={FadeInDown.delay(140).duration(300)}>
+        <View>
           <View style={s.sectionLabelRow}>
             <SectionHeader title={t('editProfile.sectionNotifications')} />
             {savingNotifs && <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 20, marginRight: 20 }} />}
@@ -403,10 +386,10 @@ const HostAccountScreen = () => {
           <View style={s.card}>
             <Text style={{ color: colors.inkSubtle, padding: 16 }}>Notifications dans l’application uniquement. Les canaux push, email et SMS ne sont pas activés.</Text>
           </View>
-        </Animated.View>
+        </View>
 
         {/* CONFIDENTIALITÉ */}
-        <Animated.View entering={FadeInDown.delay(170).duration(300)}>
+        <View>
           <SectionHeader title={t('editProfile.sectionPrivacy')} />
           <View style={s.card}>
             <RowItem
@@ -423,7 +406,7 @@ const HostAccountScreen = () => {
               last
             />
           </View>
-        </Animated.View>
+        </View>
       </ScrollView>
 
       {/* Modals */}
@@ -452,18 +435,18 @@ const HostAccountScreen = () => {
           confirm: t('editProfile.confirm'),
         }}
       />
-    </View>
+    </View></HostPage>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:       { flex: 1, backgroundColor: colors.background },
+  root:       { flex: 1, backgroundColor: colors.background, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
 
   header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
-  backBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  backBtn:    { width: 44, height: 44, borderRadius: 18, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   headerTitle:{ fontSize: 17, fontWeight: '700', color: colors.ink },
 
   avatarSection:{ alignItems: 'center', paddingVertical: 28, gap: 8 },

@@ -1,5 +1,6 @@
+import ContentSkeleton from '../components/ContentSkeleton';
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, StatusBar, Dimensions, RefreshControl, ImageBackground, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, FlatList, TouchableOpacity, StatusBar, Dimensions, RefreshControl, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Chip, Appbar, useTheme, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -172,9 +173,7 @@ const SavedScreen = () => {
       {savedItems.length > 0 && renderSortChips()}
 
       {isLoading && savedItems.length === 0 && !refreshing ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator animating size="large" color={colors.primary} />
-      </View>
+        <ContentSkeleton variant="cards" count={2} style={{ paddingHorizontal: 20 }} />
       ) : savedItems.length === 0 ? (
         !isLoading && !refreshing ? renderEmptyState() : null
       ) : (
